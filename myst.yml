@@ -1,0 +1,20 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 18e500f9-7350-4942-8959-c809aafedc5e
+  title: Yuval's Intro to LLMs
+  license: CC-BY-4.0
+  authors:
+    - name: Yuval Shavit
+  # description:
+  # keywords: []
+  # authors: []
+  github: https://github.com/yshavit/llm-notes
+  toc:
+    - pattern: "book/*.md"
+  #error_rules:
+site:
+  template: book-theme
+  # options:
+  #   favicon: favicon.ico
+  #   logo: site_logo.png

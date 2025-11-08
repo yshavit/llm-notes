@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+warning_icon='⚠️'
+
+tmp_file="$(mktemp)"
+trap "rm -f '$tmp_file'" EXIT
+
+myst "$@" 2>&1 | tee "$tmp_file"
+! grep -q "$warning_icon" "$tmp_file"
