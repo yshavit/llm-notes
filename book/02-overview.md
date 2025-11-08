@@ -4,19 +4,19 @@ As you may have heard, LLMs are essentially "autocomplete on steroids": given a 
 
 ## How I organize my thinking about LLMs
 
-I think it's useful to think about LLMs in three layers:
+I find it useful to think about LLMs in three layers:
 
 1. The fundamental concepts
-2. The organizational optimizations of those concepts
+2. Mathematical optimizations of those concepts
 3. The actual implementation
 
-This book will primarily focus on the first two layers, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read yet, but I hear good things about).
+This book will primarily focus on the first two layers, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
 
-In the first layer (the conceptual layer) LLMs are mostly about **vectors**, with a small (but crucial!) smattering of **matrices**. Vectors are just sequences of numbers, and LLMs use them to encode basically anything that has nuance.
+In the first layer (the conceptual layer) LLMs are mostly about **vectors**, with a small but crucial smattering of **matrices**. The next chapter contains a quick refresher on what you need to know about those.
 
-For example, the word "dog" carries a lot of nuance: it can be a noun (the animal) or a verb (to follow someone persistently), or an adjective (dog days). As a noun, it can be a pet, a service animal, or a hound of war. It can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe. **Vectors allow LLMs to encode all of this information.**
+LLMs use vectors and matrices to encode basically anything that has nuance. For example, the word "dog" has many meanings: it can be a noun (the animal) or a verb (to follow someone persistently), or an adjective (dog days). It can be a pet, a service animal, or a hound of war. It can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe. **Vectors allow LLMs to encode all of this information.**
 
-The second layer (optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into **tensors** (don't worry if you don't know what those are). The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in parallel, and more efficiently than a CPU can.
+The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into **tensors** (don't worry if you don't know what those are). The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
 
 ```mermaid
 flowchart LR
@@ -68,11 +68,11 @@ Don't worry if this doesn't all fit together yet, and especially don't worry if 
 
 ## High level: What's in these components?
 
-Other than the input and output components in the description above, all of the other components make extensive use of **learned parameters**. These are values within the respective vectors that tell the LLM how important that element in the vector is, within a given context.
+Other than the input and output components in the description above, all of the other components make extensive use of **learned parameters**. These are values within the respective vectors (and matrices) that tell the LLM how important that element is, within a given context.
 
-Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these possible meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @04-input-to-vectors). Those values are the learned parameters for that vector.
+Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @04-input-to-vectors). Those values are the learned parameters for that vector.
 
-What do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 621 in the embedding vector", where property 621 is... something that, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
+What do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 621 in the embedding vector", where property 621 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
 
 So far, I've been talking about the word "dog," and its token embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that a fox and a dog are both animals; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
 
