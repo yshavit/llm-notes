@@ -50,11 +50,11 @@ So far, we have a bunch of vectors:
 We can group these into matrices. For example:
 
 $$
-\begin{array}{lcl}
-\text{to} & [1.32, & 5.91, & 5.71, & \dots] \\
-\text{be} & [6.16, & 4.81, & 3.62, & \dots] \\
-\text{or} & [8.27, & 9.53, & 2.44, & \dots] \\
-\text{...} & [\dots, & \dots, & \dots, & \dots]
+\begin{array}{llllll}
+\text{to} &  [ & 1.32, & 5.91, & 5.71, & \dots] \\
+\text{be} &  [ & 6.16, & 4.81, & 3.62, & \dots] \\
+\text{or} &  [ & 8.27, & 9.53, & 2.44, & \dots] \\
+\text{...} & [ & \dots, & \dots, & \dots, & \dots]
 \end{array}
 \quad \Longrightarrow \quad
 \begin{bmatrix}
