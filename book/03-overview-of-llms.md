@@ -20,6 +20,8 @@ LLMs use vectors and matrices to encode basically anything that has nuance. For 
 
 The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into **tensors** (don't worry if you don't know what those are). The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
 
+In a nutshell: GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel. TPUs extend this by building in, at the hardware level, specific optimizations for matrix math. This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, then the right hardware can process the data in parallel and with optimizations down to the hardware level.
+
 ```mermaid
 flowchart LR
 
