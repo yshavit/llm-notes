@@ -1,4 +1,3 @@
-venv/
-
-# MyST build outputs
 _build
+spell/local.utf-8.add.spl
+venv/
