@@ -14,13 +14,13 @@ I find it useful to think about LLMs in three layers:
 
 This book will primarily focus on the first two layers, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
 
-In the first layer (the conceptual layer) LLMs are mostly about **vectors**, with a small but crucial smattering of **matrices**. The next chapter contains a quick refresher on what you need to know about those.
+In the first layer (the conceptual layer) LLMs are mostly about vectors, with a small but crucial smattering of matrices.
 
 LLMs use vectors and matrices to encode basically anything that has nuance. For example, the word "dog" has many meanings: it can be a noun (the animal) or a verb (to follow someone persistently), or an adjective (dog days). It can be a pet, a service animal, or a hound of war. It can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe. **Vectors allow LLMs to encode all of this information.**
 
-The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into **tensors** (don't worry if you don't know what those are). The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
+The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into tensors. The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
 
-In a nutshell: GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel. TPUs extend this by building in, at the hardware level, specific optimizations for matrix math. This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, then the right hardware can process the data in parallel and with optimizations down to the hardware level.
+In a nutshell: GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each item. TPUs extend this by building in, at the hardware level, specific optimizations for matrix math. This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, then the right hardware can process the data in parallel and with optimizations down to the hardware level.
 
 ```mermaid
 flowchart LR
@@ -46,6 +46,8 @@ flowchart LR
   C2 -.-> L2 -.-> Hardware
   
 ```
+
+Within each of the following chapters, I'll start by explaining an aspect of the LLM in terms of the fundamental concept. Then, I'll touch briefly on how that translates to the mathematical optimizations.
 
 ## Components of an LLM
 
