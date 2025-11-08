@@ -55,11 +55,11 @@ The output of all this is a probability distribution over every token the LLM kn
 
 ```mermaid
 flowchart TB
-  I["Input:<br>&quot;The quick brown fox&quot;"]
-  A["Tokenization + embeddings<br>(no AI)"]
-  B["Self-attention<br>(the LLM magic)"]
-  C["Neural Net<br>(&quot;legacy&quot; AI)"]
-  O["Output:<br>97% chance the next word is &quot;jumps&quot;"]
+  I(["Input:<br>&quot;The quick brown fox&quot;<br>&nbsp;"])
+  A["Tokenization + embeddings<br>(no AI)<br>&nbsp;"]
+  B["Self-attention<br>(the LLM magic)<br>&nbsp;"]
+  C["Neural Net<br>(&quot;legacy&quot; AI)<br>&nbsp;"]
+  O(["Output:<br>97% chance the next word is &quot;jumps&quot;<br>&nbsp;"])
 
   I --> A --> B --> C --> O -.->|"<i>add token and repeat</i>"| I
 ```
