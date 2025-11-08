@@ -64,5 +64,31 @@ flowchart TB
 
 Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
 
+## A teaser: What's in these things?
+
+Other than the input and output components in the description above, all of the other components make extensive use of **learned parameters**. These are values within the respective vectors that tell the LLM how important that element in the vector is, within a given context.
+
+Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these possible meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @04-input-to-vectors); those values are the learned parameters.
+
+What do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 621 in the embedding vector", where property 621 is... something that, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
+
+So far, I've been talking about the word "dog," which is represented by what I called the token's embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that a fox and a dog are both animals; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
+
+The values themselves are emergent properties that arise over many training rounds, over a large corpus of text. Through the magic of partial derivatives and some other math tricks, all the learned parameters in the LLM naturally settle into useful values.
+
+Gaining insight into what those values really "mean," and how we can understand or even audit them, is well outside the scope of this book. This is an area of active research (and is one of the things that Anthropic specifically works hard at).
+
+There are a _lot_ of these learned parameters. A typical high-quality LLM (ChatGPT, Claude, etc) will have hundreds of billions of them. A small model that you can run on your laptop may have "only" 5 - 15 billion.
+
+The things to remember are:
+
+- everything is a vector or a matrix
+- vectors and matrices encode the nuances of human language
+- each vector or matrix encodes a different aspect of that nuance
+- the nuances aren't ones we'd understand; they're abstract mathematical properties that are only analogous to the kinds of nuances we'd come up with
+- it can't be stressed enough: _everything is a vector_ (or a matrix)
+
+With that, let's get into it. We'll start with a refresher on what vectors and matrices are, and the handful of mathematical operations we'll need to use on them.
+
 [Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
 [Hugging Face's course]: https://huggingface.co/learn/llm-course/chapter1/1

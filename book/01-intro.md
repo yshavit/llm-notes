@@ -10,7 +10,7 @@ The primary audience is me; but if you've found this and it helps you, all the b
 
 ## Prerequisites
 
-This book assumes basic math. The most advanced math topic is vectors and matrices, and even for those, the book includes an overview of what you need to know. There is also a glancing blow of tensors, but again, I'll explain just what you need from those.
+This book assumes high school math. The most advanced math topic is vectors and matrices, and even for those, the book includes an overview of what you need to know. There is also a glancing blow of tensors, but again, I'll explain just what you need from those. It's also helpful to have familiarity with derivatives, but you won't have to know the nitty-gritty.
 
 ## Organization
 
