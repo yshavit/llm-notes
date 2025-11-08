@@ -1,5 +1,7 @@
 # Overview of LLMs
 
+## How I organize thinking about LLMs
+
 As you may have heard, LLMs are essentially "autocomplete on steroids": given a bunch of input text, they predict the next word. But how?
 
 I think it's useful to think about LLMs in three layers:
