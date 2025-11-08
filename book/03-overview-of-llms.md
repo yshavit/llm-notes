@@ -102,7 +102,7 @@ Let's dig very slightly into the details.
 
 At every training pass we'll have some input and a known output. For example, we can take the sentence "I like to ski when it snows" and break it into an input of "I like to ski when it" and an expected output of "snows".
 
-We'll take this input and feed it into the model. The result will be all of the words in the model knows, each with the probability that it's the right next word. Ideally, for this input, the model should predict that "snows" has a high probability. But initially, the model is random, so it won't.
+We'll take this input and feed it into the model. The result will be all of the words in the model knows, each with the predicted probability that it's the next word. Ideally, for this input, the model should predict that "snows" has a high probability. Initially, the model is random, so it won't.
 
 Instead, we'll have a probability for "snows" that's pretty far off from the expected value. We'll then go through the model and perform **backpropagation**, which basically asks: "for every parameter in the model, how would you have to adjust it, holding the rest of the parameters constant, for 'snows' to have a higher probability?" It then applies all of those learnings — and there you go, that's one jostle of the surface.
 
