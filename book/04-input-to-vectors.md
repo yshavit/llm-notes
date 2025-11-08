@@ -67,6 +67,6 @@ $$
 
 We can do the same thing for the positional embeddings, and then the input embeddings.
 
-Furthermore, during training we often want to work with batches of inputs at the same time. To do that, we just raise these matrices to rank 3 tensors, where one index represents the input with the batch of inputs, and the other two represent the matrix. Again, we do this for the token embeddings, positional embeddings, and input embeddings.
+Furthermore, during training we often want to work with batches of inputs at the same time. To do that, we just raise these matrices to rank 3 tensors, where the first index represents the input within the batch, and the other two represent the each input's matrix (which in turn just represents the embeddings for each token in the input). Again, we do this for the token embeddings, positional embeddings, and input embeddings.
 
 [bpe]: https://en.wikipedia.org/wiki/Byte-pair_encoding
