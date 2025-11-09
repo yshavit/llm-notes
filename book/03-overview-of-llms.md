@@ -51,7 +51,7 @@ Within each of the following chapters, I'll start by explaining an aspect of the
 
 ## Learned parameters vs runtime
 
-:::{warning} TODO 
+:::{warning} TODO
 Talk about what's a learned parameter vs what's a "runtime" value. This is important to always keep in mind -- I should be explicit in each subsequent chapter.
 :::
 
@@ -100,11 +100,19 @@ There are a _lot_ of these learned parameters. A typical high-quality LLM (ChatG
 
 I'll describe training in more detail [later](./07-training.md), but it may help demystify things a bit if I touch on it now.
 
-:::{important}
-To be clear, this section should be _very_ much understood as allegory.
-:::
+When a particular vector first starts out in the model, it's given random values. At this point, it doesn't matter what the values are; just that they're all different, and thus will "nudge" in different ways to the same input.
 
-When a particular vector first starts out in the model, it's given random values. At this point, it doesn't matter what the values are; just that they're all different, and thus will "nudge" in different ways to the same input. Think of these as grains of sand evenly distributed on a bumpy surface: when you bump the surface, each grain will jostle slightly into whatever valley it's closest to. When you shake the surface enough, eventually the sand won't be evenly distributed at all, but will instead follow the contours of the surface's bumps. That lets us then understand the surface; that's what we want.
+Imagine a language underlying, hidden structure can be represented by a subtly stretchy fabric: we want to find where its strong and weak strands are. We don't know _how_ this fabric represents the language: but we know that once we learn how the fabric looks, we can use it to generate text.
+
+To start, we'll sprinkle a fine sand evenly over the surface. At this point, we don't know anything about the fabric: this is our initial, randomized state. But randomness being what it is, some grains will have ended up slightly clumped near weak spots in the fabric, causing those areas to very slightly, imperceptibly, sag.
+
+Now, we'll bump the surface softly on the left; this represents a round of training. This moves the grains of sand in a not-quite-random way: They generally move rightward (this is a training bias), but more importantly, they'll also fall a bit towards whatever sag in the fabric they're closest to.
+
+So now, let's bump the surface softly on the right; and then on the top; and then the bottom, and every which way. Slowly but surely, the training biases even out, the effects of the sagging compound, and we get a sense of the fabric's composition. The weaker the spot in the fabric, the more the sand will accumulate and the more that area will sag.
+
+In this metaphor, each weak spot represents a learned parameter in the model. The amount of weakness in it — and thus, the amount of sand that will end up accumulating in it — represents that parameter's learned value.
+
+Note that the sags we find aren't the true structure of the fabric (or, by way of analogy, the language's structure). They're one view of it, which we discovered via a randomized process. If we were to clear the surface and start again with a fresh sprinkling or slightly different jostles, we might get a different set of sags. But both end results represent the same thing: an approximate view into the fabric's structure, which we can then use to generate more fabric (i.e., text) that fits the pattern of the original.
 
 Let's dig very slightly into the details.
 
@@ -115,10 +123,6 @@ We'll take this input and feed it into the model. The result will be all of the 
 Instead, we'll have a probability for "snows" that's pretty far off from the expected value. We'll then go through the model and perform **backpropagation**, which basically asks: "for every parameter in the model, how would you have to adjust it, holding the rest of the parameters constant, for 'snows' to have a higher probability?" It then applies all of those learnings — and there you go, that's one jostle of the surface.
 
 Over time, each of these jostles either reinforce each other or cancel each other out. That's just random at first, but as the valleys become deeper, they start to self-reinforce and become something the model has learned. Again, we don't know what the model's "valleys" really mean; we certainly don't know where they are. But the initial randomness plus repeated training rounds causes them to pop into existence through emergent behavior, and if we built our model well, the patterns those valleys describe will let us generate text.
-
-:::{warning} TODO
-Instead of jostle, nudge from the left (which introduces a bias). Then from right. Then shake all around -- that's our long training -- and eventually you fill in the holes, and now you know them. Also, the holes should be different depths, that's part of what we need to learn.
-:::
 
 ## In summary
 
