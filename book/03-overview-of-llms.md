@@ -49,6 +49,12 @@ flowchart LR
 
 Within each of the following chapters, I'll start by explaining an aspect of the LLM in terms of the fundamental concept. Then, I'll touch briefly on how that translates to the mathematical optimizations.
 
+## Learned parameters vs runtime
+
+:::{warning} TODO 
+Talk about what's a learned parameter vs what's a "runtime" value. This is important to always keep in mind -- I should be explicit in each subsequent chapter.
+:::
+
 ## Components of an LLM
 
 An LLM consists of a few key components:
@@ -109,6 +115,10 @@ We'll take this input and feed it into the model. The result will be all of the 
 Instead, we'll have a probability for "snows" that's pretty far off from the expected value. We'll then go through the model and perform **backpropagation**, which basically asks: "for every parameter in the model, how would you have to adjust it, holding the rest of the parameters constant, for 'snows' to have a higher probability?" It then applies all of those learnings — and there you go, that's one jostle of the surface.
 
 Over time, each of these jostles either reinforce each other or cancel each other out. That's just random at first, but as the valleys become deeper, they start to self-reinforce and become something the model has learned. Again, we don't know what the model's "valleys" really mean; we certainly don't know where they are. But the initial randomness plus repeated training rounds causes them to pop into existence through emergent behavior, and if we built our model well, the patterns those valleys describe will let us generate text.
+
+:::{warning} TODO
+Instead of jostle, nudge from the left (which introduces a bias). Then from right. Then shake all around -- that's our long training -- and eventually you fill in the holes, and now you know them. Also, the holes should be different depths, that's part of what we need to learn.
+:::
 
 ## In summary
 

@@ -15,6 +15,10 @@ project:
   numbering:
     figure:
       continue: true
+  exclude:
+    - ".*.drawio.*"
+    - "*.bkp"
+    - "*.dtmp"
 site:
   template: book-theme
   # options:

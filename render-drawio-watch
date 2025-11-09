@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+inotifywait -m -r -e modify,create,delete,move book/images |
+  while read path action file; do
+    if [[ "$file" != *.drawio ]]; then
+      continue
+    fi
+    case "$action" in
+    CREATE | MODIFY | MOVED_TO)
+      echo "Rendering ${path}${file}"
+      ./render-drawio "$path/$file"
+      ;;
+    DELETE | MOVED_FROM)
+      echo "File removed: $path/$file"
+
+      file_name_no_ext="${file%.*}"
+      [[ -e "${file_name_no_ext}.sha1" ]] && rm "${file_name_no_ext}.sha1"
+      [[ -e "${file_name_no_ext}.svg" ]] && rm "${file_name_no_ext}.svg"
+      ;;
+    *)
+      echo "Unrecognized event $action in $path/$file"
+      ;;
+    esac
+  done

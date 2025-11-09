@@ -21,6 +21,12 @@ As I mentioned in @conceptual-layers, I like to think about LLMs in terms of the
 
 Let's take "to be or not to be" as an example. Here's how we go from the text, to the token embeddings and positional embeddings, to the input embeddings:
 
+:::{warning} TODO
+Apparently modern LLMs don't use position embeddings! So, simplify this, and move the position embeddings to the end, in a "what old GPTs used to do" section.
+
+![tokenization of "to be or not to be"](images/04/token-embeddings.svg)
+:::
+
 ![tokenization of "to be or not to be"](images/04/01-overview.svg)
 
 We start with the input text, which we just parse into tokens. I won't cover the tokenization algorithm itself; suffice it to say that the most common form of tokenization is byte pair encoding (BPE), which basically looks for words, sub-words (like the "de" in "demystify"), and punctuation. You can read about it [on Wikipedia][bpe], but since it's not really an AI concept (it was originally invented for compression!), it's not particularly interesting for us.
