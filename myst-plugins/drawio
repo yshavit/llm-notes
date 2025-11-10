@@ -26,15 +26,13 @@ fi
 
 target="$(cat - | jq -r '.node.value')"
 
-env >&2
-
-# note: OLDPWD is the dir that contains the md that invoked this role
-./render-drawio "$OLDPWD/${target}.drawio"
+image_home='book/images/'
+./render-drawio "${image_home}/${target}.drawio"
 
 jq -n \
   \
-  --arg dark "${target}-dark.svg" \
-  --arg light "${target}-light.svg" \
+  --arg dark "$(basename "$image_home")/${target}-dark.svg" \
+  --arg light "$(basename "$image_home")/${target}-light.svg" \
   '[{
   type: "span",
   class: "theme-aware-wrapper",
