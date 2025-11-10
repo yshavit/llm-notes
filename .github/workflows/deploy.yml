@@ -37,8 +37,6 @@ jobs:
           node-version: 18.x
       - name: Pull draw.io docker image
         run: docker pull rlespinasse/drawio-desktop-headless
-      - name: Render draw.io svgs
-        run: ./render-drawio book/images/**/*.drawio
       - name: Install MyST
         run: npm install -g mystmd
       - name: Build HTML Assets
