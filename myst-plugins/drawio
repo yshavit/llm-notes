@@ -26,6 +26,8 @@ fi
 
 target="$(cat - | jq -r '.node.value')"
 
+env >&2
+
 # note: OLDPWD is the dir that contains the md that invoked this role
 ./render-drawio "$OLDPWD/${target}.drawio"
 
