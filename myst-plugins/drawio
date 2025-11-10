@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo '{
+    "name": "Drawio Render",
+    "roles": [
+      {
+        "name": "drawio",
+        "doc": "render a drawio document",
+        "body": {
+          "type": "string",
+          "required": true,
+          "doc": "the path to the drawio document, without the \".drawio\" file extension"
+        }
+      }
+    ]
+  }'
+  exit
+fi
+
+if [[ "$1" != '--role' || "$2" != 'drawio' ]]; then
+  echo "Unrecognized options: $@" >err.txt
+  exit 1
+fi
+
+target="$(cat - | jq -r '.node.value')"
+
+# note: OLDPWD is the dir that contains the md that invoked this role
+./render-drawio "$OLDPWD/${target}.drawio"
+
+jq -n \
+  \
+  --arg dark "${target}-dark.svg" \
+  --arg light "${target}-light.svg" \
+  '[{
+  type: "span",
+  class: "theme-aware-wrapper",
+  children: [
+    {
+      type: "span",
+      class: "hidden dark:block",
+      children: [{
+        "type": "image",
+        "url": $dark
+      }]
+    },
+    {
+      type: "span",
+      class: "dark:hidden",
+      children: [{
+        "type": "image",
+        "url": $light
+      }]
+    }
+  ]
+}]'

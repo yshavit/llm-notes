@@ -7,11 +7,11 @@ for file_path in "$@"; do
 
   if [[ ! -f "$file_path" ]]; then
     echo >&2 "Missing file: $file_path"
-    continue
+    exit 1
   fi
   if [[ "$file_name" != *.drawio ]]; then
     echo >&2 "Skipping non-drawio file: $file_path"
-    continue
+    exit 1
   fi
 
   file_name_no_ext="${file_name%.*}"
@@ -22,6 +22,8 @@ for file_path in "$@"; do
   fi
 
   full_dir="$(readlink -f "$dir_path")"
-  docker run --rm -i -w /data -v "$full_dir":/data rlespinasse/drawio-desktop-headless -x -f svg --svg-theme light "$file_name"
+  for drawio_theme in light dark; do
+    docker run --rm -i -w /data -v "$full_dir":/data rlespinasse/drawio-desktop-headless -x -f svg --svg-theme "$drawio_theme" -o "$file_name_no_ext-${drawio_theme}.svg" "$file_name" 2>>log.txt
+  done
   (cd "$dir_path" && sha1sum "$file_name" >"$file_name_sha1")
 done

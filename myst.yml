@@ -19,6 +19,9 @@ project:
     - ".*.drawio.*"
     - "*.bkp"
     - "*.dtmp"
+  plugins:
+    - type: executable
+      path: myst-plugins/drawio
 site:
   template: book-theme
   # options:
