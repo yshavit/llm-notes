@@ -24,7 +24,7 @@ Let's take "to be or not to be" as an example. Here's how we go from the text, t
 :::{warning} TODO
 Apparently modern LLMs don't use position embeddings! So, simplify this, and move the position embeddings to the end, in a "what old GPTs used to do" section.
 
-And then I have {drawio}`book/images/04/token-embeddings`
+And then I have {drawio}`images/04/token-embeddings`
 :::
 
 ![tokenization of "to be or not to be"](images/04/01-overview.svg)

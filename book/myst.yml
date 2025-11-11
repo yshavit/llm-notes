@@ -10,8 +10,6 @@ project:
   # keywords: []
   # authors: []
   github: https://github.com/yshavit/llm-notes
-  toc:
-    - pattern: "book/*.md"
   numbering:
     figure:
       continue: true
@@ -21,7 +19,7 @@ project:
     - "*.dtmp"
   plugins:
     - type: executable
-      path: myst-plugins/drawio
+      path: ../myst-plugins/drawio
 site:
   template: book-theme
   # options:
