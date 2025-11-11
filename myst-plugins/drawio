@@ -1,6 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+plugin_dir=_plugin/drawio
+mkdir -p "$plugin_dir"
+
+# exec 2>>"$plugin_dir/log.txt"
+# set -x
+
+function svg_data() {
+  printf 'data:image/svg+xml;base64,'
+  cat - | base64
+}
+
+function render_drawio() {
+  local theme="$1"
+  local file_path="$2"
+
+  local symlink_name="$(echo "$file_path" | sha1sum | cut -d' ' -f1)-$theme"
+
+  local error_svg='<svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 64 16" role="img" aria-label="Error">
+    <text x="20%" y="10%" dominant-baseline="middle" text-anchor="middle"
+          font-weight="700" font-size="10"
+          fill="#B00020" stroke="rgba(255,255,255,0.9)" stroke-width="0.6" stroke-linejoin="round">ERROR</text>
+    </svg>'
+
+  if [[ ! -f "$drawio_file" ]]; then
+    echo "$error_svg" | sed 's/ERROR/ERROR: Missing file' | svg_data >"$plugin_dir/${symlink_name}.data"
+  elif [[ "$drawio_file" != *.drawio ]]; then
+    echo "$error_svg" | sed 's/ERROR/ERROR: Invalid file' | svg_data >"$plugin_dir/${symlink_name}.data"
+    return
+  else
+    rm -f "$plugin_dir/${symlink_name}.drawio"
+    cp "$file_path" "$plugin_dir/${symlink_name}.drawio"
+
+    # regenerate the file if the the svg is missing, or if the drawio's sha1 changed
+    if [[ ! -e "$plugin_dir/${symlink_name}.svg" ]] ||
+      ! (cd "$plugin_dir" && sha1sum -c "${symlink_name}.sha" >/dev/null 2>&1); then
+      >&2 docker run --rm -i -w /data -v "$PWD/$plugin_dir":/data rlespinasse/drawio-desktop-headless -x -f svg \
+        --svg-theme "$theme" -o "${symlink_name}.svg" "$symlink_name.drawio"
+      cat "$plugin_dir/${symlink_name}.svg" | svg_data >"$plugin_dir/${symlink_name}.data"
+      (cd "$plugin_dir" && sha1sum "$symlink_name.drawio" >"$symlink_name.sha")
+    fi
+  fi
+  echo "$plugin_dir/${symlink_name}.data"
+}
+
 if [[ "$#" -eq 0 ]]; then
   echo '{
     "name": "Drawio Render",
@@ -26,13 +70,17 @@ fi
 
 target="$(cat - | jq -r '.node.value')"
 
-image_home='book/images/'
-./render-drawio "${image_home}/${target}.drawio"
+drawio_file="${target}.drawio"
+
+dark_svg_data="$(render_drawio dark "$drawio_file")"
+light_svg_data="$(render_drawio light "$drawio_file")"
+
+sleep 1
 
 jq -n \
   \
-  --arg dark "$(basename "$image_home")/${target}-dark.svg" \
-  --arg light "$(basename "$image_home")/${target}-light.svg" \
+  --rawfile dark "$dark_svg_data" \
+  --rawfile light "$light_svg_data" \
   '[{
   type: "span",
   class: "theme-aware-wrapper",

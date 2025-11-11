@@ -4,3 +4,4 @@ venv/
 *.bkp
 *.dtmp
 *.sha1
+_plugin
