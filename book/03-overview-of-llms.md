@@ -76,10 +76,6 @@ learned parameter
 activation:
 : A value that's derived from the user's input. This combines that input with learned parameters. This is what the language is figuring out about your prompt specifically.
 
-:::{warning} TODO
-Talk about what's a learned parameter vs what's a "runtime" value. This is important to always keep in mind -- I should be explicit in each subsequent chapter.
-:::
-
 (what-are-learned-parameters)=
 
 ## What do learned parameters mean?
