@@ -12,23 +12,26 @@ function svg_data() {
   cat - | base64
 }
 
+function error_svg() {
+  local message="$(echo "$*" | sed 's/</\&lt;/g; s/>/\&gt;/g;')"
+  printf '
+    <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 150 16" role="img" aria-label="Error">
+      <text x="100%%" y="100%%" dominant-baseline="middle" text-anchor="middle"
+          font-weight="700" font-size="10"
+          fill="#B00020" stroke="rgba(255,255,255,0.9)" stroke-width="0.6" stroke-linejoin="round">%s</text>
+    </svg>' "$message"
+}
+
 function render_drawio() {
   local theme="$1"
   local file_path="$2"
 
   local symlink_name="$(echo "$file_path" | sha1sum | cut -d' ' -f1)-$theme"
 
-  local error_svg='<svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 64 16" role="img" aria-label="Error">
-    <text x="20%" y="10%" dominant-baseline="middle" text-anchor="middle"
-          font-weight="700" font-size="10"
-          fill="#B00020" stroke="rgba(255,255,255,0.9)" stroke-width="0.6" stroke-linejoin="round">ERROR</text>
-    </svg>'
-
   if [[ ! -f "$drawio_file" ]]; then
-    echo "$error_svg" | sed 's/ERROR/ERROR: Missing file' | svg_data >"$plugin_dir/${symlink_name}.data"
+    error_svg "Missing file: $drawio_file" | svg_data >"$plugin_dir/${symlink_name}.data"
   elif [[ "$drawio_file" != *.drawio ]]; then
-    echo "$error_svg" | sed 's/ERROR/ERROR: Invalid file' | svg_data >"$plugin_dir/${symlink_name}.data"
-    return
+    error_svg "Invalid file: $drawio_file" | svg_data >"$plugin_dir/${symlink_name}.data"
   else
     rm -f "$plugin_dir/${symlink_name}.drawio"
     cp "$file_path" "$plugin_dir/${symlink_name}.drawio"
@@ -74,8 +77,6 @@ drawio_file="${target}.drawio"
 
 dark_svg_data="$(render_drawio dark "$drawio_file")"
 light_svg_data="$(render_drawio light "$drawio_file")"
-
-sleep 1
 
 jq -n \
   \
