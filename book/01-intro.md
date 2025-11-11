@@ -16,6 +16,8 @@ The most advanced math topic is vectors and matrices, and even for those, the bo
 
 It's also helpful to have familiarity with derivatives, but you won't have to know the nitty-gritty.
 
+Finally, this book assumes passing familiarity with some programming terms, like "tokenization."
+
 ## Organization
 
 The driving principle behind this book's organization is that you should be able to read it front-to-back. This means:

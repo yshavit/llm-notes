@@ -20,8 +20,6 @@ LLMs use vectors and matrices to encode basically anything that has nuance. For 
 
 The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into tensors. The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
 
-In a nutshell: GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each item. TPUs extend this by building in, at the hardware level, specific optimizations for matrix math. This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, then the right hardware can process the data in parallel and with optimizations down to the hardware level.
-
 ```mermaid
 flowchart LR
 
@@ -47,13 +45,12 @@ flowchart LR
   
 ```
 
-Within each of the following chapters, I'll start by explaining an aspect of the LLM in terms of the fundamental concept. Then, I'll touch briefly on how that translates to the mathematical optimizations.
-
-## Learned parameters vs runtime
-
-:::{warning} TODO
-Talk about what's a learned parameter vs what's a "runtime" value. This is important to always keep in mind -- I should be explicit in each subsequent chapter.
+:::{seealso} Why GPUs & TPUs?
+:class: simple dropdown
+In a nutshell: GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each item. TPUs extend this by building in, at the hardware level, specific optimizations for matrix math. This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, then the right hardware can process the data in parallel and with optimizations down to the hardware level.
 :::
+
+Within each of the following chapters, I'll start by explaining an aspect of the LLM in terms of the fundamental concept. Then, I'll touch briefly on how that translates to the mathematical optimizations.
 
 ## Components of an LLM
 
@@ -65,28 +62,33 @@ An LLM consists of a few key components:
 
 The output of all this is a probability distribution over every token the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
 
-```mermaid
-flowchart TB
-  I(["Input:<br>&quot;The quick brown fox&quot;<br>&nbsp;"])
-  A["Tokenization + embeddings<br>(no AI)<br>&nbsp;"]
-  B["Self-attention<br>(the LLM magic)<br>&nbsp;"]
-  C["Neural Net<br>(&quot;legacy&quot; AI)<br>&nbsp;"]
-  O(["Output:<br>97% chance the next word is &quot;jumps&quot;<br>&nbsp;"])
-
-  I --> A --> B --> C --> O -.->|"<i>add token and repeat</i>"| I
-```
+{drawio}`images/03/llm-flow`
 
 Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
 
+## Learned parameters vs runtime values
+
+In addition to the components, it's important to keep separate in your head the two kinds of data an LLM works with: {dfn}`learned parameters` and {dfn}`activations`.
+
+learned parameter
+: A value that's part of the LLM's model: it's learned during training, but then is unchanged when the model's actually used. This is what the model knows about language in general.
+
+activation:
+: A value that's derived from the user's input. This combines that input with learned parameters. This is what the language is figuring out about your prompt specifically.
+
+:::{warning} TODO
+Talk about what's a learned parameter vs what's a "runtime" value. This is important to always keep in mind -- I should be explicit in each subsequent chapter.
+:::
+
 (what-are-learned-parameters)=
 
-## High level: What's in these components?
+## What do learned parameters mean?
 
-Other than the input and output components in the description above, all of the other components make extensive use of **learned parameters**. These are values within the respective vectors (and matrices) that tell the LLM how important that element is, within a given context.
+It's natural to ask: where do these learned parameters come from, and what do they represent?
 
 Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @04-input-to-vectors). Those values are the learned parameters for that vector.
 
-What do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 621 in the embedding vector", where property 621 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
+But what do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 621 in the embedding vector", where property 621 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
 
 So far, I've been talking about the word "dog," and its token embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that a fox and a dog are both animals; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
 
@@ -96,33 +98,23 @@ Gaining insight into what those values really "mean," and how we can understand 
 
 There are a _lot_ of these learned parameters. A typical high-quality LLM (ChatGPT, Claude, etc) will have hundreds of billions of them. A small model that you can run on your laptop may have "only" 5 - 15 billion.
 
-### Preview of how training works
+### An analogy
 
-I'll describe training in more detail [later](./07-training.md), but it may help demystify things a bit if I touch on it now.
+I'll describe training in more detail [later](./07-training.md), but it may help demystify things a bit if I touch on it now. I mentioned above that the learned parameters are emergent properties. How do they emerge, and how can they possibly mean anything if we didn't tell them what to mean?
 
-When a particular vector first starts out in the model, it's given random values. At this point, it doesn't matter what the values are; just that they're all different, and thus will "nudge" in different ways to the same input.
+A metaphor may be helpful here.
 
-Imagine a language underlying, hidden structure can be represented by a subtly stretchy fabric: we want to find where its strong and weak strands are. We don't know _how_ this fabric represents the language: but we know that once we learn how the fabric looks, we can use it to generate text.
+Imagine that a language's underlying structure can be represented by a subtly stretchy fabric. Our goal is to find where that fabric's strong and weak strands are, and in particular to figure out the pattern of those strong and weak points. If we can do that, then when someone gives us a small piece of similar fabric, we can extrapolate a larger tapestry from it. Crucially, we don't know _how_ this fabric represents the language: all we know is that it does.
 
-To start, we'll sprinkle a fine sand evenly over the surface. At this point, we don't know anything about the fabric: this is our initial, randomized state. But randomness being what it is, some grains will have ended up slightly clumped near weak spots in the fabric, causing those areas to very slightly, imperceptibly, sag.
+To start, we'll sprinkle a fine sand evenly over the surface. At this point, we still don't know anything about the fabric. But, randomness being what it is, some grains will have ended up slightly clumped near weak spots in the fabric, causing those areas to very slightly, imperceptibly, sag.
 
-Now, we'll bump the surface softly on the left; this represents a round of training. This moves the grains of sand in a not-quite-random way: They generally move rightward (this is a training bias), but more importantly, they'll also fall a bit towards whatever sag in the fabric they're closest to.
+Now, we'll bump the surface softly on the left; this represents a round of training. This moves the grains of sand in a not-quite-random way: They generally move rightward (this represents training bias), but more importantly, they'll also fall a bit towards whatever sag in the fabric they're closest to.
 
-So now, let's bump the surface softly on the right; and then on the top; and then the bottom, and every which way. Slowly but surely, the training biases even out, the effects of the sagging compound, and we get a sense of the fabric's composition. The weaker the spot in the fabric, the more the sand will accumulate and the more that area will sag.
+Next, we bump the surface softly on the right; and then on the top; and then the bottom, and every which way. Slowly but surely, the training biases cancel out, the effects of the sagging compound, and we get a sense of the fabric's composition. The weaker the spot in the fabric, the more the sand will accumulate and the more that area will sag.
 
-In this metaphor, each weak spot represents a learned parameter in the model. The amount of weakness in it — and thus, the amount of sand that will end up accumulating in it — represents that parameter's learned value.
+In this metaphor, each sand-filled sag represents a learned parameter, and the amount of sand in it represents the parameter's value.
 
-Note that the sags we find aren't the true structure of the fabric (or, by way of analogy, the language's structure). They're one view of it, which we discovered via a randomized process. If we were to clear the surface and start again with a fresh sprinkling or slightly different jostles, we might get a different set of sags. But both end results represent the same thing: an approximate view into the fabric's structure, which we can then use to generate more fabric (i.e., text) that fits the pattern of the original.
-
-Let's dig very slightly into the details.
-
-At every training pass we'll have some input and a known output. For example, we can take the sentence "I like to ski when it snows" and break it into an input of "I like to ski when it" and an expected output of "snows".
-
-We'll take this input and feed it into the model. The result will be all of the words in the model knows, each with the predicted probability that it's the next word. Ideally, for this input, the model should predict that "snows" has a high probability. Initially, the model is random, so it won't.
-
-Instead, we'll have a probability for "snows" that's pretty far off from the expected value. We'll then go through the model and perform **backpropagation**, which basically asks: "for every parameter in the model, how would you have to adjust it, holding the rest of the parameters constant, for 'snows' to have a higher probability?" It then applies all of those learnings — and there you go, that's one jostle of the surface.
-
-Over time, each of these jostles either reinforce each other or cancel each other out. That's just random at first, but as the valleys become deeper, they start to self-reinforce and become something the model has learned. Again, we don't know what the model's "valleys" really mean; we certainly don't know where they are. But the initial randomness plus repeated training rounds causes them to pop into existence through emergent behavior, and if we built our model well, the patterns those valleys describe will let us generate text.
+Note that the sags we find aren't the true structure of the fabric (or, by way of analogy, the language's structure). They're one view of it, which we discovered via a randomized process. If we were to clear the surface and start again with a fresh sprinkling or slightly different jostles, we might get a different set of sags. But both end results represent the same thing: an approximation of the fabric's true structure, which we can then use to generate more fabric.
 
 ## In summary
 

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -eq 0 ]]; then
+  echo '{
+    "name": "definition role",
+    "roles": [
+      {
+        "name": "dfn",
+        "doc": "introduces a new word to be defined",
+        "body": {
+          "type": "string",
+          "required": true,
+          "doc": "the word"
+        }
+      }
+    ]
+  }'
+  exit
+fi
+
+if [[ "$1" != '--role' || "$2" != 'dfn' ]]; then
+  echo >&2 "Unrecognized options: $@"
+  exit 1
+fi
+
+target="$(cat - | jq -r '.node.value')"
+
+jq -n \
+  \
+  --arg word "$target" \
+  '[
+    {
+      "type": "html",
+      "value": "<b>"
+    },
+    {
+      type: "text",
+      value: $word
+    },
+    {
+      "type": "html",
+      "value": "</b>"
+    }
+  ]'

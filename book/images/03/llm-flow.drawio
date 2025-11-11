@@ -1,0 +1,49 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.8 Chrome/140.0.7339.240 Electron/38.4.0 Safari/537.36" version="28.2.8">
+  <diagram name="Page-1" id="_O5DdX2cV9UggthYy80X">
+    <mxGraphModel dx="726" dy="641" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-1" target="1JgMXzT95IMbkgJ2ynqR-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-1" value="&quot;The quck brown fox&quot;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;size=17;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="50" y="30" width="300" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-2" value="LLM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;arcSize=9;verticalAlign=top;fontSize=14;fontStyle=1;labelBackgroundColor=none;" parent="1" vertex="1">
+          <mxGeometry x="50" y="110" width="300" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-3" target="1JgMXzT95IMbkgJ2ynqR-4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-3" value="&lt;b&gt;Tokenization &amp;amp; Embeddings&lt;br&gt;&lt;/b&gt;&lt;br&gt;(no AI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="70" y="140" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-4" target="1JgMXzT95IMbkgJ2ynqR-6" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-4" value="&lt;b&gt;Self-Attention&lt;br&gt;&lt;/b&gt;&lt;br&gt;(what makes an LLM special)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="70" y="220" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-2" target="1JgMXzT95IMbkgJ2ynqR-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-6" value="&lt;b&gt;Neural Net&lt;br&gt;&lt;/b&gt;&lt;br&gt;(&quot;legacy&quot; AI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="70" y="300" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;endArrow=none;endFill=0;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-8" target="1JgMXzT95IMbkgJ2ynqR-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-8" value="Output:&lt;br&gt;&lt;br&gt;97% the next word is &quot;jumps&quot;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="50" y="410" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="1JgMXzT95IMbkgJ2ynqR-13" target="1JgMXzT95IMbkgJ2ynqR-1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1JgMXzT95IMbkgJ2ynqR-13" value="&lt;i&gt;add token to input&lt;/i&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&quot;The quick brown fox &lt;b&gt;jumps&lt;/b&gt;&quot;&lt;/div&gt;" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="380" y="30" width="230" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
