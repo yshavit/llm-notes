@@ -31,7 +31,6 @@ All of the tokens our model knows about form its vocabulary, and each one is ass
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @05-self-attention described in the next chapter, to differentiate between input tokens.)
 
 :::{note} Reminder of what these values mean
-:class: simple
 As mentioned in @what-are-learned-parameters, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" — that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on — then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, item 318 in the embedding vector for "be" may encode its existential connotation. These values are particular to each token: an item in the same index 318 for "dog"'s embedding vector may connote fluffiness.
 
 Again it's important to remember that the values don't _actually_ encode existentialism or fluffiness. They're just values which settle into being during training, and which correlate with predictive power when generating words.
