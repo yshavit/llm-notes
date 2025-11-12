@@ -71,9 +71,15 @@ if [[ "$1" != '--role' || "$2" != 'drawio' ]]; then
   exit 1
 fi
 
-target="$(cat - | jq -r '.node.value')"
+# read the target as "<alt>|<path>".
+# If <path> is empty, then flip it so that <alt> is empty.
+IFS='|' read -r target_alt target_path <<<"$(cat - | jq -r '.node.value')"
+if [[ -z "$target_path" ]]; then
+  target_path="$target_alt"
+  target_alt=""
+fi
 
-drawio_file="${target}.drawio"
+drawio_file="${target_path}.drawio"
 
 dark_svg_data="$(render_drawio dark "$drawio_file")"
 light_svg_data="$(render_drawio light "$drawio_file")"
@@ -82,6 +88,7 @@ jq -n \
   \
   --rawfile dark "$dark_svg_data" \
   --rawfile light "$light_svg_data" \
+  --arg alt "$target_alt" \
   '[{
   type: "span",
   class: "theme-aware-wrapper",
@@ -91,7 +98,8 @@ jq -n \
       class: "hidden dark:block",
       children: [{
         "type": "image",
-        "url": $dark
+        "url": $dark,
+        "alt": $alt
       }]
     },
     {
@@ -99,7 +107,8 @@ jq -n \
       class: "dark:hidden",
       children: [{
         "type": "image",
-        "url": $light
+        "url": $light,
+        "alt": $alt
       }]
     }
   ]
