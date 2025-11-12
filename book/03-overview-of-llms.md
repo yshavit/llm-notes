@@ -70,6 +70,7 @@ Don't worry if this doesn't all fit together yet, and especially don't worry if 
 
 In addition to the components, it's important to keep separate in your head the two kinds of data an LLM works with: {dfn}`learned parameters` and {dfn}`activations`.
 
+(parameter-vs-activation)=
 learned parameter
 : A value that's part of the LLM's model: it's learned during training, but then is unchanged when the model's actually used. This is what the model knows about language in general.
 

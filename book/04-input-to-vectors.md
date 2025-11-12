@@ -4,6 +4,8 @@
 
 As I've mentioned before, vectors are how LLMs encode the nuance of human language. So, the first thing we need to do is to turn each part of the text input into a vector. In the end, we'll have one vector per token in the input text.
 
+{drawio}`Self-attention sits between tokenization and the neural net|images/04/llm-flow-input`
+
 ## Fundamental concept of input embedding
 
 As I mentioned in @conceptual-layers, I like to think about LLMs in terms of the fundamental concepts, and then the mathematical optimizations. I'll do that here.
