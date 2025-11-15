@@ -66,11 +66,14 @@ The output of all this is a probability distribution over every token the LLM kn
 
 Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
 
-## Learned parameters vs runtime values
+## Different kinds of values
 
-In addition to the components, it's important to keep separate in your head the two kinds of data an LLM works with: {dfn}`learned parameters` and {dfn}`activations`.
+In addition to the components, it's important to keep separate in your head the three kinds of data an LLM works with: {dfn}`hyperparameters`, {dfn}`learned parameters` and {dfn}`activations`.
 
 (parameter-vs-activation)=
+hyperparameter
+: A value decided by a human as part of the model's design, which basically determines the structure of the model. This includes how many hidden layers the neural network has, or the dimensionality of the input embeddings. (It's fine if you don't yet know what a hidden layer or input embedding is!)
+
 learned parameter
 : A value that's part of the LLM's model: it's learned during training, but then is unchanged when the model's actually used. This is what the model knows about language in general.
 
