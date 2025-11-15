@@ -1,4 +1,4 @@
-name: TODO Badge
+name: Stats
 
 on:
   push:
@@ -10,29 +10,29 @@ permissions:
   contents: write
 
 jobs:
-  update-badge:
+  todos-badge:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      
+
       - name: Count TODOs
         id: count
         run: |
           count=$(cd book && grep -r "TODO" --include="*.md" . | wc -l)
           echo "Found $count TODOs"
           echo "count=$count" >> $GITHUB_OUTPUT
-      
+
       - name: Update badge data branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           git fetch origin automation/badge-data
           git checkout automation/badge-data
-          
+
           echo '{"todos": ${{ steps.count.outputs.count }}}' > todo-count.json
-          
+
           git add todo-count.json
           git diff --staged --quiet || git commit -m 'Update TODO count: ${{ steps.count.outputs.count }}'
           git push origin automation/badge-data

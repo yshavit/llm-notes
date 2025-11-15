@@ -23,7 +23,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 jobs:
-  to-github-pages:
+  github-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
