@@ -1,0 +1,31 @@
+# Beyond the toy LLM
+
+:::{warning} WIP
+TODO
+
+- In the real world, there are multiple self-attention-plus-NN layers:
+
+  ```mermaid
+  flowchart LR
+    Text[Input text] --> Embeddings
+    subgraph Layer1[Transformer layer 1]
+      S1[Self-attention] --> N1[Neural net]
+    end
+    Embeddings --> S1[Transformer layer 2]
+    subgraph Layer2
+      S2[Self-attention] --> N2[Neural net]
+    end
+    N1 --> S2
+    subgraph LayerN[More transformer layers...]
+      direction LR
+      SN[Self-attention] --> NN[Neural net]
+    end
+    N2 --> LayerN
+    LayerN --> Output
+  ```
+
+- what are the real world numbers here?
+  - how many transformer layers
+  - what are the various dimensionalities
+
+:::

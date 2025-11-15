@@ -64,6 +64,10 @@ The output of all this is a probability distribution over every token the LLM kn
 
 {drawio}`images/03/llm-flow`
 
+:::{important}
+This is a simplified model that outlines the building blocks. In @07-beyond-toy, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
+:::
+
 Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
 
 ## Different kinds of values
