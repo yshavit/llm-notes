@@ -29,6 +29,12 @@ That said, I'll sometimes need to tease ahead to topics that I'll discuss in det
 
 (Human learning being the way it is, you may still need to refer back to a section you've already read; "front-to-back" doesn't mean you shouldn't ever need to do that. But the book isn't organized around you having to jump around.)
 
+The book is organized into three parts:
+
+1. **Background math**, which is a quick refresher on vectors and matrices
+2. **The LLM**, which is the meat of this book: a 0-to-60 run-through of how LLMs work
+3. **Further reading**, which is just that.
+
 ## Contributions
 
 The source for this book is on [my GitHub][gh]. Please feel free to suggest corrections there, especially if I got something factually wrong. (If it's just a matter of wording or clarification, I may accept it, but no promises — sorry!)
