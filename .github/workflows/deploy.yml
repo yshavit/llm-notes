@@ -1,7 +1,7 @@
 # This file was created automatically with `myst init --gh-pages` 🪄 💚
 # Ensure your GitHub Pages settings for this repository are set to deploy with **GitHub Actions**.
 
-name: MyST GitHub Pages Deploy
+name: Publish
 on:
   push:
     # Runs on pushes targeting the default branch
@@ -23,7 +23,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 jobs:
-  deploy:
+  to-github-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
