@@ -10,7 +10,7 @@ This piece of the model is the crucial innovation that GPT-style LLMs introduced
 
 Remember:
 
-- The input to self-attention is the input embeddings we computed previously. These are are a vector of vectors: one input embedding per token in the input, and each input embedding is a vector (whose size is a hyperparameter the LLM designer decides).
+- The input to self-attention is the input embeddings we computed previously. These are are a vector of vectors: one input embedding per token in the input, and each input embedding is a vector (whose size is a [hyperparameter](#parameter-vs-activation) the LLM designer decides).
 - The output is still a vector of vectors, and each one will still have the same dimensionality; but their values will have been adjusted by the attention mechanism.
 
 To do that, we're going to build a matrix that describes, for every token in the input, how much that token cares about every other word. (The LLM will actually compare tokens, but using words as the example makes it easier to talk about.) In LLM lingo, we ask how much each word {dfn}`attends` to each other word, and we call these the {dfn}`attention weights`.
@@ -22,6 +22,28 @@ In contrast to the other [fundamental concepts](#conceptual-layers) in LLMs, att
 The attention weights themselves are [activations](#parameter-vs-activation) based on the specific prompt that the LLM is looking at. But, each one is derived not just from the corresponding inputs, but also to learned parameters, as I'll be explaining in the next section.
 
 ## Computing attention weights
+
+The crux of attention weights depends on three matrices. Each of these transforms each input token to answer a different question:
+
+- $W_q$ ("query weights"): what information am I looking for?
+- $W_k$ ("key weights"): what information can I support lookups against?
+- $W_v$ ("value weights"): what information do I return?
+
+These get combined in three broad steps, for every token in the input. Let's call that token the query token: it's the token for which we want to answer, "how much does this token care about each of the others?"
+
+1. First, we apply each of the weights:
+    1. We apply the query weights ($W_q$) to the query token to get its {dfn}`query`: what is this token looking for?
+    2. We apply the key weights ($W_k$) to every token to get the {dfn}`keys`: how can we match against each token?
+    3. We apply the value weights ($W_v$) to every token to get the {dfn}`values`: what information does each token contain?
+2. We combine the query with each key to compute the {dfn}`attention weights`, one per token. This tells us how much the query token should focus on each other token.
+3. We combine the attention weights with each value to compute {dfn}`weighted values`, again one per token.
+4. We combine the weighted values to get the {dfn}`context vector`: a weighted blend of information from all tokens, focused on what's relevant to the query token.
+
+{drawio}`visual representation of the overall flow described above|images/self-attention/overview`
+
+Again, all of that work is just for a single query token. We'll repeat it for each token in the input to produce a context vector per token.The final result is a vector of vectors, which we'll represent as a matrix. This matrix is our self-attention layer's output.
+
+The following subsections will go into each of these steps in more detail.
 
 :::{important} TODO
 overview
