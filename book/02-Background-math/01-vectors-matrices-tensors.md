@@ -54,6 +54,7 @@ The two vectors are often represented as a horizontal vector $\cdot$ a vertical 
 
 The dot product is simply the sum of terms, where each term the product of the two vectors' corresponding elements:
 
+(dot-product-math)=
 $$
 \begin{bmatrix}
   \color{red}{a} & \color{forestgreen}{b} & \color{goldenrod}{c}
@@ -99,6 +100,8 @@ C &=
 $$
 
 Note:
+
+(matrix-multiplication-notes)=
 
 - The number of columns in $A$ must equal the number of rows in $B$. (This is just so that the dot products work).
 - The resulting shape is $A_{\color{blue}{x} \times \color{pink}{y}} \cdot B_{\color{pink}{y} \times \color{red}{z}} = C_{\color{blue}{x} \times \color{red}{z}}$

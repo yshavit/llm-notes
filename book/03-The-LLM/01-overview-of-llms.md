@@ -16,6 +16,7 @@ This book will primarily focus on the first two layers, and ignore the third alt
 
 In the first layer (the conceptual layer) LLMs are mostly about vectors, with a small but crucial smattering of matrices.
 
+(vectors-are-nuance)=
 LLMs use vectors and matrices to encode basically anything that has nuance. For example, the word "dog" has many meanings: it can be a noun (the animal) or a verb (to follow someone persistently), or an adjective (dog days). It can be a pet, a service animal, or a hound of war. It can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe. **Vectors allow LLMs to encode all of this information.**
 
 The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and the conceptual matrices into tensors. The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
