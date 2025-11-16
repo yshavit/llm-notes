@@ -259,7 +259,9 @@ Recall that all of this happened from the perspective of a single input, which w
 4. Applied each of those probabilities to a corresponding value vector ($\text{token} \cdot W_v$) to get weighted value vectors, one per input
 5. Summed up those weighted value vectors to get a single context vector
 
-All of this gives us the context vector for that one query token. We then repeat this for each of the inputs, and the result is our attention layer's output: the full {dfn}`attention output matrix`, or just {dfn}`attention output` for short.
+All of this gives us the $\delta$-dimensional context vector for that one query token. We then repeat this for each of the $n$ inputs, and the result is our attention layer's output: the full {dfn}`attention output matrix`, or just {dfn}`attention output` for short. This has one context vector for each input, so it's an $n \times \delta$ matrix.
+
+{drawio}`attention weights combine with values to form the context vector|images/05/llm-flow-self-attention-output-matrix`
 
 ## Real-world improvements
 
