@@ -131,12 +131,13 @@ In other words, the dot product of these two vectors represents how aligned they
 
 We call this dot product the raw {dfn}`attention score` for this key.
 
-### Scaling & Softmax
+### Attention score 🡒 attention weight
 
 :::{important} TODO
+Scaling & Softmax
 :::
 
-### Applying scores to get attention weights
+### Attention weight and $W_v$ 🡒 context vector
 
 :::{important} TODO
 :::
