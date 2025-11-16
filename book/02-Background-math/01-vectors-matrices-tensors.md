@@ -104,7 +104,7 @@ Note:
 (matrix-multiplication-notes)=
 
 - The number of columns in $A$ must equal the number of rows in $B$. (This is just so that the dot products work).
-- The resulting shape is $A_{\color{blue}{x} \times \color{pink}{y}} \cdot B_{\color{pink}{y} \times \color{red}{z}} = C_{\color{blue}{x} \times \color{red}{z}}$
+- The resulting shape is $A_{\color{blue}{a} \times \color{pink}{b}} \cdot B_{\color{pink}{b} \times \color{red}{c}} = C_{\color{blue}{a} \times \color{red}{c}}$
 - Matrix multiplication is not commutative: $AB \neq BA$ in general.
 
   For example, if we look at the first cell ($C_{1,1}$), it's:
