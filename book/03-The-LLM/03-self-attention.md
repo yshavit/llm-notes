@@ -348,12 +348,14 @@ I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). F
 
 ## "The context is full"
 
+:::{important}
 - You may have encountered this. Now you can know what it means.
 - Two main drivers:
   - attention matrix includes the $n \times n$ attention scores and weights. This means attention scales as the square of input length.
     - this happens per head per layer, so it really adds up
     - (note that the Q/K/V matrices are each $n \times \delta$, so they scale linearly)
   - In RoPE, positional encoding is trained as part of attention as well; so if we include inputs longer than what was trained on, the model won't have the data to accurately predict
+:::
 
 ## Mathematical optimizations
 
