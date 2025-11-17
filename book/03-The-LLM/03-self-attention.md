@@ -135,7 +135,7 @@ Again, all of that work is just for a single query token. We'll repeat it for ea
 
 Let's walk through the specifics.
 
-### $W_q$ 🡒 query vector
+### $W_q$ → query vector
 
 :::{aside}
 {drawio}`query token times Wq = query vector|images/05/llm-flow-self-attention-query`
@@ -150,7 +150,7 @@ This one is easy.
 
 That's it! We do this just once per query input.
 
-### Query vector and $W_k$ 🡒 attention scores
+### Query vector and $W_k$ → attention scores
 
 :::{aside}
 {drawio}`query tokens and input tokens turn into attention scores|images/05/llm-flow-self-attention-score`
@@ -170,7 +170,7 @@ In other words, the dot product of these two vectors represents how aligned they
 
 We call this dot product the raw {dfn}`attention score` for this key.
 
-### Attention scores 🡒 attention weights
+### Attention scores → attention weights
 
 :::{aside}
 {drawio}`attention scores normalize into attention weights|images/05/llm-flow-self-attention-weight`
@@ -222,7 +222,7 @@ Basically, as $\delta$ grows, so do the dot products' variance. This growth happ
 
 This "scaling plus softmax" is called, appropriately enough, the scaled dot-product attention. When it's applied to the raw attention scores we calculated earlier, the result is the normalized {dfn}`attention weights`.
 
-### Attention weights and $W_v$ 🡒 context vector
+### Attention weights and $W_v$ → context vector
 
 :::{aside}
 {drawio}`attention weights combine with values to form the context vector|images/05/llm-flow-self-attention-context`
