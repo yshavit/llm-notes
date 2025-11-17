@@ -269,7 +269,7 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Dropout
 
-This is the simplest improvement, and it only applies during training (which I'll describe in more detail [in a later chapter](training)).
+This is the simplest improvement, and it only applies during training (which I'll describe in more detail [in a later chapter](./training)).
 
 The problem this improvement solves is one of over-fitting: learning parameters that are _too_ tightly bound to the data we train on, and thus don't generalize well. Since the ultimate goal of our LLM is to generate new, and ideally unique text, over-fitting is a real danger. We don't want "To be" to always complete as Hamlet's soliloquy.
 
@@ -342,13 +342,14 @@ TODO
 
 Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
 
-In the [next section](neural-net), I'll describe the LLM's neural network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → neural network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
+In the [next section](./neural-net), I'll describe the LLM's neural network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → neural network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
 I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" neural network is a simplification.
 
 ## "The context is full"
 
 :::{important}
+
 - You may have encountered this. Now you can know what it means.
 - Two main drivers:
   - attention matrix includes the $n \times n$ attention scores and weights. This means attention scales as the square of input length.
