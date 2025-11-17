@@ -338,11 +338,13 @@ TODO
 - [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 :::
 
-### Multi-layer
+### Multiple layers
 
-:::{important}
-TODO -- very quick mention, since we haven't actually touched on NN fits in or how the whole LLM fits together
-:::
+Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
+
+In the [next section](neural-net), I'll describe the LLM's neural network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → neural network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
+
+I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" neural network is a simplification.
 
 ## "The context is full"
 
