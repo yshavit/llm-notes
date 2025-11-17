@@ -287,6 +287,8 @@ each head learns a different aspect
 
 :::{important}
 TODO
+
+- [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 :::
 
 ## Mathematical optimizations
