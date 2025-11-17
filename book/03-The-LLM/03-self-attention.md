@@ -265,6 +265,8 @@ All of this gives us the $\delta$-dimensional context vector for that one query 
 
 ## Real-world improvements
 
+The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
+
 ### Dropout
 
 :::{important} TODO
@@ -283,10 +285,10 @@ so we train on what we'll actually be using it for
 each head learns a different aspect
 :::
 
-### Multi-layer
+### Output projection
 
 :::{important}
-TODO
+TODO $W_o$
 :::
 
 ### RoPE
@@ -296,6 +298,13 @@ TODO
 
 - [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 :::
+
+### Multi-layer
+
+:::{important}
+TODO -- very quick mention, since we haven't actually touched on NN fits in or how the whole LLM fits together
+:::
+
 
 ## "The context is full"
 
