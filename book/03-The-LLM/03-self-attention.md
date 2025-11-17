@@ -269,7 +269,7 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Dropout
 
-This is the simplest improvement, and it only applies during training (which I'll describe in more detail [in a later chapter](./06-training)).
+This improvement only applies during training (which I'll describe in more detail [in a later chapter](./06-training)).
 
 The problem this improvement solves is one of over-fitting: learning parameters that are _too_ tightly bound to the data we train on, and thus don't generalize well. Since the ultimate goal of our LLM is to generate new, and ideally unique text, over-fitting is a real danger. We don't want "To be" to always complete as Hamlet's soliloquy.
 
