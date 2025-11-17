@@ -269,9 +269,48 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Dropout
 
-:::{important} TODO
-for overfitting
+This is the simplest improvement, and it only applies during training (which I'll describe in more detail [in a later chapter](training)).
+
+The problem this improvement solves is one of over-fitting: learning parameters that are _too_ tightly bound to the data we train on, and thus don't generalize well. Since the ultimate goal of our LLM is to generate new, and ideally unique text, over-fitting is a real danger. We don't want "To be" to always complete as Hamlet's soliloquy.
+
+Dropout solves this by reducing the model's dependency on specific attention patterns during training.
+
+The approach is simple: randomly zero out some of the attention weights during each training step. This essentially deactivates those attentions, causing the model to lean more on others. Each training round picks a different set of weights to drop, so over time, all of the weights get trained without ever over-depending on any particular one.
+
+The only gotcha is that we still want the weights to be properly scaled. In particular, we want each weight's expected value to be unchanged by dropout. To accomplish this, we multiply the surviving weights by a compensating factor based on the dropout rate.
+
+:::{seealso} Expected value
+:open: false
+This is a statistical term that basically means, for a randomized value, what would its average be after an infinite number of iterations? For example, if you were to roll a 6-sided die forever, the average of those rolls would converge to $\frac{1 + 2 + 3 + 4 + 5 + 6}{6} = 3.5$.
+
+If you randomly zero half of the rolls but double the others, these two effects cancel each other out. Even though individual rolls can now have values that the original couldn't (like 0 or 10), the expected value remains 3.5.
 :::
+
+For example, let's say we set dropout to 50% (this is a hyperparameter that's set during training; it's typically closer to the 10% - 20% range in the real world). This means:
+
+- Each element has a 50% chance of being dropped
+- Each surviving item will be doubled
+
+$$
+\begin{bmatrix}
+0.38 & 0.32 & 0.14 & 0.16 \\
+0.09 & 0.37 & 0.24 & 0.30 \\
+0.49 & 0.09 & 0.04 & 0.38 \\
+0.51 & 0.25 & 0.06 & 0.18
+\end{bmatrix}
+\rightarrow
+\begin{bmatrix}
+\color{blue}{0.76} & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
+\color{gray}{0} & \color{blue}{0.74} & \color{blue}{0.48} & \color{blue}{0.60} \\
+\color{blue}{0.98} & \color{gray}{0} & \color{gray}{0} & \color{blue}{0.76} \\
+\color{gray}{0} & \color{gray}{0} & \color{blue}{0.12} & \color{gray}{0}
+\end{bmatrix}
+$$
+
+Note that:
+
+- After the dropping and compensating, each row no longer adds up to 1. The third row, for example, adds up to 1.74! This is fine: what's important is that each weight's expected value stays the same whether we do or don't use dropout.
+- We're not dropping half of the elements in any particular row, or even in the matrix. Instead, each element independently gets dropped or not. In the example above, only one row had exactly half its weights dropped, and overall we dropped 9 elements instead of 8. In practice, there are enough training rounds, and the matrices are large enough, that the randomness averages out.
 
 ### Causal masking
 
@@ -304,7 +343,6 @@ TODO
 :::{important}
 TODO -- very quick mention, since we haven't actually touched on NN fits in or how the whole LLM fits together
 :::
-
 
 ## "The context is full"
 
