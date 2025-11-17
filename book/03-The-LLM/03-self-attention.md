@@ -283,6 +283,12 @@ so we train on what we'll actually be using it for
 each head learns a different aspect
 :::
 
+### Multi-layer
+
+:::{important}
+TODO
+:::
+
 ### RoPE
 
 :::{important}
@@ -290,6 +296,15 @@ TODO
 
 - [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 :::
+
+## "The context is full"
+
+- You may have encountered this. Now you can know what it means.
+- Two main drivers:
+  - attention matrix includes the $n \times n$ attention scores and weights. This means attention scales as the square of input length.
+    - this happens per head per layer, so it really adds up
+    - (note that the Q/K/V matrices are each $n \times \delta$, so they scale linearly)
+  - In RoPE, positional encoding is trained as part of attention as well; so if we include inputs longer than what was trained on, the model won't have the data to accurately predict
 
 ## Mathematical optimizations
 
