@@ -11,7 +11,7 @@ In [the previous section](./02-input-to-vectors), I described how to turn input 
 
 {drawio}`Self-attention sits between tokenization and the neural net|images/05/llm-flow-self-attention`
 
-This piece of the model is the crucial innovation that GPT-style LLMs introduced over previous ML models. It lets the LLM encode not just what any one word means, but what each word means in the context of the _specific_ words that precede before it. It's not enough to know what "have" means, or even what it means as the third word of a sentence: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+This piece of the model is the crucial innovation that GPT-style LLMs introduced over previous ML models. It lets the LLM encode not just what any one word means, but what each word means in the context of the _specific_ words that precede it. It's not enough to know what "have" means, or even what it means as the third word of a sentence: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
 {drawio}`5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.|images/05/attention-weights-houston`
 
@@ -53,7 +53,7 @@ In a modern LLM, the embedding dimensions are roughly 4k - 10k, and the context 
 
 $$
 \begin{align}
-& (n \times n \times d \times d) \times 4 \text{bytes} \\
+& (n \times n \times d \times d) \times 4 \text{ bytes} \\
 = & (8192 \times 8192 \times 4096 \times 4096) \times 4 \text{ bytes} \\
 \approx & (1.1 \times 10^{15} \text{ parameters}) \times 4 \text{ bytes} \\
 \approx & 4.5 \text{ PB}
@@ -64,19 +64,19 @@ $$
 So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
 
 - How _much_ does input A care about input B?
-- What information should input B pass forward?
+- What information should input B pass forward in this context?
 
 The first of those we'll represent with a simple scalar; the second is a nuanced question, so we'll represent it as a ($\delta$-dimensional) vector.
 
 Note that our two questions involved three usages of tokens:
 
 - How much does **(input A)** care about **(input B)**?
-- What information should **(input B)** pass forward?
+- What information should **(input B)** pass forward in this context?
 
 Each of these usages has some nuance, so we'll use a learned transformation for them. We'll call these $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
-- What information should **(input B transformed by $W_v$)** pass forward?
+- What information should **(input B transformed by $W_v$)** pass forward in this context?
 
 We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weights. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
 
@@ -90,7 +90,7 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 - $W_k$ ("key weights"): What do I offer as context?
 - $W_v$ ("value weights"): What information should I pass along?
 
-:::{tip} Putting it all together
+:::{tip} Why do we need these weights?
 In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain a concept of nuance. What more do these transformations add?
 
 Remember that our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big. We're essentially using a couple tricks to compress it.
@@ -118,7 +118,7 @@ I'll start with an overview of the process, and then the next sections will go i
     2. We apply the key weights ($W_k$) to every token to get the {dfn}`key vectors`: how can we match against each token?
     3. We apply the value weights ($W_v$) to every token to get the {dfn}`value vectors`: what information does each token contain?
 2. Then we combine the query with each key to compute {dfn}`attention scores`, one per token. These are scalars that tell us how much the query token should care about each other token.
-3. Then we normalize these attention scores into {dfn}`attention weights` (are still one scalar per token).
+3. Then we normalize these attention scores into {dfn}`attention weights` (these are still one scalar per token).
 4. Then we combine the attention weights with each value to compute {dfn}`weighted values`, again one per token. These are vectors.
 5. Finally, we combine the weighted values to get the {dfn}`context vector`: a weighted blend of information from all tokens, focused on what's relevant to the query token.
 
@@ -184,7 +184,7 @@ Normalizing the attention scores to attention weights improves the learning proc
 
 To normalize the values, we use two functions:
 
-1. First, we scale the weights by $\sqrt{\delta}$ (the square root of the input embedding)
+1. First, we scale the weights by $\sqrt{\delta}$ (the square root of the output embedding size)
 2. Then, we apply a function called softmax, which takes a vector of values and normalizes them to a probability distribution.
 
 I'll explain these backwards: first softmax, then the scaling.
@@ -220,7 +220,7 @@ The top of this page has a download link to an interactive softmax visualizer, i
 
 To keep softmax from becoming too extreme, we first scale the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the dot product is the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of the embedding dimension. This ensures that softmax operates in a reasonable range where it can learn nuanced attention patterns.
 
-Basically, as $\delta$ grows, so do the dot products' variance. This growth happens by a factor of $\sqrt{\delta}$, and left unchecked it would cause softmax to lose nuance between values that are actually fairly close. Dividing by $\sqrt{\delta}$ lets softmax keep that nuance.
+Basically, as $\delta$ grows, so do the dot products' variance. This growth happens by a factor of $\sqrt{\delta}$, and left unchecked it would cause softmax to lose nuance between values that are actually fairly close. Dividing by $\sqrt{\delta}$ lets softmax keep that nuance. Note that I wrote above that the terms are roughly independent, but of course they're not _actually_ independent: the whole point of training is to find patterns in them. Still, the $\sqrt{\delta}$ scaling has empirically been found to work, so that's what people use.
 
 This "scaling plus softmax" is called, appropriately enough, the scaled dot-product attention. When it's applied to the raw attention scores we calculated earlier, the result is the normalized {dfn}`attention weights`.
 
@@ -231,7 +231,7 @@ attention scores
 : "Raw" outputs from the combination of query token, $W_q$, key token, and $W_k$. These can be pretty much any value, but they're only used to calculate the attention weights.
 
 attention weights
-: Normalized values that represent the percentage of attention that each token gets; these are all between 0 and 1, and they sum to 1.
+: Normalized values that represent the percentage of attention that each token gets. These are all between 0 and 1, and they sum to 1.
 :::
 
 ### Attention weights and $W_v$ → context vector
@@ -242,7 +242,7 @@ attention weights
 
 All of the work until now has been to calculate the attention weights, which are a $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: what _is_ B, in the context of our self-attention layer?
 
-We'll start with familiar ground, by turning our $d$-sized input embeddings into $\delta$-sized vectors by multiplying them by a weight matrix. This time we'll use the $W_v$ weight, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
+We'll start with familiar ground, by turning our $d$-sized input embeddings into $\delta$-sized vectors by multiplying them by a weight matrix to translate the embedding into an attention-specific space. This time we'll use the $W_v$ weight, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
 
 From here, we calculate intermediate "weighted values" by multiplying each value vector by its corresponding attention weight. For example, let's say:
 
@@ -375,17 +375,17 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weights, vectors, causal masking and dropout, etc — forms a unit called an {dfn}`attention head`.
 
-The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'll "translate" the properties it learns into more intuitive relationships).
+The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
 To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
 
-In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$. The reason each head is $\frac{\delta}{h}$ is just for efficiency: dividing the learning space into several smaller, independent spaces lets the model learn more relationships for the same dimensionality.
+In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
 
-Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
+Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix. (The reason to make each head be $\delta / h$, as opposed to keeping each head at $\delta$ and having the concatenated result be $h\delta$, is just for efficiency. Dividing the learning space into several smaller, independent spaces lets the model learn more relationships for a given dimensionality.)
 
-You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them, and how to combine them into a single, coherent input?
+You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them and combine them into a single, coherent input?
 
-To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that represents exactly that knowledge of how to combine all the heads into a single, appropriately blended result.
+To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
 
 {drawio}`In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer|images/05/multi-head`
 
@@ -415,19 +415,19 @@ Should this go into the "further reading" section or something?
 
 :::
 
-If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; it can't get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
+If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; you can't let it get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
 
 If you read about the "context vector" above and wondered if these are related: good news, they are! In fact, you now have enough to build a solid understanding of what this all-important context _is_.
 
 In short, "the context is full" means that the input is as long as the LLM will allow. This is primarily driven by two factors:
 
 - **The attention scores and weight matrices**, each of which are $n \times n$. This means that the memory and processing the LLM needs grows as the square of the input length.
-  - We have one set of these matrices per head, so with 8 - 12 heads, this really adds up!
+  - We have one set of these matrices per head, so with 8 - 12 heads per layer, and multiple layers per model, this really adds up!
 - **The training of these scores and weights.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#training-analogy) if it's helpful). But essentially, since the weights represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
 
-The LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
+An LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
 
-Note that the weight matrices ($W_\star$) are _not_ as crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model — not input length.
+Note that the weight matrices ($W_\star$) are _not_ crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model — not input length.
 
 ## Mathematical optimizations
 
