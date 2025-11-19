@@ -27,7 +27,7 @@ The driving principle behind this book's organization is that you should be able
 
 That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you shouldn't need to click through to them.
 
-(Human learning being the way it is, you may still need to refer back to a section you've already read; "front-to-back" doesn't mean you shouldn't ever need to do that. But the book isn't organized around you having to jump around.)
+Human learning being the way it is, you may still need to refer back to a section you've already read; "front-to-back" doesn't mean you shouldn't ever need to do that. But the book isn't organized around you having to jump around. In particular, I will abstain from appendices and footnotes.
 
 The book is organized into three parts:
 
