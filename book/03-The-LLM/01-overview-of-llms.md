@@ -115,6 +115,7 @@ Gaining insight into what those values really "mean," and how we can understand 
 
 There are a _lot_ of these learned parameters. A typical high-quality LLM (ChatGPT, Claude, etc) will have hundreds of billions of them. A small model that you can run on your laptop may have "only" 5 - 15 billion.
 
+(training-analogy)=
 ### An analogy
 
 I'll describe training in more detail [later](./06-training.md), but it may help demystify things a bit if I touch on it now. I mentioned above that the learned parameters are emergent properties. How do they emerge, and how can they possibly mean anything if we didn't tell them what to mean?

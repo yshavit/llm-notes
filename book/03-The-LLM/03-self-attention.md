@@ -405,7 +405,7 @@ In short, "the context is full" means that the input is as long as the LLM will 
 
 - **The attention scores and weight matrices**, each of which are $n \times n$. This means that the memory and processing the LLM needs grows as the square of the input length.
   - We have one set of these matrices per head, so with 8 - 12 heads, this really adds up!
-- **The training of these scores and weights.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#an-analogy) if it's helpful). But essentially, since the weights represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
+- **The training of these scores and weights.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#training-analogy) if it's helpful). But essentially, since the weights represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
 
 The LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
 
