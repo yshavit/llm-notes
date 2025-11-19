@@ -165,6 +165,8 @@ Now we have two $\delta$-sized vectors: the query (from the previous step) and t
 :::{note} Why dot products?
 Geometrically, a dot product represents how aligned two vectors are, assuming the vectors are normalized. Our query and key vectors have _not_ been normalized; but over training, the $W_q$ and $W_k$ matrices' values will converge to capture meaningful relationships.
 
+Additionally, dot products are cheap to compute, and are differentiable (which will be important for training, as I'll explain later).
+
 In other words, the dot product of these two vectors represents how aligned they are; or, in LLM terms, how much the query "makes sense" relative to the key. This tells us how much the query token cares about the input token that corresponds to this key.
 :::
 
@@ -273,9 +275,13 @@ All of this gives us the $\delta$-dimensional context vector for that one query 
 
 {drawio}`attention weights combine with values to form the context vector|images/05/llm-flow-self-attention-output-matrix`
 
-## Real-world improvements
+(self-attention-training)=
 
-The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
+## Training considerations
+
+:::{warning} TODO
+move this to the training section
+:::
 
 ### Causal masking
 
@@ -361,13 +367,19 @@ Note that:
 - After the dropping and compensating, each row no longer adds up to 1. The third row, for example, adds up to 1.74! This is fine: what's important is that each weight's expected value stays the same whether we do or don't use dropout.
 - We're not dropping half of the elements in any particular row, or even in the matrix. Instead, each element independently gets dropped or not. In the example above, only one row had exactly half its weights dropped, and overall we dropped 9 elements instead of 8. In practice, there are enough training rounds, and the matrices are large enough, that the randomness averages out.
 
+## Real-world improvements
+
+The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
+
 ### Multi-head attention and $W_o$
 
 When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weights, vectors, causal masking and dropout, etc — forms a unit called an {dfn}`attention head`.
 
 The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'll "translate" the properties it learns into more intuitive relationships).
 
-To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
+To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
+
+In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
 
 Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
 
@@ -396,6 +408,12 @@ In the [next section](./04-neural-net), I'll describe the LLM's neural network, 
 I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" neural network is a simplification.
 
 ## "The context is full"
+
+:::{warning} TODO Should I move this section?
+
+Should this go into the "further reading" section or something?
+
+:::
 
 If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; it can't get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
 

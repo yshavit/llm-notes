@@ -6,9 +6,6 @@ project:
   license: CC-BY-4.0
   # authors:
   #   - name: Yuval Shavit
-  # description:
-  # keywords: []
-  # authors: []
   github: https://github.com/yshavit/llm-notes
   numbering:
     figure:
@@ -23,7 +20,7 @@ project:
     - type: executable
       path: ../myst-plugins/dfn
 site:
+  title: Yuval's Intro to LLMs
   template: book-theme
-  # options:
-  #   favicon: favicon.ico
-  #   logo: site_logo.png
+  options:
+    logo_text: Intro to LLMs

@@ -1,12 +1,17 @@
 # Training
 
+:::{warning} TODO
+
+- move [training aspects of self-attention](#self-attention-training) to here
+
+:::
+
 :::{warning} WIP
 TODO
 
 Let's dig very slightly into the details.
 
 When a particular vector first starts out in the model, it's given random values. At this point, it doesn't matter what the values are; just that they're all different, and thus will react in different ways to the same input. Over various training rounds, the values converge to useful values.
-
 
 At every training pass we'll have some input and a known output. For example, we can take the sentence "I like to ski when it snows" and break it into an input of "I like to ski when it" and an expected output of "snows".
 
