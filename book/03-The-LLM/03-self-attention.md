@@ -95,7 +95,7 @@ In trying to understand this, I kept struggling to understand why we needed thes
 
 Remember that our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big. We're essentially using a couple tricks to compress it.
 
-- First, we're replacing the inner $d \times \delta$ matrices with a 0-dimensional scalar that just represents how _much_ (as oppoed to more generally "how") each input affects the other.
+- First, we're replacing the inner $d \times \delta$ matrices with a 0-dimensional scalar that just represents how _much_ (as opposed to more generally "how") each input affects the other.
 - Then, we're applying this scalar against a vector that represents what each input embedding means _in the context of attention_.
 
 To translate the input embeddings to "the input embedding in the context of attention", we add the $W_v$ matrix. This matrix essentially encodes the "in the context of attention" learnings. The $W_q$ and $W_k$ matrices similarly encode "how much does A-in-attention-context affect B-in-attention-context."
@@ -228,7 +228,8 @@ These two terms are similar, but it's crucial to keep them separate.
 attention scores
 : "Raw" outputs from the combination of query token, $W_q$, key token, and $W_k$. These can be pretty much any value, but they're only used to calculate the attention weights.
 
-attention we
+attention weights
+: Normalized values that represent the percentage of attention that each token gets; these are all between 0 and 1, and they sum to 1.
 :::
 
 ### Attention weights and $W_v$ → context vector
@@ -278,14 +279,6 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Causal masking
 
-:::{important} TODO
-
-- so we train on what we'll actually be using it for
-- conceptually, we're zeroing out attention weights for tokens that come later in the input than the query token
-- then we need to renormalize
-- little callout for: instead, we can set the raw scores to -inf, and then apply softmax. softmax turns -info to 0, so this basically does the zeroing out and normalization in one go
-:::
-
 This improvement only applies during training (which I'll describe in more detail [in a later chapter](./06-training)).
 
 Remember that our LLM will ultimately be used to auto-complete prompts. That means that at the point where it's making predictions, it won't have access to words after the input: they haven't been written yet!
@@ -321,7 +314,7 @@ $$
 \end{align}
 $$
 
-In practice, we can do this more easily by applying the mask a bit earlier. Rather than setting the appropriate attention weights to 0 and then renormalizing, we can set the attention _scores_ (before softmax) to $-\infy$. Softmax handles $-\infty$ by (a) transforming it to 0 and (b) ignoring it when calculating the other values. This is exactly the result we want, so applying this causal masking to the attention scores instead of weights lets us skip the post-mask renormalization.
+In practice, we can do this more easily by applying the mask a bit earlier. Rather than setting the appropriate attention weights to 0 and then renormalizing, we can set the attention _scores_ (before softmax) to $-\infty$. Softmax handles $-\infty$ by (a) transforming it to 0 and (b) ignoring it when calculating the other values. This is exactly the result we want, so applying this causal masking to the attention scores instead of weights lets us skip the post-mask renormalization.
 
 ### Dropout
 
@@ -368,28 +361,30 @@ Note that:
 - After the dropping and compensating, each row no longer adds up to 1. The third row, for example, adds up to 1.74! This is fine: what's important is that each weight's expected value stays the same whether we do or don't use dropout.
 - We're not dropping half of the elements in any particular row, or even in the matrix. Instead, each element independently gets dropped or not. In the example above, only one row had exactly half its weights dropped, and overall we dropped 9 elements instead of 8. In practice, there are enough training rounds, and the matrices are large enough, that the randomness averages out.
 
-### Multi-head and $W_o$
+### Multi-head attention and $W_o$
 
-:::{important}
-each head learns a different aspect
-:::
+When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weights, vectors, causal masking and dropout, etc — forms a unit called an {dfn}`attention head`.
 
-:::{important}
-TODO
+The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'll "translate" the properties it learns into more intuitive relationships).
 
-- $W_o$ mixes the heads together. it's just a $\delta \times \delta$ matrix, and it's learned. Trivial transformation (once you know how matrix math works :) )
-- it's only needed with multi-head.
-  - we need it because otherwise we don't know how to combine the multi heads into a single, coherent (to the LLM) output matrix
-  - without it, the heads would just be concatenated side-by-side with no learned interaction between them
-  - if we only had one head, then that would already be a single coherent output, and we wouldn't need W_o
-:::
+To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
+
+Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
+
+You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them, and how to combine them into a single, coherent input?
+
+To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that represents exactly that knowledge of how to combine all the heads into a single, appropriately blended result.
+
+{drawio}`In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer|images/05/multi-head`
 
 ### RoPE
 
 :::{important}
 TODO
 
-- [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
+This replaces the positional embeddings we discussed last time. I need to learn this before I can write it up. :-)
+
+- e.g. [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 :::
 
 ### Multiple layers
@@ -402,15 +397,19 @@ I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). F
 
 ## "The context is full"
 
-:::{important}
+If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; it can't get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
 
-- You may have encountered this. Now you can know what it means.
-- Two main drivers:
-  - attention matrix includes the $n \times n$ attention scores and weights. This means attention scales as the square of input length.
-    - this happens per head per layer, so it really adds up
-    - (note that the Q/K/V matrices are each $n \times \delta$, so they scale linearly)
-  - In RoPE, positional encoding is trained as part of attention as well; so if we include inputs longer than what was trained on, the model won't have the data to accurately predict
-:::
+If you read about the "context vector" above and wondered if these are related: good news, they are! In fact, you now have enough to build a solid understanding of what this all-important context _is_.
+
+In short, "the context is full" means that the input is as long as the LLM will allow. This is primarily driven by two factors:
+
+- **The attention scores and weight matrices**, each of which are $n \times n$. This means that the memory and processing the LLM needs grows as the square of the input length.
+  - We have one set of these matrices per head, so with 8 - 12 heads, this really adds up!
+- **The training of these scores and weights.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#an-analogy) if it's helpful). But essentially, since the weights represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
+
+The LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
+
+Note that the weight matrices ($W_\star$) are _not_ as crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model — not input length.
 
 ## Mathematical optimizations
 
