@@ -64,19 +64,19 @@ $$
 So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
 
 - How _much_ does input A care about input B?
-- What does input B mean?
+- What information should input B pass forward?
 
 The first of those we'll represent with a simple scalar; the second is a nuanced question, so we'll represent it as a ($\delta$-dimensional) vector.
 
 Note that our two questions involved three usages of tokens:
 
 - How much does **(input A)** care about **(input B)**?
-- What does **input B** mean?
+- What information should **(input B)** pass forward?
 
 Each of these usages has some nuance, so we'll use a learned transformation for them. We'll call these $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
-- What does **(input B transformed by $W_v$)** mean?
+- What information should **(input B transformed by $W_v$)** pass forward?
 
 We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weights. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
 
@@ -84,7 +84,7 @@ $$
 Input_{(1 \times d)} \cdot W\star_{(d \times \delta)} = Output_{(1 \times \delta)}
 $$
 
-The "query / key / value" terminology comes from an analogy to database lookups, though I personally don't find the analogy useful. In case you do, the idea is:
+The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
 
 - $W_q$ ("query weights"): What am I looking for?
 - $W_k$ ("key weights"): What do I offer as context?
@@ -379,7 +379,7 @@ The problem is that a single attention head can get somewhat myopic, focusing pr
 
 To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
 
-In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
+In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$. The reason each head is $\frac{\delta}{h}$ is just for efficiency: dividing the learning space into several smaller, independent spaces lets the model learn more relationships for the same dimensionality.
 
 Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
 
@@ -433,4 +433,36 @@ Note that the weight matrices ($W_\star$) are _not_ as crucial to context limits
 
 :::{important} TODO
 brief discussion of implementation: the fact that the conceptual matrices get lifted into tensors with an extra dimension, for batching
+
+Also, mention that attention weight is often given by the canonical formula:
+
+$$
+\text{Attention}(q, K, V) = \text{softmax}\left(\frac{qK^T}{\sqrt{d_k}}\right)V
+$$
+
+That formula is for a single query token's vector, as we've been working with. Since we'll eventually be doing this for all of the input tokens, treating each one as the query token in turn, we can represent that vector of query vectors $q$ as a matrix $Q$, giving us the even more canonical formula:
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+$$
+
+Note that $X^T$ is the transpose of $X$. From claude:
+
+> In matrix form:
+>
+> - $Q$ is an $n \times \delta$ matrix (one row per query token)
+> - $K$ is an $n \times \delta$ matrix (one row per key token)
+> - $K^T$ is $\delta \times n$ (transposed - rows become columns)
+>
+> So $QK^T$ gives you an $n \times n$ matrix - which is exactly your attention scores matrix! Each element $(i,j)$ is the dot product of query $i$ with key $j$.
+>
+> For the single-query version:
+>
+> - $q$ is a $1 \times \delta$ vector (or just $\delta$-dimensional)
+> - $K$ is $n \times \delta$
+> - $K^T$ is $\delta \times n$
+> - $qK^T$ is $1 \times n$ (one attention score per token)
+>
+> The transpose is how you get the dot product of one query against all keys in one matrix operation, rather than computing them individually in a loop.
+
 :::
