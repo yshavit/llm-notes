@@ -1,0 +1,3 @@
+# Random TODOs
+
+- residual connections
