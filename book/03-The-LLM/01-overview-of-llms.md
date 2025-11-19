@@ -87,11 +87,11 @@ activation:
 
 (what-are-learned-parameters)=
 
-(training-vs-inference)=
-
 ### Training and inference
 
 An LLM, like any machine learning model, has two basic modes:
+
+(training-vs-inference)=
 
 training
 : The model is learning the values of its trained parameters. This is part of creating the model.

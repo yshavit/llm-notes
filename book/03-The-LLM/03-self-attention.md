@@ -222,6 +222,15 @@ Basically, as $\delta$ grows, so do the dot products' variance. This growth happ
 
 This "scaling plus softmax" is called, appropriately enough, the scaled dot-product attention. When it's applied to the raw attention scores we calculated earlier, the result is the normalized {dfn}`attention weights`.
 
+:::{important} Attention scores vs weights
+These two terms are similar, but it's crucial to keep them separate.
+
+attention scores
+: "Raw" outputs from the combination of query token, $W_q$, key token, and $W_k$. These can be pretty much any value, but they're only used to calculate the attention weights.
+
+attention we
+:::
+
 ### Attention weights and $W_v$ → context vector
 
 :::{aside}
@@ -267,9 +276,56 @@ All of this gives us the $\delta$-dimensional context vector for that one query 
 
 The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
 
-### Dropout
+### Causal masking
+
+:::{important} TODO
+
+- so we train on what we'll actually be using it for
+- conceptually, we're zeroing out attention weights for tokens that come later in the input than the query token
+- then we need to renormalize
+- little callout for: instead, we can set the raw scores to -inf, and then apply softmax. softmax turns -info to 0, so this basically does the zeroing out and normalization in one go
+:::
 
 This improvement only applies during training (which I'll describe in more detail [in a later chapter](./06-training)).
+
+Remember that our LLM will ultimately be used to auto-complete prompts. That means that at the point where it's making predictions, it won't have access to words after the input: they haven't been written yet!
+
+{drawio}`At "Houston we have", we don't yet know "a problem"|images/05/causal-attention`
+
+In any machine learning model, it's important that the model trains the same way it'll be used during [inference](#training-vs-inference). This means that the attention weight for any word after the query token should always be 0. For example, given the training input "Houston, we have a problem", if our query token is "have", it shouldn't attend to "a" or "problem" at all; when it comes time for inference, it won't have access to them.
+
+To do this, we just need to zero out all tokens after the query token. In our attention weight matrix, each row belongs to a corresponding query token (first row for the first token, etc.), so to zero out all tokens after each row's query token, we just need to zero out the upper-right triangle of the matrix. We'll then need to renormalize the remaining values, to reflect that they represent the full probability distribution that we care about:
+
+$$
+\begin{align}
+\begin{bmatrix}
+0.38 & 0.32 & 0.14 & 0.16 \\
+0.09 & 0.37 & 0.24 & 0.30 \\
+0.49 & 0.09 & 0.04 & 0.38 \\
+0.51 & 0.25 & 0.06 & 0.18
+\end{bmatrix}
+& \rightarrow
+\begin{bmatrix}
+0.38 & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
+0.09 & 0.37 & \color{gray}{0} & \color{gray}{0} \\
+0.49 & 0.09 & 0.04 & \color{gray}{0} \\
+0.51 & 0.25 & 0.06 & 0.18
+\end{bmatrix} \\
+& \rightarrow
+\begin{bmatrix}
+1.00 & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
+0.20 & 0.80 & \color{gray}{0} & \color{gray}{0} \\
+0.79 & 0.15 & 0.06 & \color{gray}{0} \\
+0.51 & 0.25 & 0.06 & 0.18
+\end{bmatrix}
+\end{align}
+$$
+
+In practice, we can do this more easily by applying the mask a bit earlier. Rather than setting the appropriate attention weights to 0 and then renormalizing, we can set the attention _scores_ (before softmax) to $-\infy$. Softmax handles $-\infty$ by (a) transforming it to 0 and (b) ignoring it when calculating the other values. This is exactly the result we want, so applying this causal masking to the attention scores instead of weights lets us skip the post-mask renormalization.
+
+### Dropout
+
+Like causal masking, this improvement only applies during training.
 
 The problem this improvement solves is one of over-fitting: learning parameters that are _too_ tightly bound to the data we train on, and thus don't generalize well. Since the ultimate goal of our LLM is to generate new, and ideally unique text, over-fitting is a real danger. We don't want "To be" to always complete as Hamlet's soliloquy.
 
@@ -312,22 +368,20 @@ Note that:
 - After the dropping and compensating, each row no longer adds up to 1. The third row, for example, adds up to 1.74! This is fine: what's important is that each weight's expected value stays the same whether we do or don't use dropout.
 - We're not dropping half of the elements in any particular row, or even in the matrix. Instead, each element independently gets dropped or not. In the example above, only one row had exactly half its weights dropped, and overall we dropped 9 elements instead of 8. In practice, there are enough training rounds, and the matrices are large enough, that the randomness averages out.
 
-### Causal masking
-
-:::{important} TODO
-so we train on what we'll actually be using it for
-:::
-
-### Multi-head
+### Multi-head and $W_o$
 
 :::{important}
 each head learns a different aspect
 :::
 
-### Output projection
-
 :::{important}
-TODO $W_o$
+TODO
+
+- $W_o$ mixes the heads together. it's just a $\delta \times \delta$ matrix, and it's learned. Trivial transformation (once you know how matrix math works :) )
+- it's only needed with multi-head.
+  - we need it because otherwise we don't know how to combine the multi heads into a single, coherent (to the LLM) output matrix
+  - without it, the heads would just be concatenated side-by-side with no learned interaction between them
+  - if we only had one head, then that would already be a single coherent output, and we wouldn't need W_o
 :::
 
 ### RoPE
