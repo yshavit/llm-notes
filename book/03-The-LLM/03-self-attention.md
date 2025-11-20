@@ -317,16 +317,16 @@ $$
 \end{bmatrix}
 & \rightarrow
 \begin{bmatrix}
-0.38 & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
-0.09 & 0.37 & \color{gray}{0} & \color{gray}{0} \\
-0.49 & 0.09 & 0.04 & \color{gray}{0} \\
+0.38 & \textcolor{gray}{0} & \textcolor{gray}{0} & \textcolor{gray}{0} \\
+0.09 & 0.37 & \textcolor{gray}{0} & \textcolor{gray}{0} \\
+0.49 & 0.09 & 0.04 & \textcolor{gray}{0} \\
 0.51 & 0.25 & 0.06 & 0.18
 \end{bmatrix} \\
 & \rightarrow
 \begin{bmatrix}
-1.00 & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
-0.20 & 0.80 & \color{gray}{0} & \color{gray}{0} \\
-0.79 & 0.15 & 0.06 & \color{gray}{0} \\
+1.00 & \textcolor{gray}{0} & \textcolor{gray}{0} & \textcolor{gray}{0} \\
+0.20 & 0.80 & \textcolor{gray}{0} & \textcolor{gray}{0} \\
+0.79 & 0.15 & 0.06 & \textcolor{gray}{0} \\
 0.51 & 0.25 & 0.06 & 0.18
 \end{bmatrix}
 \end{align}
@@ -367,10 +367,10 @@ $$
 \end{bmatrix}
 \rightarrow
 \begin{bmatrix}
-\color{blue}{0.76} & \color{gray}{0} & \color{gray}{0} & \color{gray}{0} \\
-\color{gray}{0} & \color{blue}{0.74} & \color{blue}{0.48} & \color{blue}{0.60} \\
-\color{blue}{0.98} & \color{gray}{0} & \color{gray}{0} & \color{blue}{0.76} \\
-\color{gray}{0} & \color{gray}{0} & \color{blue}{0.12} & \color{gray}{0}
+\textcolor{blue}{0.76} & \textcolor{gray}{0} & \textcolor{gray}{0} & \textcolor{gray}{0} \\
+\textcolor{gray}{0} & \textcolor{blue}{0.74} & \textcolor{blue}{0.48} & \textcolor{blue}{0.60} \\
+\textcolor{blue}{0.98} & \textcolor{gray}{0} & \textcolor{gray}{0} & \textcolor{blue}{0.76} \\
+\textcolor{gray}{0} & \textcolor{gray}{0} & \textcolor{blue}{0.12} & \textcolor{gray}{0}
 \end{bmatrix}
 $$
 
