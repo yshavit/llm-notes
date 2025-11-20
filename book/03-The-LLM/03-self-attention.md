@@ -34,7 +34,7 @@ I found this all very hard to wrap my head around. I've tried to interweave the 
 
 ### Make sure you remember matrix math
 
-We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math](vectors-matrices-tensors).
+We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math](../02-Background-math/01-vectors-matrices-tensors.md).
 
 ````{seealso} Quick refresher, if you need it
 :class: dropdown
