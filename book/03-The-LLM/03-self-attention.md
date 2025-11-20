@@ -32,15 +32,25 @@ To do this, we're going to first build up the basics of an attention output. The
 I found this all very hard to wrap my head around. I've tried to interweave the "what" of the computations with the "why" of why they work as best I can. Be patient with yourself: this is tricky, but it's crucial to understanding how LLMs work.
 :::
 
+### Make sure you remember matrix math
+
+We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math](vectors-matrices-tensors).
+
+````{seealso} Quick refresher, if you need it
+:class: dropdown
+
+```{embed} #matrix-math-summary
+```
+
+````
+
 ### Building a high-level intuition of what we need
 
 As I mentioned above, what we really want to answer is: "for every input, what does it mean with respect to every other input?" That question has nuance, and as you'll recall from [my overview](#vectors-are-nuance), nuance means vectors.
 
 The naive approach is conceptually easy: we need an $n \times n$ grid, where each item answers "what does A mean with respect to B?" In other words, each cell in that grid translates the input $d$-vectors into output $\delta$-vectors.
 
-Remember from the [matrix multiplication](#matrix-multiplication-notes) chapter that $A_{a \times b} \cdot B_{b \times c} = C_{a \times c}$. (I'll be using this property a lot in this chapter, so make sure you internalize it!)
-
-This means each element in the grid has to be a $d \times \delta$ matrix:
+Since the matrix multiplication $A_{a \times b} \cdot B_{b \times c} = C_{a \times c}$, each element in the grid has to be a $d \times \delta$ matrix:
 
 {drawio}`n-by-n grid, where each cell is a delta-sized vector|images/05/attention-weights-houston-vectors`
 
@@ -163,6 +173,8 @@ First, we'll calculate the key for each key token, which is a $\delta$-sized vec
 Now we have two $\delta$-sized vectors: the query (from the previous step) and the key. We can compute their [dot product](#dot-product-math) to combine them into a scalar.
 
 :::{note} Why dot products?
+:class: dropdown
+
 Geometrically, a dot product represents how aligned two vectors are, assuming the vectors are normalized. Our query and key vectors have _not_ been normalized; but over training, the $W_q$ and $W_k$ matrices' values will converge to capture meaningful relationships.
 
 Additionally, dot products are cheap to compute, and are differentiable (which will be important for training, as I'll explain later).
