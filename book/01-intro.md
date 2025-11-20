@@ -35,9 +35,20 @@ The book is organized into three parts:
 2. **The LLM**, which is the meat of this book: a 0-to-60 run-through of how LLMs work
 3. **Further reading**, which is just that.
 
+Throughout the book, I'll use callouts like this:
+
+:::{note} Example
+Some explanatory text.
+:::
+
+Some of these will be collapsed and are expandable; others are just visual blocks.
+
+- If the callout is collapsed, it's additional, optional context. You don't need to read it. If you're like me, you will anyway — but just know it's not very important.
+- If it's not collapsible, it's important, and you should read.
+
 ## Contributions
 
-The source for this book is on [my GitHub][gh]. Please feel free to suggest corrections there, especially if I got something factually wrong. (If it's just a matter of wording or clarification, I may accept it, but no promises — sorry!)
+The source for this book is on [my GitHub][gh]. Please feel free to suggest corrections there, especially if I got something factually wrong.
 
 [Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
 [gh]: https://github.com/yshavit/llm-notes
