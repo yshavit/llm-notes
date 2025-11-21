@@ -329,12 +329,6 @@ I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). F
 
 ## "The context is full"
 
-:::{warning} TODO Should I move this section?
-
-Should this go into the "further reading" section or something?
-
-:::
-
 If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; you can't let it get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
 
 If you read about the "context vector" above and wondered if these are related: good news, they are! In fact, you now have enough to build a solid understanding of what this all-important context _is_.
