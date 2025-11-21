@@ -3,6 +3,12 @@
 :::{warning} WIP
 TODO
 
+Some terminology:
+
+- Neural Network (broadest term)
+  - Feed-Forward Network (information flows one direction)
+    - MLP (multiple layers, fully connected, non-linear)
+
 Also include something like:
 
 > :::{note}
