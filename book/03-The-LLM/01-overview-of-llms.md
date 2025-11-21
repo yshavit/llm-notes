@@ -55,16 +55,16 @@ Within each of the following chapters, I'll start by explaining an aspect of the
 
 ## Components of an LLM
 
+:::{div}
+:label: llm-components
+:class: content-group
 An LLM consists of a few key components:
-
-(llm-components)=
 
 - The {dfn}`tokenizer` and {dfn}`embedding` layer, which turn the input text into vectors that the LLM can reason about (remember the "dog" example from above)
 - {dfn}`Self-attention`, which tells the LLM how those token vectors relate to each other (this is the main innovation of LLMs as compared to previous AI)
 - A {dfn}`feedforward network (FFN)` deep learning neural net for processing the vectors
 
-:::{hint}
-It's totally fine if you don't know what these terms mean. I'll be explaining them as we go.
+It's fine if you don't know what these terms mean. I'll be explaining them as we go.
 :::
 
 The output of all this is a probability distribution over every token the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.

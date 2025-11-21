@@ -105,4 +105,3 @@ Note that:
 
 - After the dropping and compensating, each row no longer adds up to 1. The third row, for example, adds up to 1.74! This is fine: what's important is that each weight's expected value stays the same whether we do or don't use dropout.
 - We're not dropping half of the elements in any particular row, or even in the matrix. Instead, each element independently gets dropped or not. In the example above, only one row had exactly half its weights dropped, and overall we dropped 9 elements instead of 8. In practice, there are enough training rounds, and the matrices are large enough, that the randomness averages out.
-
