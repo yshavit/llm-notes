@@ -1,5 +1,7 @@
 # Feedforward network
 
+{drawio}`The feedforward network is the last step of the LLM|images/ffn/llm-flow-ffn`
+
 :::{warning} WIP
 TODO
 
