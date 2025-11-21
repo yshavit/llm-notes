@@ -57,9 +57,15 @@ Within each of the following chapters, I'll start by explaining an aspect of the
 
 An LLM consists of a few key components:
 
-- The tokenizer and embedding layer, which turn the input text into vectors that the LLM can reason about (remember the "dog" example from above)
-- Self-attention, which tells the LLM how those token vectors relate to each other (this is the main innovation of LLMs as compared to previous AI)
-- A deep learning neural net for processing the vectors
+(llm-components)=
+
+- The {dfn}`tokenizer` and {dfn}`embedding` layer, which turn the input text into vectors that the LLM can reason about (remember the "dog" example from above)
+- {dfn}`Self-attention`, which tells the LLM how those token vectors relate to each other (this is the main innovation of LLMs as compared to previous AI)
+- A {dfn}`feedforward network (FFN)` deep learning neural net for processing the vectors
+
+:::{hint}
+It's totally fine if you don't know what these terms mean. I'll be explaining them as we go.
+:::
 
 The output of all this is a probability distribution over every token the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
 
@@ -77,7 +83,7 @@ In addition to the components, it's important to keep separate in your head the 
 
 (parameter-vs-activation)=
 hyperparameter
-: A value decided by a human as part of the model's design, which basically determines the structure of the model. This includes how many hidden layers the neural network has, or the dimensionality of the input embeddings. (It's fine if you don't yet know what a hidden layer or input embedding is!)
+: A value decided by a human as part of the model's design, which basically determines the structure of the model. This includes how many hidden layers the feedforward network has, or the dimensionality of the input embeddings. (It's fine if you don't yet know what a hidden layer or input embedding is!)
 
 learned parameter
 : A value that's part of the LLM's model: it's learned during training, but then is unchanged when the model's actually used. This is what the model knows about language in general.
@@ -105,7 +111,7 @@ It's natural to ask: where do these learned parameters come from, and what do th
 
 Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @02-input-to-vectors). Those values are the learned parameters for that vector.
 
-But what do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 6321 in the embedding vector", where property 6321 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning neural net.
+But what do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 6321 in the embedding vector", where property 6321 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning feedforward network.
 
 So far, I've been talking about the word "dog," and its token embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that a fox and a dog are both animals; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
 

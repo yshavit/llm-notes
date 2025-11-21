@@ -7,15 +7,15 @@ downloads:
 
 ## What and _why_ is self-attention?
 
-In [the previous section](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be feeding those vectors into a neural network. But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
+In [the previous section](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a feedforward network. But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
 
-{drawio}`Self-attention sits between tokenization and the neural net|images/05/llm-flow-self-attention`
+{drawio}`Self-attention sits between tokenization and the feedforward network|images/05/llm-flow-self-attention`
 
 This piece of the model is the crucial innovation that GPT-style LLMs introduced over previous ML models. It lets the LLM encode not just what any one word means, but what each word means in the context of the _specific_ words that precede it. It's not enough to know what "have" means, or even what it means as the third word of a sentence: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
 {drawio}`5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.|images/05/attention-weights-houston`
 
-Since this layer sits between the tokenization/embedding component and the neural network, I find it useful to be explicit about its inputs and outputs:
+Since this layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
 - The input is a vector representing each token in the input. Each token is itself represented by an input embedding (as described in the previous chapter), so this is an $n \times d$ matrix, where $n$ is the input size and $d$ is the dimensionality of each embedding.
 - The output will be a vector of these attentions outputs. Each attention output is a vector. We'll call that vector's dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
@@ -323,9 +323,9 @@ This replaces the positional embeddings we discussed last time. I need to learn 
 
 Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
 
-In the [next section](./04-neural-net), I'll describe the LLM's neural network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → neural network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
+In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → feedforward network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
-I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" neural network is a simplification.
+I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
 
 ## "The context is full"
 

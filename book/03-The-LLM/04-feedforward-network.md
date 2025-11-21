@@ -1,4 +1,4 @@
-# Neural net
+# Feedforward network
 
 :::{warning} WIP
 TODO

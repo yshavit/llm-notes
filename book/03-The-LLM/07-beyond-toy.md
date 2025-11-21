@@ -9,16 +9,16 @@ TODO
   flowchart LR
     Text[Input text] --> Embeddings
     subgraph Layer1[Transformer layer 1]
-      S1[Self-attention] --> N1[Neural net]
+      S1[Self-attention] --> N1[FFN]
     end
     Embeddings --> S1[Transformer layer 2]
     subgraph Layer2
-      S2[Self-attention] --> N2[Neural net]
+      S2[Self-attention] --> N2[FFN]
     end
     N1 --> S2
     subgraph LayerN[More transformer layers...]
       direction LR
-      SN[Self-attention] --> NN[Neural net]
+      SN[Self-attention] --> NN[FFN]
     end
     N2 --> LayerN
     LayerN --> Output
