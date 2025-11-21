@@ -9,11 +9,11 @@ downloads:
 
 In [the previous section](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
 
-{drawio}`Self-attention sits between tokenization and the feedforward network|images/05/llm-flow-self-attention`
+{drawio}`Self-attention sits between tokenization and the feedforward network|images/attention/llm-flow-self-attention`
 
 This piece of the model is the crucial innovation that GPT-style LLMs introduced over previous ML models. It lets the LLM encode not just what any one word means, but what each word means in the context of the _specific_ words that precede it. It's not enough to know what "have" means, or even what it means as the third word of a sentence: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
-{drawio}`5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.|images/05/attention-weights-houston`
+{drawio}`5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.|images/attention/attention-weights-houston`
 
 Since this layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
@@ -52,7 +52,7 @@ The naive approach is conceptually easy: we need an $n \times n$ grid, where eac
 
 Since the matrix multiplication $A_{a \times b} \cdot B_{b \times c} = C_{a \times c}$, each element in the grid has to be a $d \times \delta$ matrix:
 
-{drawio}`n-by-n grid, where each cell is a delta-sized vector|images/05/attention-weights-houston-vectors`
+{drawio}`n-by-n grid, where each cell is a delta-sized vector|images/attention/attention-weights-houston-vectors`
 
 The problem is that this is an $n \times n \times d \times \delta$ tensor, which would be far too large to reasonably store and train on.
 
@@ -132,7 +132,7 @@ I'll start with an overview of the process, and then the next sections will go i
 4. Then we combine the attention weights with each value to compute {dfn}`weighted values`, again one per token. These are vectors.
 5. Finally, we combine the weighted values to get the {dfn}`context vector`: a weighted blend of information from all tokens, focused on what's relevant to the query token.
 
-{drawio}`visual representation of the overall flow described above|images/self-attention/overview`
+{drawio}`visual representation of the overall flow described above|images/attention/overview`
 
 Again, all of that work is just for a single query token. We'll repeat it for each token in the input to produce a context vector per token. The final result is a vector of vectors, which we'll represent as a matrix. This matrix is our self-attention layer's output.
 
@@ -148,7 +148,7 @@ Let's walk through the specifics.
 ### $W_q$ → query vector
 
 :::{aside}
-{drawio}`query token times Wq = query vector|images/05/llm-flow-self-attention-query`
+{drawio}`query token times Wq = query vector|images/attention/llm-flow-self-attention-query`
 :::
 
 This one is easy.
@@ -163,7 +163,7 @@ That's it! We do this just once per query input.
 ### Query vector and $W_k$ → attention scores
 
 :::{aside}
-{drawio}`query tokens and input tokens turn into attention scores|images/05/llm-flow-self-attention-score`
+{drawio}`query tokens and input tokens turn into attention scores|images/attention/llm-flow-self-attention-score`
 :::
 
 We'll do this step once for every input token; I'll call these tokens the key tokens (though that's not a standard term).
@@ -187,7 +187,7 @@ We call this dot product the raw {dfn}`attention score` for this key.
 ### Attention scores → attention weights
 
 :::{aside}
-{drawio}`attention scores normalize into attention weights|images/05/llm-flow-self-attention-weight`
+{drawio}`attention scores normalize into attention weights|images/attention/llm-flow-self-attention-weight`
 :::
 
 Since we repeat the attention score process for each token in the input, we end up with an $n$-vector of attention scores. These scores can be all over the place — positive, negative, and at vastly different scales — so we normalize them to a probability distribution, which we call the {dfn}`attention weights`. The values within this distribution  are all between 0 and 1, and they all sum to 1.
@@ -249,7 +249,7 @@ attention weights
 ### Attention weights and $W_v$ → context vector
 
 :::{aside}
-{drawio}`attention weights combine with values to form the context vector|images/05/llm-flow-self-attention-context`
+{drawio}`attention weights combine with values to form the context vector|images/attention/llm-flow-self-attention-context`
 :::
 
 All of the work until now has been to calculate the attention weights, which are a $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: what _is_ B, in the context of our self-attention layer?
@@ -285,7 +285,7 @@ Recall that all of this happened from the perspective of a single input, which w
 
 All of this gives us the $\delta$-dimensional context vector for that one query token. We then repeat this for each of the $n$ inputs, and the result is our attention layer's output: the full {dfn}`attention output matrix`, or just {dfn}`attention output` for short. This has one context vector for each input, so it's an $n \times \delta$ matrix.
 
-{drawio}`attention weights combine with values to form the context vector|images/05/llm-flow-self-attention-output-matrix`
+{drawio}`attention weights combine with values to form the context vector|images/attention/llm-flow-self-attention-output-matrix`
 
 ## Real-world improvements
 
@@ -307,7 +307,7 @@ You may be thinking that it seems odd to just concatenate matrices that don't ne
 
 To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
 
-{drawio}`In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer|images/05/multi-head`
+{drawio}`In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer|images/attention/multi-head`
 
 ### RoPE
 

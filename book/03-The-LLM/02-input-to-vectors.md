@@ -4,7 +4,7 @@
 
 As I've mentioned before, vectors are how LLMs encode the nuance of human language. So, the first thing we need to do is to turn each part of the text input into a vector. In the end, we'll have one vector per token in the input text.
 
-{drawio}`Self-attention sits between tokenization and the feedforward network|images/04/llm-flow-input`
+{drawio}`Self-attention sits between tokenization and the feedforward network|images/input/llm-flow-input`
 
 ## Fundamental concept of input embedding
 
@@ -42,7 +42,7 @@ Again it's important to remember that the values don't _actually_ encode existen
 
 In a modern LLM, the input embeddings are just the token embeddings. Simple!
 
-{drawio}`images/04/token-embeddings`
+{drawio}`images/input/token-embeddings`
 
 ## Mathematical optimizations
 
@@ -74,7 +74,7 @@ In this approach, each position has its own embedding, called appropriately enou
 
 Then, the input embedding is just the sum of each input's token embedding and its positional embedding:
 
-{drawio}`images/04/token-and-positional-embeddings`
+{drawio}`images/input/token-and-positional-embeddings`
 
 (Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
 

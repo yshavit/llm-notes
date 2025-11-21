@@ -69,7 +69,7 @@ It's fine if you don't know what these terms mean. I'll be explaining them as we
 
 The output of all this is a probability distribution over every token the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
 
-{drawio}`images/03/llm-flow`
+{drawio}`images/overview/llm-flow`
 
 :::{important}
 This is a simplified model that outlines the building blocks. In @07-beyond-toy, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
