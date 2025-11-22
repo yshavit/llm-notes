@@ -88,7 +88,7 @@ Each of these usages has some nuance, so we'll use a learned transformation for 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
 - What information should **(input B transformed by $W_v$)** pass forward in this context?
 
-We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weights. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
+We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weight matrices. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
 
 $$
 Input_{(1 \times d)} \cdot W\star_{(d \times \delta)} = Output_{(1 \times \delta)}
@@ -96,11 +96,11 @@ $$
 
 The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
 
-- $W_q$ ("query weights"): What am I looking for?
-- $W_k$ ("key weights"): What do I offer as context?
-- $W_v$ ("value weights"): What information should I pass along?
+- $W_q$ ("query weight matrices"): What am I looking for?
+- $W_k$ ("key weight matrices"): What do I offer as context?
+- $W_v$ ("value weight matrices"): What information should I pass along?
 
-:::{tip} Why do we need these weights?
+:::{tip} Why do we need these weight matrices?
 In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain a concept of nuance. What more do these transformations add?
 
 Remember that our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big. We're essentially using a couple tricks to compress it.
@@ -117,16 +117,16 @@ Adding the three weight matrices gives us a happy medium: a mere $3 \times (d \t
 
 The next sections will describe how these matrices fit together. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand the mechanics of how we use these weight matrices.
 
-### Overview of how the weights fit together
+### Overview of how the weight matrices fit together
 
 For each token within the input, we'll focus on that input and do a bunch of calculations centered on it. Let's call that token the query token: it's the token for which we want to ask (that is, "query") how it attends to each token in the input.
 
 I'll start with an overview of the process, and then the next sections will go into details on each step.
 
 1. First, we apply each of the weight matrices:
-    1. We apply the query weights ($W_q$) to the query token to get its {dfn}`query vector`: what is this token looking for?
-    2. We apply the key weights ($W_k$) to every token to get the {dfn}`key vectors`: how can we match against each token?
-    3. We apply the value weights ($W_v$) to every token to get the {dfn}`value vectors`: what information does each token contain?
+    1. We apply the query weight matrix ($W_q$) to the query token to get its {dfn}`query vector`: what is this token looking for?
+    2. We apply the key weight matrix ($W_k$) to every token to get the {dfn}`key vectors`: how can we match against each token?
+    3. We apply the value weight matrix ($W_v$) to every token to get the {dfn}`value vectors`: what information does each token contain?
 2. Then we combine the query with each key to compute {dfn}`attention scores`, one per token. These are scalars that tell us how much the query token should care about each other token.
 3. Then we normalize these attention scores into {dfn}`attention weights` (these are still one scalar per token).
 4. Then we combine the attention weights with each value to compute {dfn}`weighted values`, again one per token. These are vectors.
@@ -196,7 +196,7 @@ Normalizing the attention scores to attention weights improves the learning proc
 
 To normalize the values, we use two functions:
 
-1. First, we scale the weights by $\sqrt{\delta}$ (the square root of the output embedding size)
+1. First, we divide the attention scores by $\sqrt{\delta}$ (the square root of the output embedding size)
 2. Then, we apply a function called softmax, which takes a vector of values and normalizes them to a probability distribution.
 
 I'll explain these backwards: first softmax, then the scaling.
@@ -230,13 +230,13 @@ The top of this page has a download link to an interactive softmax visualizer, i
 [Softmax]: https://en.wikipedia.org/wiki/Softmax_function
 :::
 
-To keep softmax from becoming too extreme, we first scale the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the dot product is the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of the embedding dimension. This ensures that softmax operates in a reasonable range where it can learn nuanced attention patterns.
+To keep softmax from becoming too extreme, we first divide the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the dot product is the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of the embedding dimension. This ensures that softmax operates in a reasonable range where it can learn nuanced attention patterns.
 
 Basically, as $\delta$ grows, so do the dot products' variance. This growth happens by a factor of $\sqrt{\delta}$, and left unchecked it would cause softmax to lose nuance between values that are actually fairly close. Dividing by $\sqrt{\delta}$ lets softmax keep that nuance. Note that I wrote above that the terms are roughly independent, but of course they're not _actually_ independent: the whole point of training is to find patterns in them. Still, the $\sqrt{\delta}$ scaling has empirically been found to work, so that's what people use.
 
 This "scaling plus softmax" is called, appropriately enough, the scaled dot-product attention. When it's applied to the raw attention scores we calculated earlier, the result is the normalized {dfn}`attention weights`.
 
-:::{important} Attention scores vs weights
+:::{important} Attention scores vs attention weights
 These two terms are similar, but it's crucial to keep them separate.
 
 attention scores
@@ -254,7 +254,7 @@ attention weights
 
 All of the work until now has been to calculate the attention weights, which are a $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: what _is_ B, in the context of our self-attention layer?
 
-We'll start with familiar ground, by turning our $d$-sized input embeddings into $\delta$-sized vectors by multiplying them by a weight matrix to translate the embedding into an attention-specific space. This time we'll use the $W_v$ weight, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
+We'll start with familiar ground, by turning our $d$-sized input embeddings into $\delta$-sized vectors by multiplying them by a weight matrix to translate the embedding into an attention-specific space. This time we'll use the $W_v$ weight matrix, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
 
 From here, we calculate intermediate "weighted values" by multiplying each value vector by its corresponding attention weight. For example, let's say:
 
@@ -293,7 +293,7 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Multi-head attention and $W_o$
 
-When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weights, vectors, causal masking and dropout, etc — forms a unit called an {dfn}`attention head`.
+When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weight matrices, vectors, etc — forms a unit called an {dfn}`attention head`.
 
 The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
@@ -335,9 +335,9 @@ If you read about the "context vector" above and wondered if these are related: 
 
 In short, "the context is full" means that the input is as long as the LLM will allow. This is primarily driven by two factors:
 
-- **The attention scores and weight matrices**, each of which are $n \times n$. This means that the memory and processing the LLM needs grows as the square of the input length.
+- **The attention scores and attention weights**, each of which are $n \times n$ matrices. This means that the memory and processing the LLM needs grows as the square of the input length.
   - We have one set of these matrices per head, so with 8 - 12 heads per layer, and multiple layers per model, this really adds up!
-- **The training of these scores and weights.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#training-analogy) if it's helpful). But essentially, since the weights represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
+- **The training of these scores and weight matrices.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#training-analogy) if it's helpful). But essentially, since the weight matrices represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
 
 An LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
 
