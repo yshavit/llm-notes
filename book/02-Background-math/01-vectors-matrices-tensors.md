@@ -43,7 +43,7 @@ If we think of vectors as "an object with a single index" and matrices as "an ob
 :::{tip} Tensors more generally
 :class: dropdown
 
-In math and physics, tensors have other properties. We won't need them, and we'll also never use tensors above rank 3. So, you can basically think of a tensor as "like a matrix, but with three indices."
+In math and physics, tensors have other properties. We don't need them, so you can basically think of a tensor as "like a matrix, but with more than two indices."
 :::
 
 ## Math operations
@@ -53,21 +53,36 @@ There are two main math operations you'll need to know about. In both cases, the
 (matrix-math-summary)=
 +++
 dot products
-: Combines two vectors into a single, scalar. Both vectors must be the same length.
+: Combines two vectors into a single scalar. Both vectors must be the same length.
   $$
   \mathbf{v} \cdot \mathbf{w} = \text{scalar number}
   $$
 
 matrix multiplication:
-: These combine two matrices into another matrix. The first matrix's column length has to be the second matrix's row length. The result has the same number of rows as the first matrix, and the same number of columns as the second.
+: Combines two matrices into another matrix. The first matrix's column length has to be the second matrix's row length. The result has the same number of rows as the first matrix, and the same number of columns as the second.
+
   $$
-        A_{\textcolor{lime}{\underline{a}} \times \textcolor{goldenrod}{b}}
-  \cdot B_{\textcolor{goldenrod}{b} \times \textcolor{red}{\underline{c}}}
-      = C_{\textcolor{lime}{\underline{a}} \times \textcolor{red}{\underline{c}}}
+  A_{\underset{\textcolor{steelblue}{▲}}{a} \times \underset{\textcolor{lightgray}{●}}{b}}
+  \cdot
+  B_{\underset{\textcolor{lightgray}{●}}{b} \times \underset{\textcolor{darkorange}{▼}}{c}}
+  =
+  C_{\underset{\textcolor{steelblue}{▲}}{a} \times \underset{\textcolor{darkorange}{▼}}{c}}
   $$
+
+  The expression $A \cdot B$ can also be written as just $AB$.
 +++
 
-All you really need to know is the shape of the math operations. But if you want to know how they actually work, that's the rest of this chapter.
+Additionally, we'll occasionally need to take the {dfn}`transpose` of a matrix:
+
+(matrix-transposition)=
+transposition:
+: Swaps a matrix's rows and columns, which you can visualize as flipping along its ╲ diagonal. This is denoted as $A^T$.
+
+  $$
+  \begin{bmatrix} a & b & c \\ d & e & f \end{bmatrix}^T
+  =
+  \begin{bmatrix} a & d \\ b & e \\ c & f \end{bmatrix}
+  $$
 
 :::{note} Details on matrix math
 :class: dropdown
@@ -81,12 +96,12 @@ The dot product is simply the sum of terms, where each term the product of the t
 (dot-product-math)=
 $$
 \begin{bmatrix}
-  \textcolor{red}{a} & \textcolor{forestgreen}{b} & \textcolor{goldenrod}{c}
+  \textcolor{red}{a} & \textcolor{limegreen}{b} & \textcolor{goldenrod}{c}
 \end{bmatrix}
 \cdot
 \begin{bmatrix}
-  \textcolor{red}{\alpha} \\ \textcolor{forestgreen}{\beta} \\ \textcolor{goldenrod}{\gamma} \end{bmatrix}
-= \textcolor{red}{a \cdot \alpha} + \textcolor{forestgreen}{b \cdot \beta} + \textcolor{goldenrod}{c \cdot \gamma}
+  \textcolor{red}{\alpha} \\ \textcolor{limegreen}{\beta} \\ \textcolor{goldenrod}{\gamma} \end{bmatrix}
+= \textcolor{red}{a \cdot \alpha} + \textcolor{limegreen}{b \cdot \beta} + \textcolor{goldenrod}{c \cdot \gamma}
 $$
 
 If the two vectors are normalized to have the same magnitude, the dot product specifies how aligned they are: higher values means more aligned. (This has a geometric interpretation, but it's not very important for LLMS. Just know that higher values mean more similar.)
@@ -98,28 +113,43 @@ In the {dfn}`matrix multiplication` of two matrices $A$ and $B$, each cell is th
 $$
 \begin{aligned}
 C &=
-  \begin{bmatrix} \textcolor{blue}{A_{1,1}} & \textcolor{blue}{A_{1,2}} \\ \textcolor{lime}{A_{2,1}} & \textcolor{lime}{A_{2,2}} \end{bmatrix}
+  \begin{bmatrix} \textcolor{steelblue}{A_{1,1}} & \textcolor{steelblue}{A_{1,2}} \\ \textcolor{limegreen}{A_{2,1}} & \textcolor{limegreen}{A_{2,2}} \end{bmatrix}
   \cdot
   \begin{bmatrix} \textcolor{red}{B_{1,1}} & \textcolor{goldenrod}{B_{1,2}} \\ \textcolor{red}{B_{2,1}} & \textcolor{goldenrod}{B_{2,2}} \end{bmatrix}
-  \\[1.5em]
+  \\[2.5em]
 &=
   \begin{bmatrix}
-    \begin{bmatrix} \textcolor{blue}{A_{1,1}} & \textcolor{blue}{A_{1,2}} \end{bmatrix}
+    \begin{bmatrix} \textcolor{steelblue}{A_{1,1}} & \textcolor{steelblue}{A_{1,2}} \end{bmatrix}
     \cdot
     \begin{bmatrix} \textcolor{red}{B_{1,1}} \\ \textcolor{red}{B_{2,1}} \end{bmatrix}
+    \quad
     &
-    \begin{bmatrix} \textcolor{blue}{A_{1,1}} & \textcolor{blue}{A_{1,2}} \end{bmatrix}
+    \begin{bmatrix} \textcolor{steelblue}{A_{1,1}} & \textcolor{steelblue}{A_{1,2}} \end{bmatrix}
     \cdot
     \begin{bmatrix} \textcolor{goldenrod}{B_{1,2}} \\ \textcolor{goldenrod}{B_{2,2}} \end{bmatrix}
+    \\[2.25em]
+    \begin{bmatrix} \textcolor{limegreen}{A_{2,1}} & \textcolor{limegreen}{A_{2,2}} \end{bmatrix}
+    \cdot
+    \begin{bmatrix} \textcolor{red}{B_{1,1}} \\ \textcolor{red}{B_{2,1}} \end{bmatrix}
+    \quad
+    &
+    \begin{bmatrix} \textcolor{limegreen}{A_{2,1}} & \textcolor{limegreen}{A_{2,2}} \end{bmatrix}
+    \cdot
+    \begin{bmatrix} \textcolor{goldenrod}{B_{1,2}} \\ \textcolor{goldenrod}{B_{2,2}} \end{bmatrix}
+  \end{bmatrix}
+  \\[4em]
+&=
+  \begin{bmatrix}
+    \textcolor{steelblue}{A_{1,1}} \cdot \textcolor{red}{B_{1,1}} + \textcolor{steelblue}{A_{1,2}} \cdot \textcolor{red}{B_{2,1}}
+    &
+    \quad
+    \textcolor{steelblue}{A_{1,1}} \cdot \textcolor{goldenrod}{B_{1,2}} + \textcolor{steelblue}{A_{1,2}} \cdot \textcolor{goldenrod}{B_{2,2}}
     \\[1em]
-    \begin{bmatrix} \textcolor{lime}{A_{2,1}} & \textcolor{lime}{A_{2,2}} \end{bmatrix}
-    \cdot
-    \begin{bmatrix} \textcolor{red}{B_{1,1}} \\ \textcolor{red}{B_{2,1}} \end{bmatrix}
+    \textcolor{limegreen}{A_{2,1}} \cdot \textcolor{red}{B_{1,1}} + \textcolor{limegreen}{A_{2,2}} \cdot \textcolor{red}{B_{2,1}}
     &
-    \begin{bmatrix} \textcolor{lime}{A_{2,1}} & \textcolor{lime}{A_{2,2}} \end{bmatrix}
-    \cdot
-    \begin{bmatrix} \textcolor{goldenrod}{B_{1,2}} \\ \textcolor{goldenrod}{B_{2,2}} \end{bmatrix}
-  \end{bmatrix} \\[1em]
+    \quad
+    \textcolor{limegreen}{A_{2,1}} \cdot \textcolor{goldenrod}{B_{1,2}} + \textcolor{limegreen}{A_{2,2}} \cdot \textcolor{goldenrod}{B_{2,2}}
+  \end{bmatrix}
 \end{aligned}
 $$
 
@@ -128,13 +158,13 @@ Note:
 (matrix-multiplication-notes)=
 
 - The number of columns in $A$ must equal the number of rows in $B$. (This is just so that the dot products work).
-- The resulting shape is $A_{\textcolor{blue}{a} \times \textcolor{pink}{b}} \cdot B_{\textcolor{pink}{b} \times \textcolor{red}{c}} = C_{\textcolor{blue}{a} \times \textcolor{red}{c}}$
+- The resulting shape is $A_{\textcolor{steelblue}{a} \times \textcolor{pink}{b}} \cdot B_{\textcolor{pink}{b} \times \textcolor{red}{c}} = C_{\textcolor{steelblue}{a} \times \textcolor{red}{c}}$
 - Matrix multiplication is not commutative: $AB \neq BA$ in general.
 
   For example, if we look at the first cell ($C_{1,1}$), it's:
 
   $$
-  \begin{bmatrix} \textcolor{blue}{A_{1,1}} & \textcolor{salmon}{A_{1,2}} \end{bmatrix}
+  \begin{bmatrix} \textcolor{steelblue}{A_{1,1}} & \textcolor{salmon}{A_{1,2}} \end{bmatrix}
   \cdot
   \begin{bmatrix} \textcolor{steelblue}{B_{1,1}} \\ \textcolor{pink}{B_{2,1}} \end{bmatrix}
   $$
@@ -142,28 +172,28 @@ Note:
   If we commuted the matrices, this cell would be:
 
   $$
-  \begin{bmatrix} \textcolor{steelblue}{B_{1,1}} & \textcolor{lime}{B_{1,2}} \end{bmatrix}
+  \begin{bmatrix} \textcolor{steelblue}{B_{1,1}} & \textcolor{limegreen}{B_{1,2}} \end{bmatrix}
   \cdot
-  \begin{bmatrix} \textcolor{blue}{A_{1,1}} \\ \textcolor{lawngreen}{A_{2,1}} \end{bmatrix}
+  \begin{bmatrix} \textcolor{steelblue}{A_{1,1}} \\ \textcolor{lawngreen}{A_{2,1}} \end{bmatrix}
   $$
 
-  As you can see, only $\textcolor{blue}{A_{1,1}}$ and $\textcolor{steelblue}{B_{1,1}}$ appear in both.
+  As you can see, only $\textcolor{steelblue}{A_{1,1}}$ and $\textcolor{steelblue}{B_{1,1}}$ appear in both.
 
 For example:
 
 $$
 \begin{aligned}
- &\begin{bmatrix} \textcolor{blue}{1} & \textcolor{blue}{2} \\ \textcolor{lime}{3} & \textcolor{lime}{4} \end{bmatrix} \begin{bmatrix} \textcolor{red}{5} & \textcolor{goldenrod}{6} \\ \textcolor{red}{7} & \textcolor{goldenrod}{8} \end{bmatrix} \\[1.5em]
+ &\begin{bmatrix} \textcolor{steelblue}{1} & \textcolor{steelblue}{2} \\ \textcolor{limegreen}{3} & \textcolor{limegreen}{4} \end{bmatrix} \begin{bmatrix} \textcolor{red}{5} & \textcolor{goldenrod}{6} \\ \textcolor{red}{7} & \textcolor{goldenrod}{8} \end{bmatrix} \\[1.5em]
 =&\begin{bmatrix}
-\begin{bmatrix} \textcolor{blue}{1} & \textcolor{blue}{2} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{red}{5} \\ \textcolor{red}{7} \end{bmatrix}
+\begin{bmatrix} \textcolor{steelblue}{1} & \textcolor{steelblue}{2} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{red}{5} \\ \textcolor{red}{7} \end{bmatrix}
 & \quad
-\begin{bmatrix} \textcolor{blue}{1} & \textcolor{blue}{2} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{goldenrod}{6} \\ \textcolor{goldenrod}{8} \end{bmatrix}
+\begin{bmatrix} \textcolor{steelblue}{1} & \textcolor{steelblue}{2} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{goldenrod}{6} \\ \textcolor{goldenrod}{8} \end{bmatrix}
 \\[1.25em]
-\begin{bmatrix} \textcolor{lime}{3} & \textcolor{lime}{4} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{red}{5} \\ \textcolor{red}{7} \end{bmatrix}
+\begin{bmatrix} \textcolor{limegreen}{3} & \textcolor{limegreen}{4} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{red}{5} \\ \textcolor{red}{7} \end{bmatrix}
 & \quad
-\begin{bmatrix} \textcolor{lime}{3} & \textcolor{lime}{4} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{goldenrod}{6} \\ \textcolor{goldenrod}{8} \end{bmatrix}
+\begin{bmatrix} \textcolor{limegreen}{3} & \textcolor{limegreen}{4} \end{bmatrix} \cdot \begin{bmatrix} \textcolor{goldenrod}{6} \\ \textcolor{goldenrod}{8} \end{bmatrix}
 \end{bmatrix} \\[1.5em]
-=&\begin{bmatrix} \textcolor{blue}{1} \cdot \textcolor{red}{5} + \textcolor{blue}{2} \cdot \textcolor{red}{7} & \textcolor{blue}{1} \cdot \textcolor{goldenrod}{6} + \textcolor{blue}{2} \cdot \textcolor{goldenrod}{8} \\ \textcolor{lime}{3} \cdot \textcolor{red}{5} + \textcolor{lime}{4} \cdot \textcolor{red}{7} & \textcolor{lime}{3} \cdot \textcolor{goldenrod}{6} + \textcolor{lime}{4} \cdot \textcolor{goldenrod}{8} \end{bmatrix} \\[1.5em]
+=&\begin{bmatrix} \textcolor{steelblue}{1} \cdot \textcolor{red}{5} + \textcolor{steelblue}{2} \cdot \textcolor{red}{7} & \textcolor{steelblue}{1} \cdot \textcolor{goldenrod}{6} + \textcolor{steelblue}{2} \cdot \textcolor{goldenrod}{8} \\ \textcolor{limegreen}{3} \cdot \textcolor{red}{5} + \textcolor{limegreen}{4} \cdot \textcolor{red}{7} & \textcolor{limegreen}{3} \cdot \textcolor{goldenrod}{6} + \textcolor{limegreen}{4} \cdot \textcolor{goldenrod}{8} \end{bmatrix} \\[1.5em]
 =&\begin{bmatrix} 19 & 22 \\ 43 & 50 \end{bmatrix}
 \end{aligned}
 $$
