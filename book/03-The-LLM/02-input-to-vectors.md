@@ -28,7 +28,13 @@ But basically, this is just turning something like "to be or not to be" into a s
 
 ### Token embeddings
 
-All of the tokens our model knows about form its vocabulary, and each one is associated with a vector called the {dfn}`token embedding`. This embedding's values are learned parameters that encapsulate what the LLM "knows" about that token. The size of each vector is a hyperparameter.
+All of the tokens our model knows about form its vocabulary, and each one is associated with a vector called the {dfn}`token embedding`. This embedding's values are learned parameters that encapsulate what the LLM "knows" about that token. The size of each vector is a hyperparameter denoted $d$.
+
+:::{aside}
+
+- {dfn}`token embedding dimension`: integer denoted $d$; hyperparameter
+- {dfn}`token embedding`: vector of size $d$; learned parameter
+:::
 
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
@@ -40,9 +46,32 @@ Again it's important to remember that the values don't _actually_ encode existen
 
 ### Input embeddings
 
+The LLM's {dfn}`input embeddings` are the vectors that represent the input text, after it's been tokenized, and each of those tokens translated to its associated vector embedding.
+
 In a modern LLM, the input embeddings are just the token embeddings. Simple!
 
 {drawio}`images/input/token-embeddings`
+
+Even though the input embeddings equal the token embeddings, they're conceptually slightly different: we use the term "token embedding" to describe the embedding in general, and "input embedding" when it's specifically as part of the input.
+
+This is largely because older-generation LLMs had more complicated input embeddings, which combined each input token's embedding with information about its position.
+
+:::{seealso} Position embeddings in older LLMs
+:class: dropdown
+As mentioned above, modern LLMs just use the token embeddings as the input embeddings. Older LLMs, like GPT-2, also used the token's positions within the input text.
+
+In this approach, each position has its own embedding, called appropriately enough the {dfn}`positional embedding`. Just as the token embeddings are global within the LLM — "be" always uses the same token embedding, for example — so was each positional embedding. For example, the first token in an input always used the same embedding, that of position 0.
+
+The positional embeddings are learned vectors, with the same dimension $d$ as the token embeddings.
+
+Then, the input embedding is just the sum of each input's token embedding and its positional embedding:
+
+{drawio}`images/input/token-and-positional-embeddings`
+
+(Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
+
+Modern GPTs simplify the input embedding phase, and instead make the self-attention phase (the next chapter) more sophisticated.
+:::
 
 ## Mathematical optimizations
 
@@ -65,19 +94,5 @@ $$
 $$
 
 Furthermore, during training we often want to work with batches of inputs at the same time. To do that, we just raise these matrices to rank 3 tensors, where the first index represents the input within the batch, and the other two represent the each input's matrix (which in turn just represents the embeddings for each token in the input). Again, we do this for the token embeddings, positional embeddings, and input embeddings.
-
-## Positional encoding in old-style LLMs
-
-As mentioned above, modern LLMs just use the token embeddings as the input embeddings. Older LLMs, like GPT-2, also used the token's positions within the input text.
-
-In this approach, each position has its own embedding, called appropriately enough the {dfn}`positional embedding`. Just as the token embeddings are global within the LLM — "be" always uses the same token embedding, for example — so was each positional embedding. For example, the first token in an input always used the same embedding, that of position 0.
-
-Then, the input embedding is just the sum of each input's token embedding and its positional embedding:
-
-{drawio}`images/input/token-and-positional-embeddings`
-
-(Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
-
-Modern GPTs simplify the input embedding phase, and instead make the self-attention phase (the next chapter) more sophisticated.
 
 [bpe]: https://en.wikipedia.org/wiki/Byte-pair_encoding

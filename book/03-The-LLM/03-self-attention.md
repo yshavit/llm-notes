@@ -34,7 +34,7 @@ I found this all very hard to wrap my head around. I've tried to interweave the 
 
 ### Make sure you remember matrix math
 
-We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math](../02-Background-math/01-vectors-matrices-tensors.md).
+We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math](vectors-matrices-tensors).
 
 ````{seealso} Quick refresher, if you need it
 :class: dropdown
@@ -132,6 +132,15 @@ I'll start with an overview of the process, and then the next sections will go i
 4. Then we combine the attention weights with each value to compute {dfn}`weighted values`, again one per token. These are vectors.
 5. Finally, we combine the weighted values to get the {dfn}`context vector`: a weighted blend of information from all tokens, focused on what's relevant to the query token.
 
+:::{aside}
+
+- **$W_q$, $W_k$, $W_v$**: learned parameter matrices; each has size $d \times \delta$, where $d$ and $\delta$ are both hyperparameters, and typically $d = \delta$
+- {dfn}`query, key, value vectors`: $\delta$-sized vector activations based on the input embeddings and the weight matrices
+- {dfn}`attention score, attention weights`: scalar activations based on the query and key vectors
+- {dfn}`weighted values`: $\delta$-sized vector activations based on the attention weights and input embeddings
+- {dfn}`context vectors`: $\delta$-sized vector activations based on the attention weights
+:::
+
 {drawio}`visual representation of the overall flow described above|images/attention/overview`
 
 Again, all of that work is just for a single query token. We'll repeat it for each token in the input to produce a context vector per token. The final result is a vector of vectors, which we'll represent as a matrix. This matrix is our self-attention layer's output.
@@ -151,7 +160,7 @@ Let's walk through the specifics.
 {drawio}`query token times Wq = query vector|images/attention/llm-flow-self-attention-query`
 :::
 
-This one is easy.
+This is just the query token, transformed by the weight matrix $W_q$:
 
 - We start with the query token's input embedding, which is a vector of size $d$
 - We have the query weight matrix $W_q$, of size $d \times \delta$
@@ -300,6 +309,11 @@ The problem is that a single attention head can get somewhat myopic, focusing pr
 To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
 
 In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
+
+:::{aside}
+
+- **$h$**: hyperparameter; the number of heads in a multi-head attention
+:::
 
 Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix. (The reason to make each head be $\delta / h$, as opposed to keeping each head at $\delta$ and having the concatenated result be $h\delta$, is just for efficiency. Dividing the learning space into several smaller, independent spaces lets the model learn more relationships for a given dimensionality.)
 
