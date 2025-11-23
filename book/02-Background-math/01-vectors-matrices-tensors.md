@@ -62,11 +62,11 @@ matrix multiplication:
 : Combines two matrices into another matrix. The first matrix's column length has to be the second matrix's row length. The result has the same number of rows as the first matrix, and the same number of columns as the second.
 
   $$
-  A_{\underset{\textcolor{steelblue}{▲}}{a} \times \underset{\textcolor{lightgray}{●}}{b}}
+  A_{\underset{\textcolor{steelblue}{\text{▲}}}{a} \times \underset{\textcolor{lightgray}{\text{●}}}{b}}
   \cdot
-  B_{\underset{\textcolor{lightgray}{●}}{b} \times \underset{\textcolor{darkorange}{▼}}{c}}
+  B_{\underset{\textcolor{lightgray}{\text{●}}}{b} \times \underset{\textcolor{darkorange}{\text{▼}}}{c}}
   =
-  C_{\underset{\textcolor{steelblue}{▲}}{a} \times \underset{\textcolor{darkorange}{▼}}{c}}
+  C_{\underset{\textcolor{steelblue}{\text{▲}}}{a} \times \underset{\textcolor{darkorange}{\text{▼}}}{c}}
   $$
 
   The expression $A \cdot B$ can also be written as just $AB$.
