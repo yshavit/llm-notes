@@ -27,3 +27,5 @@ feedforward
 llm
 FFN
 bmatrix
+FFNs
+MLPs
