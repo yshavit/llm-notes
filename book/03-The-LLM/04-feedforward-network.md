@@ -54,19 +54,19 @@ This gives us one value per neuron, which is its activation. Since we have $n$ n
 "Neuron" is a somewhat ambiguous term that conflates the learned parameters, the computations that involve them, and the resulting activations. I'll try to be clear about which I mean as we go.
 :::
 
-We need the bias because each of these neurons defines a linear function in the input's $d_{in}$-dimensional space. The bias lets us compute those functions even if they don't pass through the origin:
+Each of these neurons essentially defines a pattern the FFN can detect. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
+
+We need the {dfn}`bias` because each of these neurons defines a linear function in the input's $d_{in}$-dimensional space. The bias lets us compute those functions even if they don't pass through the origin:
 
 {drawio}`diagram showing liner regression intersecting the y axis at about 2.4|images/ffn/bias`
 
-Each of these neurons (that is, linear functions) essentially defines a pattern the FFN can detect. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
-
-Finally, we define the activation function. This can technically be any non-linear function that takes the raw output from the linear function ( $(input \cdot weights) + bias$ ) and produces another scalar. In practice, a common one is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated at 0":
+Finally, we define the {dfn}`activation function`. This can technically be any non-linear function that takes the raw output from the linear function ( $(input \cdot weights) + bias$ ) and produces another scalar. In practice, a common one is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated at 0":
 
 $$
 ReLU(x) = \max(0, x)
 $$
 
-This function is crucial for neuron specialization, because it lets each neuron deactivate when the input is sufficiently misaligned with what the neuron detects. This has two main benefits:
+The activation function is crucial for neuron specialization, because it lets each neuron deactivate when the input is sufficiently misaligned with the pattern that the neuron detects. This has two main benefits:
 
 - It lets the neuron signal that it hasn't detected what it's looking for.
 - It treats all such highly-misaligned values as equivalent, which means that at training time, it won't learn from them. (This is good, because if a neuron is looking for happy words, we don't want it to learn anything from "purple"!)
@@ -80,7 +80,7 @@ This chapter has talked about two different concepts with similar names:
 - The {dfn}`activation function` is a hyperparameter that's the same for every neuron in a given layer; it's basically just a line of code in the model.
 - The {dfn}`activations` are scalars that are computed at inference (and training), and are derived from the specific inputs (as well as the layer's learned parameters).
 
-In addition, throughout this book we've been using "activations" to refer to _any_ value that's derived from inputs during inference. The activations in this chapter are the origin of this term: the other activations are called that essentially as a metaphor to the ones this chapter explained.
+In addition, throughout this book we've been using "activations" to refer to _any_ value that's derived from inputs during inference. The activations in this chapter are the origin of this term: the other activations are called that essentially as a metaphor to the ones in this chapter.
 
 The term "activation" comes from the biological metaphor that I mentioned above was the inspiration for neural networks. Just as biological neurons fire in a living being in response to specific stimuli, so do the neurons in our FFN, thanks to the activation function.
 :::
