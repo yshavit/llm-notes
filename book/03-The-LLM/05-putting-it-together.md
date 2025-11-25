@@ -1,5 +1,7 @@
 # Putting it all together
 
+{drawio}`Self-attention and the FFN combine to create a transformer|images/transformer/llm-flow-transformer`
+
 :::{warning} WIP
 TODO
 
