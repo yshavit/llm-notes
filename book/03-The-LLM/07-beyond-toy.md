@@ -3,6 +3,8 @@
 :::{warning} WIP
 TODO
 
+- GELU for activation function
+
 - In the real world, there are multiple self-attention-plus-NN layers:
 
   ```mermaid

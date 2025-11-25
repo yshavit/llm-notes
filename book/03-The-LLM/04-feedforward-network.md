@@ -56,9 +56,13 @@ This gives us one value per neuron, which is its activation. Since we have $n$ n
 
 Each of these neurons essentially defines a pattern the FFN can detect. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
 
+### Bias parameters
+
 We need the {dfn}`bias` because each of these neurons defines a linear function in the input's $d_{in}$-dimensional space. The bias lets us compute those functions even if they don't pass through the origin:
 
 {drawio}`diagram showing liner regression intersecting the y axis at about 2.4|images/ffn/bias`
+
+### Activation function
 
 Finally, we define the {dfn}`activation function`. This can technically be any non-linear function that takes the raw output from the linear function ( $(input \cdot weights) + bias$ ) and produces another scalar. In practice, a common one is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated at 0":
 
@@ -85,9 +89,11 @@ In addition, throughout this book we've been using "activations" to refer to _an
 The term "activation" comes from the biological metaphor that I mentioned above was the inspiration for neural networks. Just as biological neurons fire in a living being in response to specific stimuli, so do the neurons in our FFN, thanks to the activation function.
 :::
 
+### Multiple layers
+
 In a generic FFN, we would have some arbitrary number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on.
 
-In LLMs, we typically only have one hidden layer per FFN, so the simplified model I described above is actually the full story. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide, as I'll discuss more in @07-beyond-toy).
+In LLMs, we typically only have one hidden layer per FFN, so the simplified model I described above is actually the full story. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide, as I'll discuss more in @05-putting-it-together).
 
 ## Fitting the FFN into the LLM
 
