@@ -343,7 +343,7 @@ Lastly, in all of the above, we've been talking about "the" self-attention layer
 
 In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → feedforward network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
-I'll describe this in more detail in [Beyond the toy LLM](./07-beyond-toy.md). For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
+I'll describe this in more detail in @05-putting-it-together. For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
 
 ## "The context is full"
 

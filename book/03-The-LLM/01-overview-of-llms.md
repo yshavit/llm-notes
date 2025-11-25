@@ -63,6 +63,7 @@ An LLM consists of a few key components:
 - The {dfn}`tokenizer` and {dfn}`embedding` layer, which turn the input text into vectors that the LLM can reason about (remember the "dog" example from above)
 - {dfn}`Self-attention`, which tells the LLM how those token vectors relate to each other (this is the main innovation of LLMs as compared to previous AI)
 - A {dfn}`feedforward network (FFN)` for processing the vectors
+- The self-attention and FFN together form a {dfn}`transformer block`
 
 It's fine if you don't know what these terms mean. I'll be explaining them as we go.
 :::
