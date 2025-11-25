@@ -32,5 +32,5 @@ TODO
   - how many transformer layers
   - what are the various dimensionalities
 
-- layer normalization has two learned params (https://claude.ai/chat/629d0e9e-8517-40c8-a9a2-518533ce25b4), beta and gamma
+- layer normalization has two learned params (`https://claude.ai/chat/629d0e9e-8517-40c8-a9a2-518533ce25b4`), beta and gamma
 :::
