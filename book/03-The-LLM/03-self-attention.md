@@ -7,11 +7,13 @@ downloads:
 
 ## What and _why_ is self-attention?
 
-In [the previous section](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
+In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
 
 {drawio}`Self-attention sits between tokenization and the feedforward network|images/attention/llm-flow-self-attention`
 
-This piece of the model is the crucial innovation that GPT-style LLMs introduced over previous ML models. It lets the LLM encode not just what any one word means, but what each word means in the context of the _specific_ words that precede it. It's not enough to know what "have" means, or even what it means as the third word of a sentence: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+When I described the input embeddings in the previous chapter, I mentioned how they're combined with position embedding. This lets us differentiate between "have" as the first word in a sentence and "have" as the third word. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+
+In other words, we want to learn what "have" means in the context of the _specific_ sentence we see it, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
 
 {drawio}`5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.|images/attention/attention-weights-houston`
 
