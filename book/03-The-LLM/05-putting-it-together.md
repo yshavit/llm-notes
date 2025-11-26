@@ -64,7 +64,7 @@ At this point, you should understand everything in [the image above](#smallest-l
 🎉
 :::
 
-Pause for a moment. This is a milestone. You now basically understand how LLM inference works.
+Pause for a moment. This is a milestone. You now basically understand how LLM inference works. The rest of this chapter is just about real-world refinements to this fundamental model.
 
 ## Stacking transformer blocks
 
