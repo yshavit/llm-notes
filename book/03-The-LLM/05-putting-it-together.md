@@ -78,8 +78,36 @@ Note that LLMs typically add one final attention layer between the last transfor
 
 Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
-:::{warning} WIP
-TODO
+A small LLM may have a couple dozen transformer blocks, and large commercial ones have 80-100 or more.
+
+## Architectural tweaks to aid training
+
+If all we had to worry about were inference, we'd be done at this point. Unfortunately, we still need to train our model, and deeply stacked transformers are going to cause issues when we do. To solve this, we're going to add two new ideas: normalization and residual connections.
+
+:::{note} Getting ahead of ourselves, by necessity
+Normalization and residual connections are all about training, which I haven't talked about yet.
+
+Normalization and residual connections aren't part of the LLM's core conceptual architecture in the same way that attention or even FFNs are. They're "just" engineering workarounds that have been empirically found to make training better. Training is a crucial part of creating a good LLM, so these pieces are extremely important in practice; but I'll cover training later, so don't worry if the motivation for them doesn't click yet.
+:::
+
+Without getting into technical details, it turns out that our stacked transformers would have two problems at training time:
+
+1. Activations that jump too wildly from layer to layer will make it hard for the model to learn stable patterns.
+2. The deep transformer stacking acts as a dampening effect, such that layers earlier in the model (and thus farther from the prediction that training will check against) will receive a much softer training signal than later layers.
+
+We'll solve the first problem with {dfn}`normalization`, and the second with {dfn}`residual connections`.
+
+### Normalization
+
+:::{warning} TODO
+:::
+
+### Residual connections
+
+:::{warning} TODO
+:::
+
+:::{warning} TODO
 
 In addition to whatever's in the book, make sure I cover:
 
@@ -97,4 +125,10 @@ In addition to whatever's in the book, make sure I cover:
 > Adding epsilon smoothly blends in, maintaining differentiability everywhere.
 > 3. Hardware efficiency (your intuition):
 > Yes, conditionals do cause branch divergence on GPUs/TPUs. Different threads taking different paths through a conditional can serialize execution and kill parallelism. Always adding epsilon avoids any branching.
+:::
+
+## Special tokens
+
+:::{warning} TODO
+EOS, others
 :::
