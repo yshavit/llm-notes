@@ -2,3 +2,7 @@ div.content-group > :first-child {
   /* The first <p> within a div naturally adds margin-top; this remove that. */
   margin-top: 0;
 }
+
+.big {
+  font-size: 3em;
+}

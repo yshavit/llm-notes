@@ -58,11 +58,13 @@ We can't optimize this away at inference time, because we'd need to do that via 
 
 At this point, you should understand everything in [the image above](#smallest-llm-figure).
 
-Pause for a moment. This is a milestone. You now basically understand how LLM inference works.
-
 :::{aside}
+:class: big
+
 🎉
 :::
+
+Pause for a moment. This is a milestone. You now basically understand how LLM inference works.
 
 :::{warning} WIP
 TODO
