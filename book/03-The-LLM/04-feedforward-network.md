@@ -24,7 +24,7 @@ Feedforward networks are just one corner within the broader field of machine lea
 GPT-style LLMs use MLPs, but the standard literature refers to them by the more general term "FFN". I'll be keeping that convention.
 :::
 
-An FFN consists of multiple layers: an input, an output, and one or more {dfn}`hidden layers` consisting of {dfn}`neurons` (sometimes called {dfn}`nodes`).
+An FFN consists of multiple layers: an input, an output, and one or more {dfn}`hidden layers` consisting of {dfn}`neurons` (sometimes called {dfn}`nodes`). Between each layer are learned parameters that transform one layer to the next.
 
 If our input layer has dimension $d_{in}$ and we want an output with $n$ dimensions, we'll accomplish this by creating $n$ neurons. Each neuron consists of two sets of learned parameters:
 
@@ -51,7 +51,9 @@ This gives us one value per neuron, which is its activation. Since we have $n$ n
 :::
 
 :::{warning} Confusing terminology
-"Neuron" is a somewhat ambiguous term that conflates the learned parameters, the computations that involve them, and the resulting activations. I'll try to be clear about which I mean as we go.
+"Neuron" and "layers" are somewhat ambiguous terms that conflates the learned parameters, the computations that involve them, and the resulting activations. I'll try to be clear about which I mean as we go.
+
+The parameters feeding into a layer (in the true sense of the activation) are sometimes called the {dfn}`layer parameters`.
 :::
 
 Each of these neurons essentially defines a pattern the FFN can detect. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
@@ -91,7 +93,10 @@ The term "activation" comes from the biological metaphor that I mentioned above 
 
 ### Multiple layers
 
-In a generic FFN, we would have some arbitrary number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on.
+In a generic FFN, we would have some arbitrary number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on. Each of these hidden layers, as well as the final output layer, may have any number of neurons.
+
+(multiple-layers-figure)=
+{drawio}`A FFN with two hidden layers|images/ffn/multi`
 
 In LLMs, we typically only have one hidden layer per FFN, so the simplified model I described above is actually the full story. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide, as I'll discuss more in @05-putting-it-together).
 

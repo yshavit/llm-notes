@@ -8,7 +8,7 @@ There are a few steps to go through. Rather than spelling them out from the star
 
 ## The little LLM that couldn't
 
-Let's start with the smallest thing that has the basic shape of an LLM. It's basically what we have so far:
+Let's start with the smallest thing that has the basic shape of an LLM. Most of it is what we've already covered:
 
 (smallest-llm-figure)=
 {drawio}`Simplified LLM|images/transformer/smallest-llm`
@@ -66,12 +66,24 @@ At this point, you should understand everything in [the image above](#smallest-l
 
 Pause for a moment. This is a milestone. You now basically understand how LLM inference works.
 
+## Stacking transformer blocks
+
+In the previous chapter, I mentioned that a traditional FFN [has multiple hidden layers](#multiple-layers-figure), but that LLMs don't. Instead, LLMs stack multiple transformer blocks.
+
+Since each transformer block is just an attention layer and an FFN with a single hidden layer, to me this feels similar to a traditional, multi-layered FFN, but with that special-sauce of attention sprinkled throughout. (That said, that's not how standard literature describes it. People in the field think of transformers as a different architecture, not as a modification of FFNs.)
+
+{drawio}`Same architecture as the minimal LLM, but with multiple transformer blocks|images/transformer/multi-llm`
+
+Note that LLMs typically add one final attention layer between the last transformer and the output projection, as shown in the diagram.
+
+Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
+
 :::{warning} WIP
 TODO
 
 In addition to whatever's in the book, make sure I cover:
 
-1. Residual connections / skip connections: The attention output gets added back to the input (x + Attention(x)). This is crucial for training deep networks.
+1. Residual connections / skip connections: The attention output gets added back to the input (x + Attention(x)). This is crucial for training deep networks. **This is why $d = \delta$. Otherwise, you'd need yet another learned projection.
 2. Layer normalization: Usually applied before or after attention (or both). This is important for training stability. Make sure I mention that epsilon is just to avoid dividing by zero.
 
 > Why Not Use a Conditional instead of always adding epsilon?
