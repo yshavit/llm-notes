@@ -38,20 +38,20 @@ $$
 
 This matrix doesn't have a standard name. It can be called the output projection, the LM (language modeling) head, or the unembedding layer. It's a learned parameter matrix.
 
-Note that unembedding is basically the reverse of the original translation from tokens to token embeddings that we did back in @02-input-to-vectors. Some models even use the same weights in both, to cut down on the model size.
-
 :::{aside}
 
 - **projection layer**: a learned matrix, $d \times v$
 :::
 
-:::{tip} Why do we output $n \times v$?
+Note that unembedding is basically the reverse of the original translation from tokens to token embeddings that we did back in @02-input-to-vectors. Some models even use the same weights in both, to cut down on the model size.
 
-When I learned that the LLM outputs an $n \times v$ output vector-of-vectors, but that we only use the last element of that "outer" vector, I found myself wondering why we don't just output a single vector. Why do we output $n$ logits, only to throw away all but the last?
+:::{tip} Why do we output $n$ logits?
+
+When I learned that the LLM outputs an $n$ logits but that we only use the last one, I found myself wondering why we don't just output a single vector.
 
 Part of the issue is that there isn't actually a great way to turn an $n \times d$ matrix into a $v$ vector (or, equivalently, a $1 \times v$ matrix).
 
-But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. For example, if the output of "The quick brown fox" had produced an output that predicted "fox" (input token 4, output logit 3) as unlikely, we could use that as feedback during training. The $n \times d$ output gives us $n$ such training opportunities per pass.
+But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. For example, if the output of "The quick brown fox" had produced an output that predicted "fox" (input token 4, output logit 3) as unlikely, we could use that as feedback during training. The $n$-logit output gives us $n$ such training opportunities per pass.
 
 We can't optimize this away at inference time, because we'd need to do that via a different projection matrix, and we won't have the training to fill in that matrix's values.
 :::
@@ -78,7 +78,7 @@ Note that LLMs typically add one final attention layer between the last transfor
 
 Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
-A small LLM may have a couple dozen transformer blocks, and large commercial ones have 80-100 or more.
+A small LLM may have a couple dozen transformer blocks, and large, commercial ones have 80-100 or more.
 
 ## Architectural tweaks to aid training
 
@@ -130,5 +130,8 @@ In addition to whatever's in the book, make sure I cover:
 ## Special tokens
 
 :::{warning} TODO
-EOS, others
+
+- EOS (End of Sequence)
+- UNK (Unknown)
+- System / User / Assistant to basically toggle "modes" during chat
 :::
