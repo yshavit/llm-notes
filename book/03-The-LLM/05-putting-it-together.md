@@ -1,6 +1,68 @@
 # Putting it all together
 
+So far, we've turned text into tokens, tokens into input embeddings, and augmented the input embeddings into attention. We also went over the basics of FFNs. Now we're ready to put the pieces together. We're almost there!
+
 {drawio}`Self-attention and the FFN combine to create a transformer|images/transformer/llm-flow-transformer`
+
+There are a few steps to go through. Rather than spelling them out from the start, I'll build them up bit by bit. That means this chapter will have a bit of "just one more thing," but hopefully the trade-off is that it'll provide some of the why as well as the what.
+
+## The little LLM that couldn't
+
+Let's start with the smallest thing that has the basic shape of an LLM. It's basically what we have so far:
+
+(smallest-llm-figure)=
+{drawio}`Simplified LLM|images/transformer/smallest-llm`
+
+(Note that in these examples, we'll be treating words as tokens. As discussed in @02-input-to-vectors, the actual tokens are substrings and include punctuation.) Most of this should be familiar by now, but the $W_{out}$ and output logits are new.
+
+The logits (a portmanteau of "logistic unit") are a vector of vectors. The "outer" vector's elements represent token predictions, with each element corresponding to one past the corresponding input token.
+
+{drawio}`Input tokens to output. "The quick brown" translates to "quick brown fox"|images/transformer/smallest-llm-logits`
+
+:::{aside}
+
+- **logit**: The final output of the LLM iteration; a $v$-sized vector. Can also be the whole $n \times v$ output.
+:::
+
+Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary. The values within these logits represent how likely that token is to be the right one.
+
+{drawio}`A single logit,|images/transformer/smallest-llm-logit-values`
+
+Since the last logit in the outer vector represents the predictions for the next token after the input, and the highest value in that logit represents which of those tokens is most likely to be right. That's the one we'll append to the input and loop back again.
+
+If you remember, the output from the FFN was a $n$-sized vector (one per token) of $d$-sized vectors (the FFN's inferences; we'll get to $d$'s sizing below). We need to turn each of these $d$-vectors into a $v$-vector, where $v$ is the vocabulary size. Hopefully this will be enough that you can guess how we do this: we need a $d \times v$ matrix, which I'll call $W_{out}$:
+
+$$
+\text{FFN Output}_{(n \times d)} \cdot W_{out\ (d \times v)} = \text{Logits}_{(n \times v)}
+$$
+
+This matrix doesn't have a standard name. It can be called the output projection, the LM (language modeling) head, or the unembedding layer. It's a learned parameter matrix.
+
+Note that unembedding is basically the reverse of the original translation from tokens to token embeddings that we did back in @02-input-to-vectors. Some models even use the same weights in both, to cut down on the model size.
+
+:::{aside}
+
+- **projection layer**: a learned matrix, $d \times v$
+:::
+
+:::{tip} Why do we output $n \times v$?
+
+When I learned that the LLM outputs an $n \times v$ output vector-of-vectors, but that we only use the last element of that "outer" vector, I found myself wondering why we don't just output a single vector. Why do we output $n$ logits, only to throw away all but the last?
+
+Part of the issue is that there isn't actually a great way to turn an $n \times d$ matrix into a $v$ vector (or, equivalently, a $1 \times v$ matrix).
+
+But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. For example, if the output of "The quick brown fox" had produced an output that predicted "fox" (input token 4, output logit 3) as unlikely, we could use that as feedback during training. The $n \times d$ output gives us $n$ such training opportunities per pass.
+
+We can't optimize this away at inference time, because we'd need to do that via a different projection matrix, and we won't have the training to fill in that matrix's values.
+:::
+
+At this point, you should understand everything in [the image above](#smallest-llm-figure).
+
+Pause for a moment. This is a milestone. You now basically understand how LLM inference works.
+
+:::{aside}
+🎉
+:::
 
 :::{warning} WIP
 TODO
