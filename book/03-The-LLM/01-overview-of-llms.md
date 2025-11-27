@@ -128,7 +128,7 @@ There are a _lot_ of these learned parameters. A typical high-quality LLM (ChatG
 
 ### An analogy
 
-I'll describe training in more detail [later](./06-training.md), but it may help demystify things a bit if I touch on it now. I mentioned above that the learned parameters are emergent properties. How do they emerge, and how can they possibly mean anything if we didn't tell them what to mean?
+I'll describe training in more detail [later](../training), but it may help demystify things a bit if I touch on it now. I mentioned above that the learned parameters are emergent properties. How do they emerge, and how can they possibly mean anything if we didn't tell them what to mean?
 
 A metaphor may be helpful here.
 

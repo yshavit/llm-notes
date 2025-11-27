@@ -60,14 +60,6 @@ We can't optimize this away at inference time, because we'd need to do that via 
 
 At this point, you should understand everything in [the image above](#smallest-llm-figure).
 
-:::{aside}
-:class: big
-
-🎉
-:::
-
-Pause for a moment. This is a milestone. You now basically understand how LLM inference works. The rest of this chapter is just about real-world refinements to this fundamental model.
-
 ## Stacking transformer blocks
 
 In the previous chapter, I mentioned that a traditional FFN [has multiple hidden layers](#multiple-layers-figure), but that LLMs don't. Instead, LLMs stack multiple transformer blocks.
@@ -195,7 +187,7 @@ Each transformer looks like:
 
 {drawio}`Transformer showing normalization and residual connections|images/transformer/transformer-with-residuals`
 
-:::{note} Pre-normalization
+:::{note} Pre- vs post-normalization
 :class: dropdown
 This approach is called "pre-normalization", since the normalization is before each sub-layer (attention and FFN) in the transformer blocks. When the normalization is [specifically LayerNorm](#normalization-schemes), this is also called "Pre-LN".
 
@@ -241,4 +233,6 @@ These affect the UX of the LLM, but not its core AI, so I won't go into much dep
 
 At this point, we've covered all the major components of inference! Some of the concepts I've introduced are a bit outdated (especially the positional embeddings in @02-input-to-vectors), but the newer approaches are refinements, not fundamental or structural changes to the architecture.
 
-Nice!
+Pause for a moment! This is a nice milestone! You now basically understand how LLM inference works.
+
+The next chapter will just describe some mathematical optimizations we can apply to make this translate better to optimized hardware, and then I'll go into training.
