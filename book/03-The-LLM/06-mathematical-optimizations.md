@@ -1,5 +1,26 @@
 # Mathematical optimizations
 
+I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the mathematical optimizations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
+
+There are two major components to this:
+
+- Turning vectors-of-vectors into matrices
+- Increasing the rank of all tensors by 1, so that we can add a batching dimension
+
+:::{note} Assume $d = \delta$
+In this chapter, I'll be relying on the common constraint that each transformation's input and output dimensions are the same. I mentioned that this is a common model constraint in the chapter on attention, and the previous chapter provided additional motivation for it in the context of residual connections. Since it also simplifies this chapter's math, I'll just assume it from here on out.
+:::
+
+## The architecture's conceptual shape
+
+Before we dive into the mathematical optimizations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations.
+
+I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
+
+{drawio}`An overview of the LLM architecture, showing n vectors of size d for most of the flow, and a final output of n vectors of size v|images/tensors/architecture-concepts`
+
+For most of the LLM, the activations are in the form of $n$ vectors, each size $d$. The final output is still $n$ vectors, but each sized $v$ (the vocabulary size).
+
 ## Input vectors
 
 :::{warning} TODO
