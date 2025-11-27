@@ -1,5 +1,7 @@
 # Putting it all together
 
+## Overview
+
 So far, we've turned text into tokens, tokens into input embeddings, and augmented the input embeddings into attention. We also went over the basics of FFNs. Now we're ready to put the pieces together. We're almost there!
 
 {drawio}`Self-attention and the FFN combine to create a transformer|images/transformer/llm-flow-transformer`
@@ -227,7 +229,7 @@ Some other special tokens may include {keyboard}`<System>` / {keyboard}`<User>` 
 
 These affect the UX of the LLM, but not its core AI, so I won't go into much depth on them. Just know that they exist, and in particular that {keyboard}`<EOS>` acts as the signal that the LLM should stop the loop and consider its text generation done.
 
-## In summary
+## Celebration time!
 
 :::{aside}
 :class: big

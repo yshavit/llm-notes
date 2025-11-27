@@ -1,5 +1,7 @@
 # Feedforward network
 
+## Overview
+
 In the self-attention layer, we took input embedding vectors and translated them into context vectors that described what each token meant in relation to the other tokens in the input. Now, we'll pass those context vectors through something called a {dfn}`feedforward network`, which will draw higher-level inferences about those tokens that we'll use to ultimately predict the next token.
 
 {drawio}`The feedforward network is the last step of the LLM|images/ffn/llm-flow-ffn`

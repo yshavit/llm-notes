@@ -327,16 +327,6 @@ To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "
 
 {drawio}`In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer|images/attention/multi-head`
 
-### RoPE
-
-:::{important}
-TODO
-
-This replaces the positional embeddings we discussed last time. I need to learn this before I can write it up. :-)
-
-- e.g. [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
-:::
-
 ### Multiple layers
 
 Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
@@ -344,6 +334,12 @@ Lastly, in all of the above, we've been talking about "the" self-attention layer
 In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → feedforward network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
 I'll describe this in more detail in @05-putting-it-together. For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
+
+### RoPE
+
+As I mentioned in the previous chapter, modern LLMs don't add positional encoding to the input embeddings. Instead, they use something called RoPE, which gets applied in the attention layer.
+
+For now, I'll just mention that this exists. I'll describe it more in {ref}`beyond-the-toy-llm`.
 
 ## "The context is full"
 
@@ -360,41 +356,3 @@ In short, "the context is full" means that the input is as long as the LLM will 
 An LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
 
 Note that the weight matrices ($W_\star$) are _not_ crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model — not input length.
-
-## Mathematical optimizations
-
-:::{important} TODO
-brief discussion of implementation: the fact that the conceptual matrices get lifted into tensors with an extra dimension, for batching
-
-Also, mention that attention weight is often given by the canonical formula:
-
-$$
-\text{Attention}(q, K, V) = \text{softmax}\left(\frac{qK^T}{\sqrt{d_k}}\right)V
-$$
-
-That formula is for a single query token's vector, as we've been working with. Since we'll eventually be doing this for all of the input tokens, treating each one as the query token in turn, we can represent that vector of query vectors $q$ as a matrix $Q$, giving us the even more canonical formula:
-
-$$
-\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
-$$
-
-Note that $X^T$ is the transpose of $X$. From claude:
-
-> In matrix form:
->
-> - $Q$ is an $n \times \delta$ matrix (one row per query token)
-> - $K$ is an $n \times \delta$ matrix (one row per key token)
-> - $K^T$ is $\delta \times n$ (transposed - rows become columns)
->
-> So $QK^T$ gives you an $n \times n$ matrix - which is exactly your attention scores matrix! Each element $(i,j)$ is the dot product of query $i$ with key $j$.
->
-> For the single-query version:
->
-> - $q$ is a $1 \times \delta$ vector (or just $\delta$-dimensional)
-> - $K$ is $n \times \delta$
-> - $K^T$ is $\delta \times n$
-> - $qK^T$ is $1 \times n$ (one attention score per token)
->
-> The transpose is how you get the dot product of one query against all keys in one matrix operation, rather than computing them individually in a loop.
-
-:::

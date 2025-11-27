@@ -1,3 +1,6 @@
+---
+title: Beyond the Toy LLM
+---
 # Beyond the toy LLM
 
 :::{warning} WIP
@@ -6,6 +9,10 @@ TODO
 - GELU for activation function
 
 - RoPE
+
+  This replaces the positional embeddings we discussed last time. I need to learn this before I can write it up. :-)
+
+  e.g. [RoPE (Medium)](https://medium.com/@mlshark/rope-a-detailed-guide-to-rotary-position-embedding-in-modern-llms-fde71785f152)
 
 - In the real world, there are multiple self-attention-plus-NN layers:
 
