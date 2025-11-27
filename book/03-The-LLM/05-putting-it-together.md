@@ -119,7 +119,7 @@ To calculate the layer's normalized values:
    \frac{\text{activations} - \text{mean}}{\sqrt{\text{variance} + \varepsilon}}
    $$
 
-   (where $\varepsilon$ is some small value, like $1\times10^{-5}$)
+   (where $\varepsilon$ is some small value, like $10^{-5}$)
 
    - $(\text{activations} - \text{mean})$ centers the values around 0:
 
@@ -132,7 +132,7 @@ To calculate the layer's normalized values:
    - Adding $\varepsilon$ basically provides a minimum value for the denominator to avoid division by 0.
      :::{seealso} Details on $\varepsilon$
      :class: dropdown
-     Variance is always ≥ 0 (since it comes from squares of values), but if it's exactly 0 then we'll get a division-by-zero error, and even if it's just extremely small (like $\text{~} 1 \times 10^{-15}$ or something), the result of the division would be huge. This usually represents a rounding error rather than the true value we want, so adding $\varepsilon$ counteracts that.
+     Variance is always ≥ 0 (since it comes from squares of values), but if it's exactly 0 then we'll get a division-by-zero error, and even if it's just extremely small (like $10^{-15}$ or something), the result of the division would be huge. This usually represents a rounding error rather than the true value we want, so adding $\varepsilon$ counteracts that.
 
      Adding it unconditionally, as opposed to only when the values are small enough to require it, is more efficient at the hardware level.
      :::
