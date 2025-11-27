@@ -20,11 +20,14 @@ Each of these steps is very simple, so if you read the following and think "I mu
 
 ### Tokenization
 
-We start with the input text, which we just parse into tokens.
+We start with the input text, which we parse into tokens. This doesn't involve any AI: it's basically just {keyboard}`a` → `<1>`, {keyboard}`aardvark` → `<2>`, etc.
 
 I actually won't cover the tokenization algorithm itself, because it's not really an ML/AI topic. Suffice it to say that the most common form of tokenization is byte pair encoding (BPE), which basically looks for words, sub-words (like the "de" in "demystify"), and punctuation. You can read about it [on Wikipedia][bpe], but since it's not really an AI concept (it was originally invented for compression!), it's not particularly interesting for us.
 
 But basically, this is just turning something like "to be or not to be" into a stream of tokens: {keyboard}`to` {keyboard}`be` {keyboard}`or` {keyboard}`not` {keyboard}`to` {keyboard}`be`.
+
+(typical-tokenization)=
+Typical tokenization in LLMs doesn't just break sentences into words: it breaks words into common subcomponents. For example, "disinterest" might tokenize as {keyboard}`dis`+{keyboard}`interest`. OpenAI has a page that lets you see how text tokenizes: <https://platform.openai.com/tokenizer>.
 
 ### Token embeddings
 

@@ -194,11 +194,25 @@ In addition to whatever's in the book, make sure I cover:
 1. Residual connections / skip connections: The attention output gets added back to the input (x + Attention(x)). This is crucial for training deep networks. **This is why $d = \delta$. Otherwise, you'd need yet another learned projection.
 :::
 
-## Special tokens
+## Control flow and special tokens
 
-:::{warning} TODO
+The last thing we need to add to our LLM is the concept of special tokens.
 
-- EOS (End of Sequence)
-- UNK (Unknown)
-- System / User / Assistant to basically toggle "modes" during chat
-:::
+To motivate this, consider the autocomplete loop I've been referencing at the top of every chapter so far: the LLM starts with some input tokens, predicts the next token, appends that to the tokens list, and then starts the loop again with that newly expanded list. But how does it know when to stop?
+
+Until now, I've been using words to illustrate tokens, like "Houston" or "jumps". I mentioned earlier that [LLMs tokenize on subcomponents of words](#typical-tokenization), but LLMs also introduce special tokens that describe the high-level structure of the text.
+
+The most important of these is probably {keyboard}`<EOS>`, or end-of-sequence. This token means that the output text is done, and when an LLM outputs one of these, it knows to stop the loop. (Different models may call this other things, like {keyboard}`<|endoftext|>`.)
+
+For example, in the following dialogue, {keyboard}`<EOS>` signifies that the line is over, and that it's the next person's turn to speak:
+
+> **MERCUTIO** I am hurt. A plague o' both your houses! I am sped. Is he gone, and hath nothing?{keyboard}`<EOS>`
+>
+> **BENVOLIO** What, art thou hurt?{keyboard}`<EOS>`
+>
+> **MERCUTIO** Ay, ay, a scratch, a scratch; marry, 'tis enough.
+Where is my page? Go, villain, fetch a surgeon.{keyboard}`<EOS>`
+
+Some other special tokens may include {keyboard}`<System>` / {keyboard}`<User>` / {keyboard}`<Assistant>` for defining different roles within a chat interface.
+
+These affect the UX of the LLM, but not its core AI, so I won't go into much depth on them. Just know that they exist, and in particular that {keyboard}`<EOS>` acts as the signal that the LLM should stop the loop and consider its text generation done.

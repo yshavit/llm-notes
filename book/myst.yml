@@ -19,6 +19,10 @@ project:
       path: ../myst-plugins/drawio
     - type: executable
       path: ../myst-plugins/dfn
+  error_rules:
+    - rule: link-resolves
+      keys:
+        - "https://platform.openai.com/tokenizer"
 site:
   title: Yuval's Intro to LLMs
   template: book-theme
