@@ -187,6 +187,8 @@ Each transformer looks like:
 
 {drawio}`Transformer showing normalization and residual connections|images/transformer/transformer-with-residuals`
 
+I mentioned back in the chapter on attention that the attention layer's output dimension $\delta$ is usually the same as its input $d$. Residuals are one of the main reasons we set that constraint. Without it, we'd need to add yet another transformation to match the dimensions before performing the addition. While this could technically work, it works against the residual's main goal, which is to provide a direct path of data flow throughout the LLM's layers. It's better to just set the two dimensions as equal, so that we can straightforwardly add the residual.
+
 :::{note} Pre- vs post-normalization
 :class: dropdown
 This approach is called "pre-normalization", since the normalization is before each sub-layer (attention and FFN) in the transformer blocks. When the normalization is [specifically LayerNorm](#normalization-schemes), this is also called "Pre-LN".
