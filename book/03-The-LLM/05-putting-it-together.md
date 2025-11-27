@@ -187,13 +187,6 @@ Residual connections don't add any new learned parameters (or hyperparameters) t
 :::{warning} TODO
 :::
 
-:::{warning} TODO
-
-In addition to whatever's in the book, make sure I cover:
-
-1. Residual connections / skip connections: The attention output gets added back to the input (x + Attention(x)). This is crucial for training deep networks. **This is why $d = \delta$. Otherwise, you'd need yet another learned projection.
-:::
-
 ## Control flow and special tokens
 
 The last thing we need to add to our LLM is the concept of special tokens.
@@ -216,3 +209,17 @@ Where is my page? Go, villain, fetch a surgeon.{keyboard}`<EOS>`
 Some other special tokens may include {keyboard}`<System>` / {keyboard}`<User>` / {keyboard}`<Assistant>` for defining different roles within a chat interface.
 
 These affect the UX of the LLM, but not its core AI, so I won't go into much depth on them. Just know that they exist, and in particular that {keyboard}`<EOS>` acts as the signal that the LLM should stop the loop and consider its text generation done.
+
+## In summary
+
+:::{aside}
+:class: big
+
+🎉
+
+&nbsp;&nbsp;&nbsp;&nbsp;🎉
+:::
+
+At this point, we've covered all the major components of inference! Some of the concepts I've introduced are a bit outdated (especially the positional embeddings in @02-input-to-vectors), but the newer approaches are refinements, not fundamental or structural changes to the architecture.
+
+Nice!
