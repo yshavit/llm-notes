@@ -78,6 +78,7 @@ Note that LLMs typically add one final attention layer between the last transfor
 
 Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
+(llm-stacking-depth)=
 A small LLM may have a couple dozen transformer blocks, and large, commercial ones have 80-100 or more.
 
 ## Architectural tweaks to aid training
@@ -166,8 +167,20 @@ The above algorithm is called LayerNorm. There are other algorithms, some of whi
 
 ### Residual connections
 
-:::{warning} TODO
+Although the [non-linear stacking](#activation-function) of multiple transformer blocks lets the model learn sophisticated patterns, that same non-linearity serves to "disconnect" adjacent layers. At training, this can dampen the effect that each lower layer has on the one above it. Since LLMs typically have [many layers](#llm-stacking-depth), this presents a real problem in practice.
+
+The solution is simple: just add each layer's original activation values back to the post-transformed values. This is called a {dfn}`residual connection`.
+
+:::{aside}
+
+- **residual connection**: also called "skip connection" or "shortcut connection"; a stateless operation (no learned or hyperparameters)
 :::
+
+{drawio}`A residual connection just adds the pre-transformed activations to the post-transformed activations|images/transformer/residual-connection`
+
+The result combines the original values with the result of the transformation. This provides just enough of a connection to let the training flow back up the stack: each layer adjusts its input rather than replacing it entirely.
+
+Residual connections don't add any new learned parameters (or hyperparameters) to the model. They're just a stateless operation between layers.
 
 ### Where they fit in
 

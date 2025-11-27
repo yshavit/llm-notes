@@ -64,6 +64,8 @@ We need the {dfn}`bias` because each of these neurons defines a linear function 
 
 {drawio}`diagram showing liner regression intersecting the y axis at about 2.4|images/ffn/bias`
 
+(activation-function)=
+
 ### Activation function
 
 Finally, we define the {dfn}`activation function`. This can technically be any non-linear function that takes the raw output from the linear function ( $(input \cdot weights) + bias$ ) and produces another scalar. In practice, a common one is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated at 0":
