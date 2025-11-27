@@ -1,4 +1,6 @@
-# Training
+(introduction-to-training)=
+
+# Introduction to training
 
 :::{warning} WIP
 TODO
@@ -24,7 +26,7 @@ move this to the training section
 
 ### Causal masking
 
-This improvement only applies during training (which I'll describe in more detail [in a later chapter](./06-training)).
+This improvement only applies during training.
 
 Remember that our LLM will ultimately be used to auto-complete prompts. That means that at the point where it's making predictions, it won't have access to words after the input: they haven't been written yet!
 

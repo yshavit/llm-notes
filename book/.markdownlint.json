@@ -3,5 +3,8 @@
   "link-fragments": false,
   "MD026": {
     "punctuation": ".,;:"
+  },
+  "MD041": {
+    "allow_preamble": true
   }
 }

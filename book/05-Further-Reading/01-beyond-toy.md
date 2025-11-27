@@ -1,6 +1,5 @@
----
-title: Beyond the Toy LLM
----
+(beyond-the-toy-llm)=
+
 # Beyond the toy LLM
 
 :::{warning} WIP
