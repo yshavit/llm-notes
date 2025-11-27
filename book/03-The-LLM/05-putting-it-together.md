@@ -82,12 +82,12 @@ A small LLM may have a couple dozen transformer blocks, and large, commercial on
 
 ## Architectural tweaks to aid training
 
-If all we had to worry about were inference, we'd be done at this point. Unfortunately, we still need to train our model, and deeply stacked transformers are going to cause issues when we do. To solve this, we're going to add two new ideas: normalization and residual connections.
+If all we had to worry about were inference, we'd be done at this point. Unfortunately, we still need to train our model, and deeply stacked transformers are going to cause issues when we do so. To solve this, we're going to add two new ideas: normalization and residual connections.
 
 :::{note} Getting ahead of ourselves, by necessity
 Normalization and residual connections are all about training, which I haven't talked about yet.
 
-Normalization and residual connections aren't part of the LLM's core conceptual architecture in the same way that attention or even FFNs are. They're "just" engineering workarounds that have been empirically found to make training better. Training is a crucial part of creating a good LLM, so these pieces are extremely important in practice; but I'll cover training later, so don't worry if the motivation for them doesn't click yet.
+These components aren't part of the LLM's core conceptual architecture in the same way that attention or even FFNs are. They're "just" engineering workarounds that have been empirically found to make training better. Training is a crucial part of creating a good LLM, so these pieces are extremely important in practice; but I'll cover training later, so don't worry if the motivation for adding them doesn't click yet.
 :::
 
 Without getting into technical details, it turns out that our stacked transformers would have two problems at training time:
