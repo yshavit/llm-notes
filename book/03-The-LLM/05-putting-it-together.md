@@ -74,8 +74,6 @@ Since each transformer block is just an attention layer and an FFN with a single
 
 {drawio}`Same architecture as the minimal LLM, but with multiple transformer blocks|images/transformer/multi-llm`
 
-Note that LLMs typically add one final attention layer between the last transformer and the output projection, as shown in the diagram.
-
 Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
 (llm-stacking-depth)=
@@ -162,6 +160,7 @@ $$
 $$
 
 :::{note} Other normalization schemes
+(normalization-schemes)=
 The above algorithm is called LayerNorm. There are other algorithms, some of which are more sophisticated and some which are simpler (and thus cheaper to compute). They all serve the same high-level function, so I won't go into them in detail.
 :::
 
@@ -184,8 +183,26 @@ Residual connections don't add any new learned parameters (or hyperparameters) t
 
 ### Where they fit in
 
-:::{warning} TODO
+Now that we have normalization and residual connections, we just need to fit them into the overall architecture. We will add:
+
+- a normalization layer before each attention layer and each FFN
+- a residual connection around each attention layer and FFN
+- a final normalization layer before the final output projection
+
+Each transformer looks like:
+
+{drawio}`Transformer showing normalization and residual connections|images/transformer/transformer-with-residuals`
+
+:::{note} Pre-normalization
+:class: dropdown
+This approach is called "pre-normalization", since the normalization is before each sub-layer (attention and FFN) in the transformer blocks. When the normalization is [specifically LayerNorm](#normalization-schemes), this is also called "Pre-LN".
+
+Some models also use post-normalization, but this is less common. There isn't a conceptual difference: pre-normalization has just been empirically found to work better.
 :::
+
+The overall architecture looks like:
+
+{drawio}`Full architecture, with all transformers, normalizations, and residual connections|images/transformer/full-architecture`
 
 ## Control flow and special tokens
 
