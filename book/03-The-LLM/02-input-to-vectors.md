@@ -56,7 +56,7 @@ So, now we have a bunch of token embeddings — one per token in our vocabulary 
 But a word may mean something different if it's the first word of a sentence vs if it's at the middle or end. That could be because it has an entirely different meaning, and the different usages correlate with position; or it could have the same meaning, but with different nuance or tone. To capture this additional information, we're going to add {dfn}`positional embedding`.
 
 :::{important}
-Modern LLMs don't actually use positional embeddings anymore. They still care about positions, but the mechanism is different and more complex. I'll discuss positional embeddings now because they're simpler, and @07-beyond-toy will explain the modern alternative.
+Modern LLMs don't actually use positional embeddings anymore. They still care about positions, but the mechanism is different and more complex. I'll discuss positional embeddings now because they're simpler, and @../01-Further-Reading/01-beyond-toy will explain the modern alternative.
 :::
 
 Just as we defined a unique embedding for each token in the vocabulary — "be" always the same token embedding, for example — we'll now define a unique embedding for each position. For example, the first token in an input always used the same embedding, that of position 0. These embeddings are learned vectors, with the same dimension $d$ as the token embeddings.
@@ -75,7 +75,7 @@ Then, for each token in the parsed text, we just the sum its token embedding and
 ## Mathematical optimizations
 
 :::{warning} TODO
-Move this to @08-mathematical-optimizations
+Move this to @06-mathematical-optimizations
 
 :::
 

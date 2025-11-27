@@ -210,7 +210,7 @@ The last thing we need to add to our LLM is the concept of special tokens.
 
 To motivate this, consider the autocomplete loop I've been referencing at the top of every chapter so far: the LLM starts with some input tokens, predicts the next token, appends that to the tokens list, and then starts the loop again with that newly expanded list. But how does it know when to stop?
 
-Until now, I've been using words to illustrate tokens, like "Houston" or "jumps". I mentioned earlier that [LLMs tokenize on subcomponents of words](#typical-tokenization), but LLMs also introduce special tokens that describe the high-level structure of the text.
+Until now, I've been using words to illustrate tokens, like "Houston" or "jumps". I mentioned earlier that [LLMs actually tokenize on subcomponents of words](#typical-tokenization), but LLMs also introduce special tokens that describe the high-level structure of the text.
 
 The most important of these is probably {keyboard}`<EOS>`, or end-of-sequence. This token means that the output text is done, and when an LLM outputs one of these, it knows to stop the loop. (Different models may call this other things, like {keyboard}`<|endoftext|>`.)
 
