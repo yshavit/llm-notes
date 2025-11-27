@@ -97,12 +97,79 @@ Without getting into technical details, it turns out that our stacked transforme
 
 We'll solve the first problem with {dfn}`normalization`, and the second with {dfn}`residual connections`.
 
+I'll describe what each layer is first, and then show how they fit into the architecture.
+
 ### Normalization
+
+The goal of normalization is to ensure that activations (that is, the values at inference time) don't vary too wildly. Our goal is to center the values roughly around 0, and also "squash" them so they're roughly ±1.
+
+To calculate the layer's normalized values:
+
+1. First, we'll calculate the activations' mean and variance.
+
+    :::{note} Refresher on variance
+    :class: dropdown
+    Variance is a standard measure in statistics that describes how spread out a set of values is.
+
+    We calculate it by computing the values average; then, computing how far each value is from the average; then squaring those distances; then taking the average.
+    :::
+
+2. Next, we'll get the "plain" normalized values:
+   $$
+   \frac{\text{activations} - \text{mean}}{\sqrt{\text{variance} + \varepsilon}}
+   $$
+
+   (where $\varepsilon$ is some small value, like $1\times10^{-5}$)
+
+   - $(\text{activations} - \text{mean})$ centers the values around 0:
+
+     {drawio}`subtracting the activations' mean from themselves centers them around zero|images/transformer/values-around-zero`
+
+   - Since the variance comes from the square of each value's distance from the mean, $\sqrt{\text{variance}}$ gets us back to the scale of the original values (this is the standard deviation). Dividing by this value normalizes the values to roughly ±1:
+
+     {drawio}`dividing by square root of variance gets all values to be ±1|images/transformer/values-plusminus-1`
+
+   - Adding $\varepsilon$ basically provides a minimum value for the denominator to avoid division by 0.
+     :::{seealso} Details on $\varepsilon$
+     :class: dropdown
+     Variance is always ≥ 0 (since it comes from squares of values), but if it's exactly 0 then we'll get a division-by-zero error, and even if it's just extremely small (like $\text{~} 1 \times 10^{-15}$ or something), the result of the division would be huge. This usually represents a rounding error rather than the true value we want, so adding $\varepsilon$ counteracts that.
+
+     Adding it unconditionally, as opposed to only when the values are small enough to require it, is more efficient at the hardware level.
+     :::
+
+3. Finally, we'll multiply by a learned parameter called {dfn}`scale` and add a learned parameter called {dfn}`shift`.
+
+The scale and shift are both vectors of size $d$, the dimension of the layer to be normalized. This just lets us scale and shift each activation dimension separately. In contrast to most learned parameters, the scale and shift are _not_ totally random: they start as 1 and 0, respectively.
+
+:::{aside}
+
+- **normalization scale**: a learned $d$-sized vector
+- **normalization shift**: a learned $d$-sized vector
+:::
+
+These parameters basically let the training adjust the normalization: instead of the values being roughly 0±1, they'll be roughly _shift_ ± _scale_.
+
+Although the training can technically settle on any values for these parameters, in practice they often stay pretty close to 1 and 0.
+
+Putting all of the above together, we get:
+
+$$
+\text{scale}
+\cdot \left(
+  \frac{\text{activations} - \text{mean}}{\sqrt{\text{variance} + \varepsilon}}
+\right) + \text{shift}
+$$
+
+:::{note} Other normalization schemes
+The above algorithm is called LayerNorm. There are other algorithms, some of which are more sophisticated and some which are simpler (and thus cheaper to compute). They all serve the same high-level function, so I won't go into them in detail.
+:::
+
+### Residual connections
 
 :::{warning} TODO
 :::
 
-### Residual connections
+### Where they fit in
 
 :::{warning} TODO
 :::
@@ -112,19 +179,6 @@ We'll solve the first problem with {dfn}`normalization`, and the second with {df
 In addition to whatever's in the book, make sure I cover:
 
 1. Residual connections / skip connections: The attention output gets added back to the input (x + Attention(x)). This is crucial for training deep networks. **This is why $d = \delta$. Otherwise, you'd need yet another learned projection.
-2. Layer normalization: Usually applied before or after attention (or both). This is important for training stability. Make sure I mention that epsilon is just to avoid dividing by zero.
-
-> Why Not Use a Conditional instead of always adding epsilon?
-> You're right that a conditional would work functionally, but there are a few reasons we don't do it that way:
->
-> 1. Numerical stability (the main reason):
-> Even when variance isn't exactly zero, it can be very close to zero (like 1e-10). Dividing by very small numbers causes numerical instability—you get huge values that can overflow or cause NaN (not-a-number) errors downstream.
-> Adding epsilon ensures you're always dividing by at least epsilon (typically 1e-5 or 1e-6), which keeps everything numerically stable.
-> 2. Differentiability:
-> Conditionals create discontinuities in the function. For backpropagation, you need smooth gradients. The conditional variance == 0 ? epsilon : variance has a sharp jump, which is problematic for gradient-based optimization.
-> Adding epsilon smoothly blends in, maintaining differentiability everywhere.
-> 3. Hardware efficiency (your intuition):
-> Yes, conditionals do cause branch divergence on GPUs/TPUs. Different threads taking different paths through a conditional can serialize execution and kill parallelism. Always adding epsilon avoids any branching.
 :::
 
 ## Special tokens
