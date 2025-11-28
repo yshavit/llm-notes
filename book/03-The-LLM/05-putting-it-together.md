@@ -146,6 +146,8 @@ Although the training can technically settle on any values for these parameters,
 
 Putting all of the above together, we get:
 
+(normalization-function)=
+
 $$
 \text{scale}
 \cdot \left(

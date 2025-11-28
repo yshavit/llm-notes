@@ -298,16 +298,22 @@ Recall that [in the FFN](#ffn-overview-diagram), each layer has:
 
 Since this takes an input vector of scalars, this corresponds to a single embedding. As above, the full input is thus an $n \times d_{in}$ matrix. We can represent the neuron weights as a $d_{in} \times d_{out}$ matrix, which I'll call $W$ (this is not a standard term; there isn't really a standard term for these weights).
 
-Since the first step of the FFN is to calculate the dot product of the input vector with its corresponding column in $W$, we can calculate all of those dot products at once via the matrix multiplication $XW$. We can then add the biases as a $d_{out}$-sized vector $b$. Applying the activation to each of these gives us the full matrix-ified layer:
+Since the first step of the FFN is to calculate the dot product of the input vector each column in $W$, we can calculate all of those dot products at once via the matrix multiplication $XW$. We can then add the biases as a $d_{out}$-sized vector $b$. Applying the activation to each of these gives us the full matrix-ified layer:
 
 $$
 \text{Layer} = \text{activation}( XW + b )
 $$
 
+The activation function is applied to each element in the matrix; but GPUs and TPUs can do this in parallel and very efficiently.
+
 ### Normalization
 
-:::{warning} TODO
+Recall that for each embedding token, normalization layer is calculated as:
+
+:::{embed} #normalization-function
 :::
+
+To matrix-ify this, we'll just take our input matrix X ($n \times d$) and apply the normalization function per row. This still requires various per-element operations, but GPUs and TPUs can process each row in parallel, and the operations themselves are highly optimized.
 
 ## Batching
 
