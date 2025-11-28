@@ -82,6 +82,7 @@ transposition:
   \begin{bmatrix} a & d \\ b & e \\ c & f \end{bmatrix}
   $$
 
+(matrix-math-details)=
 :::{note} Details on matrix math
 :class: dropdown
 
