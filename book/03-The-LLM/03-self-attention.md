@@ -304,6 +304,7 @@ All of this gives us the $\delta$-dimensional context vector for that one query 
 
 The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
 
+(multi-head)=
 ### Multi-head attention and $W_o$
 
 When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weight matrices, vectors, etc — forms a unit called an {dfn}`attention head`.
