@@ -38,7 +38,7 @@ I found this all very hard to wrap my head around. I've tried to interweave the 
 
 We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math][prev].
 
-[prev]: ../02-Background-math/01-vectors-matrices-tensors.md
+[prev]: ../01-Introduction/03-vectors-matrices-tensors.md
 
 ````{seealso} Quick refresher, if you need it
 :class: dropdown
@@ -305,6 +305,7 @@ All of this gives us the $\delta$-dimensional context vector for that one query 
 The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
 
 (multi-head)=
+
 ### Multi-head attention and $W_o$
 
 When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weight matrices, vectors, etc — forms a unit called an {dfn}`attention head`.
