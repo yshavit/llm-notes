@@ -322,3 +322,25 @@ Up until now, we've been working with one input at a time. In practice, GPUs and
 This doesn't affect the learned parameters at all; just the activations. Basically, we just lift them into a tensor of 1 higher rank. Instead of representing the input as an $n \times d$ matrix, we'll represent it as a $b \times n \times d$ tensor.
 
 The rest of the math is exactly the same. At the hardware level, this will just result in the same operations (including the same weights) being applied to different inputs at the same time. TPUs are highly optimized for this.
+
+## The final architecture
+
+Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ $d-sized$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix.
+
+{drawio}`The same architecture as above, but with matrices instead of vectors-of-vectors|images/tensors/architecture-matrix`
+
+This diagram elides some of the complication, especially in the attention layer (and specifically, its multi-head architecture, as described above).
+
+:::{aside}
+:class: big
+
+🎉
+
+&nbsp;&nbsp;&nbsp;&nbsp;🎉
+
+&nbsp;&nbsp;🎉
+:::
+
+That's it! **You have an LLM!**
+
+If someone were to provide you good values for all the weights throughout the architecture, you'd have enough to build an LLM that would have been competitive in early 2020. You're not about to take down OpenAI or Anthropic, but that's still pretty neat!
