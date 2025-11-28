@@ -112,7 +112,7 @@ inference
 
 It's natural to ask: where do these learned parameters come from, and what do they represent?
 
-Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these meanings corresponds to an element within a vector (the "embedding vector", which I'll describe in @02-input-to-vectors). Those values are the learned parameters for that vector.
+Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings. In the tokenization and embedding portion of the LLM, each of these meanings corresponds to an element within a vector (the "embedding vector", which I'll describe later). Those values are the learned parameters for that vector.
 
 But what do these actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 6321 in the embedding vector", where property 6321 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" _by way of analogy_, but remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning feedforward network.
 
