@@ -21,20 +21,18 @@ I'll skip the tokenization phase, since that's effectively a preparation step th
 
 For most of the LLM, the activations are in the form of $n$ vectors, each size $d$. The final output is still $n$ vectors, but each sized $v$ (the vocabulary size).
 
-## Input vectors
+## Vectors of vectors → matrices
 
-:::{warning} TODO
-From input vectors
-:::
+The basic "lifting" we'll do is to to turn vectors of vectors into matrices. This will let us turn "for each outer vector, do some stuff" loops into matrix multiplication. This doesn't change what's going on conceptually, but it lets us do the math on GPUs and TPUs that process it much more quickly.
 
-Each input token's embedding is a vector, but our input is a list of input tokens. This means we have a vector of vectors. We can group these into matrices. For example:
+All we need to do is turn each "outer" vector into a row in a matrix:
 
 $$
-\begin{array}{llllll}
-\text{to} &  [ & 1.32, & 5.91, & 5.71, & \dots] \\
-\text{be} &  [ & 6.16, & 4.81, & 3.62, & \dots] \\
-\text{or} &  [ & 8.27, & 9.53, & 2.44, & \dots] \\
-\text{...} & [ & \dots, & \dots, & \dots, & \dots]
+\begin{array}{llll}
+[\; 1.32, & 5.91, & 5.71, & \dots \;] \\
+[\; 6.16, & 4.81, & 3.62, & \dots \;] \\
+[\; 8.27, & 9.53, & 2.44, & \dots \;] \\
+[\; \dots, & \dots, & \dots, & \dots \;]
 \end{array}
 \quad \Longrightarrow \quad
 \begin{bmatrix}
@@ -44,8 +42,6 @@ $$
 \dots & \dots & \dots & \dots
 \end{bmatrix}
 $$
-
-Furthermore, during training we often want to work with batches of inputs at the same time. To do that, we just raise these matrices to rank 3 tensors, where the first index represents the input within the batch, and the other two represent the each input's matrix (which in turn just represents the embeddings for each token in the input). Again, we do this for the token embeddings, positional embeddings, and input embeddings.
 
 ## Attention
 
