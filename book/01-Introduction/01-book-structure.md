@@ -4,21 +4,21 @@
 
 The driving principle behind this book's organization is that you should be able to read it front-to-back. This means:
 
-- The book assumes you don't know anything relating to machine learning (ML) or LLMs.
-- If you do know something, you can always skip past it; but you should never have to jump to an appendix and then back to where you were.
-- No footnotes
+- The book assumes you don't know anything about machine learning (ML) or LLMs.
+- If you do know something, you can always skip past it; but you should never have to jump ahead then back to where you were.
+- In particular, this means no footnotes or appendices.
 
-That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you shouldn't need to click through to them.
+That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you don't need to click through to them.
 
-Human learning being the way it is, you may still need to refer back to a section you've already read; "front-to-back" doesn't mean you shouldn't ever need to do that. But the book isn't organized around you having to jump around. In particular, I will abstain from appendices and footnotes.
+(Human learning being the way it is, you may still need to refer back to a section you've already read to remind yourself of it; "front-to-back" doesn't mean you shouldn't ever need to do that.)
 
 ## Organization
 
-The book is organized into three parts:
+The book is organized into four parts:
 
 1. **Introduction** (you are here), which includes a very high level overview of LLMs and a quick refresher on vectors and matrices
-2. **The LLM**, which will walk you through the structure of an LLM from 0 to 60
-3. **Training**, which will discuss how an LLM learns the values that power that structure
+2. **The LLM**, which will walk you through the architecture of an LLM from 0 to 60
+3. **Training**, which will discuss how an LLM learns the values that power that architecture
 4. **Further reading**, which will talk about modern improvements to the LLM, as well as other, related ML technologies.
 
 ## Callouts
@@ -46,7 +46,7 @@ That said, this book _will_ be getting into the specific math behind LLMs, so th
 
 ## The term "LLM"
 
-LLMs — large language models — encompass a range of technologies. These can include models that generate text, but also translation tools, classification tools, and others. There are various architectures under the umbrella of LLMs, including BERT and others (I'll discuss some of these in @other-llm-models).
+LLMs — large language models — encompass a range of technologies. These can include models that generate text, but also translation tools, classification tools, and others. There are various architectures under the umbrella of LLMs, such as BERT (I'll discuss some of these in @other-llm-models).
 
 When most people talk about "LLMs" these days, they really mean the kind that can generate text and images, and specifically an LLM architecture called {dfn}`Generative Pre-Training`, or {dfn}`GPT`.
 
