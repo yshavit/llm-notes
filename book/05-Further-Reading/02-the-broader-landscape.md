@@ -1,4 +1,6 @@
-# Extra: Related technologies
+(other-llm-models)=
+
+# Other LLM models
 
 :::{warning} WIP
 TODO
