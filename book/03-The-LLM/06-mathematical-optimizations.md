@@ -321,4 +321,4 @@ Up until now, we've been working with one input at a time. In practice, GPUs and
 
 This doesn't affect the learned parameters at all; just the activations. Basically, we just lift them into a tensor of 1 higher rank. Instead of representing the input as an $n \times d$ matrix, we'll represent it as a $b \times n \times d$ tensor.
 
-The rest of the math is exactly the same. At the hardware level, this will just result in the same operations (including the same weights) being applied to different input at the same time. TPUs are highly optimized for this.
+The rest of the math is exactly the same. At the hardware level, this will just result in the same operations (including the same weights) being applied to different inputs at the same time. TPUs are highly optimized for this.
