@@ -252,7 +252,7 @@ Described as such, this would require looping over each of the heads to perform 
 
 - Instead of the weights being $d_{model} \times d$, they're $d_{model} \times d_{model}$; in other words, each weight matrix contains the full, multi-head parameters.
 - When we multiply the input $X$ against these, we get matrices of size $n \times d_{model}$
-- We "reshape" these into rank-3 tensors $(n, h, d)$. This basically just means conceptually splitting the rows:
+- We "reshape" these into rank-3 tensors $(n, h, d)$. This basically just means conceptually splitting along the columns:
 
   $$
   \begin{bmatrix}
@@ -278,14 +278,12 @@ Described as such, this would require looping over each of the heads to perform 
   $$
 - We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. At this point, each head is an $n \times d$ matrix.
 - Now we calculate the attention weights $A$ as we did before.
-  - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a looping dimension; but the actual implementation is highly optimized.
+  - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension; but the actual implementation is highly optimized.
   - The result is an $(h, n, n)$ tensor.
 - We then multiply this by our $V_{(h,n,d)}$ to get an attention output $(h, n, d)$
 - And finally, we transpose this back to $(n, h, d)$, reshape it back to $(n, d_{model})$ and apply the $W_o$ projection.
 
-:::{warning} TODO
-Verify the above!
-:::
+These operations are highly optimized in the software that runs them, and down to the hardware level.
 
 ### FFNs
 
