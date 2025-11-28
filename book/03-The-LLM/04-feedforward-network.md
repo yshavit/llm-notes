@@ -41,6 +41,7 @@ For each neuron, we'll:
 
 This gives us one value per neuron, which is its activation. Since we have $n$ neurons, these activations are our output vector.
 
+(ffn-overview-diagram)=
 {drawio}`Inputs feed into neurons, each of which produces one value of the output vector|images/ffn/overview`
 
 :::{aside}

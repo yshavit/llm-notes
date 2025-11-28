@@ -287,8 +287,22 @@ These operations are highly optimized in the software that runs them, and down t
 
 ### FFNs
 
-:::{warning} TODO
-:::
+Recall that [in the FFN](#ffn-overview-diagram), each layer has:
+
+- an input vector of scalars, sized $d_{in}$
+- $d_{out}$ neurons, each containing a $d_{in}$-sized vector of weights
+- for each neuron, we:
+  - calculate the dot product of the input and that neuron's weights; this gives us a scalar
+  - add a scalar bias, one per neuron
+  - pass that through an activations to get one scalar per neuron, which is that neuron's activation
+
+Since this takes an input vector of scalars, this corresponds to a single embedding. As above, the full input is thus an $n \times d_{in}$ matrix. We can represent the neuron weights as a $d_{in} \times d_{out}$ matrix, which I'll call $W$ (this is not a standard term; there isn't really a standard term for these weights).
+
+Since the first step of the FFN is to calculate the dot product of the input vector with its corresponding column in $W$, we can calculate all of those dot products at once via the matrix multiplication $XW$. We can then add the biases as a $d_{out}$-sized vector $b$. Applying the activation to each of these gives us the full matrix-ified layer:
+
+$$
+\text{Layer} = \text{activation}( XW + b )
+$$
 
 ### Normalization
 
