@@ -7,9 +7,15 @@ downloads:
 
 ## What and _why_ is self-attention?
 
-In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, in this section, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
+In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
 
 {drawio}`Self-attention sits between tokenization and the feedforward network|images/attention/llm-flow-self-attention`
+
+:::{note} "Self" attention
+The "self" in self-attention refers to the fact that the input vector-of-vector looks at itself.
+
+In the context of LLMs, it's often referred to as just "attention" (without "self-") as a shorthand.
+:::
 
 When I described the input embeddings in the previous chapter, I mentioned how they're combined with position embedding. This lets us differentiate between "have" as the first word in a sentence and "have" as the third word. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
@@ -19,12 +25,20 @@ In other words, we want to learn what "have" means in the context of the _specif
 
 Since this layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
-- The input is a vector representing each token in the input. Each token is itself represented by an input embedding (as described in the previous chapter), so this is an $n \times d$ matrix, where $n$ is the input size and $d$ is the dimensionality of each embedding.
+- The input is a vector representing each token in the input. Each token is itself represented by an input embedding (as described in the previous chapter), so this is an $n$-sized vector of $d$-sized vectors, where $n$ is the input size and $d$ is the dimensionality of each embedding.
 - The output will be a vector of these attentions outputs. Each attention output is a vector. We'll call that vector's dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
   :::{important} Two small but important notes
-  - $d$ and $\delta$ are technically independent [hyperparameters](#parameter-vs-activation), but in practice, $\delta = d$ in most LLMs. That's because if $\delta$ were smaller than $d$, you'd be losing information; and if it were bigger, you'd be encoding more information than you started with. It'd be like writing a number to 10 decimal places when your ruler only measures precisely to 2.
+  - $d$ and $\delta$ are technically independent [hyperparameters](#parameter-vs-activation), but in practice, $\delta = d$ in most LLMs. That's because if $\delta$ were smaller than $d$, you'd be losing information; and if it were bigger, you'd be encoding more information than you started with. It'd be like writing a number to 10 decimal places when your ruler only measures precisely to 2. Setting $d = \delta$ will also help us combine multiple transformers, as I'll describe in a later chapter.
   - $\delta$ is _not_ a standard name in LLM literature. I'm picking it to show that it's conceptually different from $d$ while highlighting that in practice they're equal.
   :::
+
+:::{aside}
+I'll be using the following conventions throughout this chapter, and in general in the book:
+
+- $n$: input size, in number of tokens
+- $d$: dimensionality of each input token
+- $\delta$: dimensionality of each output token
+:::
 
 To do this, we're going to first build up the basics of an attention output. Then, we'll introduce some important real-world refinements.
 
@@ -52,9 +66,15 @@ We're going to be making extensive use of matrix math in this chapter. Make sure
 
 As I mentioned above, what we really want to answer is: "for every input, what does it mean with respect to every other input?" That question has nuance, and as you'll recall from [my overview](#vectors-are-nuance), nuance means vectors.
 
-The naive approach is conceptually easy: we need an $n \times n$ grid, where each item answers "what does A mean with respect to B?" In other words, each cell in that grid translates the input $d$-vectors into output $\delta$-vectors.
+The naive approach is conceptually easy: we need an $n \times n$ grid, where each item answers "what does input token A mean with respect to input token B?" Since each of those items translates an input $d$-vector into an output $\delta$-vector, each can can be represented as a matrix:
 
-Since the matrix multiplication $A_{a \times b} \cdot B_{b \times c} = C_{a \times c}$, each element in the grid has to be a $d \times \delta$ matrix:
+$$
+\text{Input}_{1 \times d}
+\cdot \text{Transformation}_{d \times \delta}
+= Output_{1 \times \delta}
+$$
+
+That means each element in the grid has to be a $d \times \delta$ matrix:
 
 {drawio}`n-by-n grid, where each cell is a delta-sized vector|images/attention/attention-weights-houston-vectors`
 
@@ -87,7 +107,7 @@ Note that our two questions involved three usages of tokens:
 - How much does **(input A)** care about **(input B)**?
 - What information should **(input B)** pass forward in this context?
 
-Each of these usages has some nuance, so we'll use a learned transformation for them. We'll call these $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
+Each of these usages carries some nuance, so we'll use a learned transformation for them. We'll call these $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
 - What information should **(input B transformed by $W_v$)** pass forward in this context?
@@ -95,8 +115,10 @@ Each of these usages has some nuance, so we'll use a learned transformation for 
 We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weight matrices. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
 
 $$
-Input_{(1 \times d)} \cdot W\star_{(d \times \delta)} = Output_{(1 \times \delta)}
+Input_{1 \times d} \cdot W\star_{d \times \delta} = Output_{1 \times \delta}
 $$
+
+Crucially, because this approach is just an _approximation_ of the $n \times n \times d \times \delta$ matrix, we don't need a separate $W_\star$ for each cell in the $n \times n$ grid. Instead, we just have three weights total: one $W_q$, one $W_k$, and one $W_v$ for the whole attention layer.
 
 The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
 
