@@ -1,7 +1,5 @@
 # Refresher on Vectors and Matrices
 
-## Overview
-
 Before we get into the meat of LLMs, let's do a quick refresher on vectors, matrices, and tensors.
 
 This subject can take up whole chapters of a math text book, but we only need to know a few things:
@@ -10,6 +8,7 @@ This subject can take up whole chapters of a math text book, but we only need to
 - what a matrix it
 - a tiny bit of what a tensor is
 - how to combine vectors using dot products
+- how to add matrices
 - how to multiply matrices
 
 If you know all that, feel free to skip this chapter.
@@ -40,15 +39,43 @@ We refer to items within a matrix by its row and column, in that order: $M_{1,2}
 
 If we think of vectors as "an object with a single index" and matrices as "an object with two indexes", a tensor just abstracts that into N indices. That N is called the tensor's rank: a vector is a rank 1 tensor, and a matrix is a rank 2 tensor.
 
+We call the number of elements in a vector its {dfn}`size`, or its {dfn}`dimensionality`. The terms are essentially interchangeable, though I find I tend to use "size" more when talking about the mechanics of math operations, and "dimensionality" more when talking about how much information the vector carries.
+
+Lastly, we can treat a vector of size $d$ as a matrix of size $1 \times d$ or $d \times 1$.
+
+$$
+\underbrace{
+  \begin{vmatrix}
+  1 & 2 & 3
+  \end{vmatrix}
+}_{\text{size 3 vector}}
+\longleftrightarrow
+\underbrace{
+  \begin{bmatrix}
+  1 & 2 & 3
+  \end{bmatrix}
+}_{1 \times 3 \text{ matrix}}
+\longleftrightarrow
+\underbrace{
+  \begin{bmatrix}
+  1 \\ 2 \\ 3
+  \end{bmatrix}
+}_{3 \times 1 \text{ matrix}}
+$$
+
 :::{tip} Tensors more generally
 :class: dropdown
 
 In math and physics, tensors have other properties. We don't need them, so you can basically think of a tensor as "like a matrix, but with more than two indices."
 :::
 
+(matrix-math-details)=
+
 ## Math operations
 
-There are two main math operations you'll need to know about. In both cases, the details aren't actually important: what's important is the shape of the inputs and outputs.
+### Overview
+
+There are two main math operations you'll need to know about.
 
 (matrix-math-summary)=
 +++
@@ -77,14 +104,64 @@ transposition:
 : Swaps a matrix's rows and columns, which you can visualize as flipping along its ╲ diagonal. This is denoted as $A^T$.
 
   $$
-  \begin{bmatrix} a & b & c \\ d & e & f \end{bmatrix}^T
+  \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \end{bmatrix}^T
   =
-  \begin{bmatrix} a & d \\ b & e \\ c & f \end{bmatrix}
+  \begin{bmatrix} 1 & 4 \\ 2 & 5 \\ 3 & 6 \end{bmatrix}
   $$
 
-(matrix-math-details)=
-:::{note} Details on matrix math
-:class: dropdown
+Lastly, there are some simple arithmetic operations we'll be using:
+
+adding two matrices
+: We can add two matrices (or vectors) as long as they're the same size. This just means adding their corresponding elements:
+
+  $$
+  \begin{bmatrix}
+  1 & 2 & 3 \\
+  4 & 5 & 6
+  \end{bmatrix}
+  +
+  \begin{bmatrix}
+  10 & 20 & 30 \\
+  40 & 50 & 60
+  \end{bmatrix}
+  = \begin{bmatrix}
+  11 & 22 & 33 \\
+  44 & 55 & 66
+  \end{bmatrix}
+  $$
+
+multiplying by a scalar
+: We can multiply a matrix (or vector) by a scalar, which just means applying the multiplication to each element:
+  
+  $$
+  10 \cdot
+  \begin{bmatrix}
+  1 & 2 & 3 \\
+  4 & 5 & 6
+  \end{bmatrix}
+  = \begin{bmatrix}
+  10 & 20 & 30 \\
+  40 & 50 & 60
+  \end{bmatrix}
+  $$
+
+:::{note}
+I find that in most cases, I don't need to think about the details of these math operations (though we will need to when we look at the LLM's [mathematical optimizations]). What's more useful is the _shape_ of the operations. For example, if I have a vector of size $a$ and I need to turn it into a vector of size $b$, I know I'll need an $a \times b$ matrix:
+
+$$
+\begin{array}{cccl}
+\mathbf{a} & \cdot & ? & = \mathbf{b} \\
+A_{1 \times a} & \cdot & X_{? \times ?} & = B_{1 \times b} \\
+A_{1 \times a} & \cdot & X_{a \times b} & = B_{1 \times b}
+\end{array}
+$$
+
+Similarly, with dot products, the useful bit is usually just to remember that it turns two same-sized vectors into a single scalar.
+
+[mathematical optimizations]: ../03-The-LLM/06-mathematical-optimizations.md
+:::
+
+### Dot products
 
 A {dfn}`dot product` combines two vectors of the same size (dimensionality) into a single number.
 
@@ -105,7 +182,7 @@ $$
 
 If the two vectors are normalized to have the same magnitude, the dot product specifies how aligned they are: higher values means more aligned. (This has a geometric interpretation, but it's not very important for LLMS. Just know that higher values mean more similar.)
 
----
+### Matrix multiplication
 
 In the {dfn}`matrix multiplication` of two matrices $A$ and $B$, each cell is the dot product of the corresponding row from $A$ and the corresponding column from $B$.
 
@@ -157,7 +234,7 @@ Note:
 (matrix-multiplication-notes)=
 
 - The number of columns in $A$ must equal the number of rows in $B$. (This is just so that the dot products work).
-- The resulting shape is $A_{\textcolor{steelblue}{a} \times \textcolor{pink}{b}} \cdot B_{\textcolor{pink}{b} \times \textcolor{red}{c}} = C_{\textcolor{steelblue}{a} \times \textcolor{red}{c}}$
+- The resulting shape is $A_{ \underline{a} \times b } \cdot B_{ b \times \underline{c} } = C_{ \underline{a} \times \underline{c} }$
 - Matrix multiplication is not commutative: $AB \neq BA$ in general.
 
   For example, if we look at the first cell ($C_{1,1}$), it's:
@@ -196,5 +273,3 @@ $$
 =&\begin{bmatrix} 19 & 22 \\ 43 & 50 \end{bmatrix}
 \end{aligned}
 $$
-
-:::
