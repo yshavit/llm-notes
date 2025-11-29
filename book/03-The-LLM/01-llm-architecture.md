@@ -110,3 +110,5 @@ activation:
 : A value that's derived from the user's input. This combines that input with learned parameters. This is what the language is figuring out about your prompt specifically.
 
 As I introduce various parts of the LLM, I'll be explicit about which kind of value each one is.
+
+The following chapters will walk through each of the LLM's components, starting with the tokenizer and embedding layer.

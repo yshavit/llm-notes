@@ -6,8 +6,6 @@ As I've mentioned before, vectors are how LLMs encode the nuance of human langua
 
 {drawio}`Self-attention sits between tokenization and the feedforward network|images/input/llm-flow-input`
 
-As I mentioned in @conceptual-layers, I like to think about LLMs in terms of the fundamental concepts, and then the mathematical optimizations. I'll do that here.
-
 We're going to process the input in three steps:
 
 1. Tokenizing the input
@@ -18,14 +16,12 @@ Each of these steps is very simple, so if you read the following and think "I mu
 
 ## Tokenization
 
-We start with the input text, which we parse into tokens. This doesn't involve any AI: it's basically just {keyboard}`a` → `<1>`, {keyboard}`aardvark` → `<2>`, etc.
-
-I actually won't cover the tokenization algorithm itself, because it's not really an ML/AI topic. Suffice it to say that the most common form of tokenization is byte pair encoding (BPE), which basically looks for words, sub-words (like the "de" in "demystify"), and punctuation. You can read about it [on Wikipedia][bpe], but since it's not really an AI concept (it was originally invented for compression!), it's not particularly interesting for us.
-
-But basically, this is just turning something like "to be or not to be" into a stream of tokens: {keyboard}`to` {keyboard}`be` {keyboard}`or` {keyboard}`not` {keyboard}`to` {keyboard}`be`.
+We start with the input text, which we parse into tokens. This doesn't involve any AI: it's basically just "a" → {keyboard}`<1>`, "aardvark" → {keyboard}`<2>`, etc.
 
 (typical-tokenization)=
-Typical tokenization in LLMs doesn't just break sentences into words: it breaks words into common subcomponents. For example, "disinterest" might tokenize as {keyboard}`dis`+{keyboard}`interest`. OpenAI has a page that lets you see how text tokenizes: <https://platform.openai.com/tokenizer>.
+I actually won't cover the tokenization algorithm itself, because it's not really an ML/AI topic (it was originally invented for compression!). Suffice it to say that the most common form of tokenization is byte pair encoding (BPE), which basically looks for words, common sub-words like the "de" in "demystify", and punctuation. You can read more about it [on Wikipedia][bpe] if you want. OpenAI has a page that lets you see how text tokenizes: <https://platform.openai.com/tokenizer>.
+
+But basically, this is just turning something like "to be or not to be" into a stream of tokens: {keyboard}`to` {keyboard}`be` {keyboard}`or` {keyboard}`not` {keyboard}`to` {keyboard}`be`.
 
 ## Token embeddings
 
@@ -40,7 +36,7 @@ All of the tokens our model knows about form its vocabulary, and each one is ass
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
 :::{note} Reminder of what these values mean
-As mentioned in @what-are-learned-parameters, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" — that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on — then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, item 318 in the embedding vector for "be" may encode its existential connotation. These values are particular to each token: an item in the same index 318 for "dog"'s embedding vector may connote fluffiness.
+As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" — that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on — then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, index 1318 in the embedding vector for "be" may encode its existential connotation. In the embedding token for "dog", index 1318 embedding vector may connote fluffiness instead of existentialism.
 
 Again it's important to remember that the values don't _actually_ encode existentialism or fluffiness. They're just values which settle into being during training, and which correlate with predictive power when generating words.
 :::
@@ -69,5 +65,7 @@ Then, for each token in the parsed text, we just the sum its token embedding and
 {drawio}`images/input/token-and-positional-embeddings`
 
 (Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
+
+Now that we have the input tokenized, and each token translated into an input embedding, we'll look at how the LLM contextualizes these embeddings relative to each other.
 
 [bpe]: https://en.wikipedia.org/wiki/Byte-pair_encoding

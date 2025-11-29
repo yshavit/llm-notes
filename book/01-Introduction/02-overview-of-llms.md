@@ -27,8 +27,6 @@ If we're using the LLM in a chatbot, we'll then just take the most likely next-t
 
 {drawio}`images/intro/chatbot-loop`
 
-(what-are-learned-parameters)=
-
 ## Training and inference
 
 An LLM, like any machine learning model, has two basic modes:
