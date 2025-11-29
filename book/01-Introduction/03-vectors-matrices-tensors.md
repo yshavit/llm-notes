@@ -33,7 +33,7 @@ For our purposes:
 
 - A **tensor** generalizes vectors and matrices into objects with N indices.
 
-We refer to items within a vector by its index, starting with 1: $\mathbf{v}_1 = 1$ in the above.
+We refer to items within a vector by its index, starting with 0: $\mathbf{v}_0 = 1$ in the above.
 
 We refer to items within a matrix by its row and column, in that order: $M_{1,2} = 5$.
 
