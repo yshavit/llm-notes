@@ -7,9 +7,7 @@ project:
   # authors:
   #   - name: Yuval Shavit
   github: https://github.com/yshavit/llm-notes
-  numbering:
-    figure:
-      continue: true
+  numbering: false
   exclude:
     - ".*.drawio.*"
     - "*.bkp"
