@@ -4,116 +4,32 @@ Before we get into the meat of things, I think it's useful to provide a 20,000-f
 
 As you may have heard, LLMs are essentially "autocomplete on steroids": given a bunch of input text, they predict the next word. But how?
 
-(conceptual-layers)=
+## How data flows through an LLM
 
-## How I organize my thinking about LLMs
+LLMs encode pretty much all information as vectors (I'll go over vectors in the next chapter, but essentially these are lists). The overall flow is:
 
-I find it useful to think about LLMs in three layers:
-
-1. The fundamental concepts
-2. Mathematical optimizations of those concepts
-3. The actual implementation
-
-This book will primarily focus on the first two layers, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
-
-### Conceptual layer
-
-In the first layer (the conceptual layer) data follows through the LLM in the form of vectors (I'll go over vectors in the next chapter, but essentially these are lists). In particular, we'll often work with vectors of vectors, like $[ [1, 2, 3], [4, 5, 6] ]$. We'll also work with matrices, which you can think of as two dimensional grids.
-
-(vectors-are-nuance)=
-LLMs use vectors and matrices to encode basically anything that has nuance. For example, the word "dog" has many meanings: it can be a noun (the animal) or a verb (to follow someone persistently), or an adjective (dog days). It can be a pet, a service animal, or a hound of war. It can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe.
-
-Vectors are how LLMs encode all of this information.
-
-### Mathematical optimizations
-
-The second layer (mathematical optimizations) batches the conceptual vectors into matrices, and then these matrices into objects called tensors. The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
-
-```mermaid
-flowchart LR
-
-  subgraph Concept[Conceptual]
-    direction TB
-    C1[vectors]
-    C2[matrices]
-  end
-
-  subgraph Org[Organizational Optimizations]
-    direction TB
-    L1[matrices]
-    L2[tensors]
-  end
-
-  subgraph Implementation
-    direction TB
-    Hardware[GPUs / TPUs]
-  end
-
-  C1 -.-> L1 -.-> Hardware
-  C2 -.-> L2 -.-> Hardware
-  
-```
-
-:::{seealso} Why GPUs & TPUs?
-:class: simple dropdown
-GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each item.
-
-TPUs (Tensor Processing Units) extend this by building in, at the hardware level, specific optimizations for matrix math.
-
-This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, we can process the data in parallel and with optimizations down to the hardware level.
+:::{note} Technical terminology
+This section will talk about vectors and tokens. If you don't come from a programming background, for now you can think of a vector as a list, and a token as a word in a sentence.
 :::
 
-### How I'll organize explaining the layers
+1. Turn the input text into a vector of vectors: each "outer" vector encodes one token, and each "inner" token encodes the LLM's knowledge about that token.
+   {drawio}`images/intro/input-tokens`
 
-In the following chapters, I'll start by explaining the LLM in terms of that first layer, the conceptual one. This will hopefully help you understand not just what's going on, but what motivates each part of the architecture. Each major component will be a separate chapter.
+2. Pass this vector-of-vector through a series of transformers. I'll describe those later; for now, you can just think of them as opaque boxes that contain the model's knowledge of language.
 
-Once I've described all of the components, I'll spend one chapter describing how all the bits get boiled down to the mathematical optimizations.
+   Each transformer turns one vector-of-vectors into a different vector-of-vectors. The output vectors don't have any intuitive meaning.
+   {drawio}`images/intro/intermediate-tokens`
 
-## Components of an LLM
+3. Turn the last unintuitive vector-of-vectors into a vector that predicts the next token: each item in the vector corresponds to a token in the LLM's known vocabulary, and its value is the probability that it's the next token:
+   {drawio}`images/intro/predictions`
 
-:::{div}
-:label: llm-components
-:class: content-group
-An LLM consists of a few key components:
+If we're using the LLM in a chatbot, we'll then just take the most likely next-token, append it to the input text, and then loop again from the top.
 
-- The {dfn}`tokenizer` and {dfn}`embedding` layer, which turn the input text into vectors that the LLM can reason about (remember the "dog" example from above)
-- {dfn}`Self-attention`, which tells the LLM how those token vectors relate to each other (this is the main innovation of LLMs as compared to previous AI models)
-- A {dfn}`feedforward network (FFN)` for processing the vectors
-
-The self-attention and FFN together form a {dfn}`transformer block`, and these blocks are the core of the LLM.
-
-It's fine if you don't know what these terms mean. I'll be explaining them as we go.
-:::
-
-The output of all this is a probability distribution over every token ("word", very roughly) that the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
-
-{drawio}`images/overview/llm-flow`
-
-:::{important}
-This is a simplified model that outlines the building blocks. Later on, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
-:::
-
-Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
-
-## Hyperparameters, learned parameters, and activations
-
-In addition to the components, it's important to keep separate in your head the three kinds of data an LLM works with: {dfn}`hyperparameters`, {dfn}`learned parameters` and {dfn}`activations`.
-
-(parameter-vs-activation)=
-hyperparameter
-: A value decided by a human as part of the model's design, which basically determines the structure of the model. This includes how many hidden layers the feedforward network has, or how big the input embeddings are. (It's fine if you don't yet know what a hidden layer or input embedding is!)
-
-learned parameter
-: A value that's part of the LLM's model: it's learned during training, and is unchanged when the model's actually used. This is what the model knows about language in general.
-
-activation:
-: A value that's derived from the user's input. This combines that input with learned parameters. This is what the language is figuring out about your prompt specifically.
-
-As I introduce various parts of the LLM, I'll be explicit about which kind of value each one is.
+{drawio}`images/intro/chatbot-loop`
 
 (what-are-learned-parameters)=
 
-### Training and inference
+## Training and inference
 
 An LLM, like any machine learning model, has two basic modes:
 
@@ -125,15 +41,18 @@ training
 inference
 : The model is using what it learned. This is the mode you interact with when you use the model.
 
-## What do learned parameters mean?
+## What values are in the model?
 
-It's natural to ask: where do these learned parameters come from, and what do they represent?
+I mentioned above that the model's transformers are opaque boxes that contain "the model's knowledge". The values that encode this knowledge are called {dfn}`learned parameters`; but where do these learned parameters come from, and what do they represent?
 
-Thinking back to the previous example, I mentioned that the word "dog" can have lots of meanings, and that the LLM encodes nuance as vectors. The nuance of "dog"'s meanings is encoded in a particular vector called the {dfn}`token embedding vector`, and every value in that vector is a learned parameter.
+(vectors-are-nuance)=
+LLMs use vectors to encode basically anything that has nuance. For example, the word "dog" has many meanings. It can be a noun or a verb; it can be a pet, a service animal, or a hound of war; it can mean an ugly person or a scandalous person, either judgementally or affectionately ("you dog, you!"). It can mean some subtle thing that I don't even know how to think about, much less describe.
 
-But what do these values actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 6321 in the embedding vector", where property 6321 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" by way of analogy, but just remember that the analogy is imperfect. This will be even more stark when we run the vectors through the deep learning feedforward network.
+Vectors are how LLMs encode all of this information. The nuance of "dog"'s meanings is encoded in a particular vector called the token embedding vector, which I'll talk about more in later chapters.
 
-So far, I've been talking about the word "dog," and its token embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that a fox and a dog are both animals; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
+But what do these values actually represent? Basically nothing that corresponds to human intuition. I've been saying that the values represent things like "dog can be a pet", but it's really more of "dog has a high value for property 6321 in the embedding vector", where property 6321 is... something which, in practice, tends to correlate with the right prediction for the next token. I find it helpful to think of it as "pet-ness" by way of analogy, but just remember that the analogy is imperfect.
+
+So far, I've been talking about the word "dog," and its token embedding vector. But there are other pieces of information: the fact that "dog" is the ninth word in "the quick brown fox jumps over the lazy dog"; the fact that this is a common expression; the fact that referencing an animal in one part of the sentence makes it likely you'll reference another animal later; and so on. Each of these is a different vector, in a different part of the LLM. And again, each of these meanings is only an analogy.
 
 The values themselves are emergent properties that arise over many training rounds, over a large corpus of text. Through the magic of partial derivatives and some other math tricks, all the learned parameters in the LLM naturally settle into useful values.
 
@@ -170,6 +89,3 @@ Note that the sags we find aren't the true structure of the fabric (or, by way o
 - it can't be stressed enough: _everything is a vector_ (or a matrix)
 
 With that, let's get into it. We'll start with a refresher on what vectors and matrices are, and the handful of mathematical operations we'll need to use on them.
-
-[Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
-[Hugging Face's course]: https://huggingface.co/learn/llm-course/chapter1/1
