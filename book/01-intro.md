@@ -10,9 +10,9 @@ I wrote this book for myself, because there's no better way to make sure you've 
 
 ## The term "LLM"
 
-LLMs --- large language models --- encompass a range of technologies. These can include models that generate text, but also translation tools, classification tools, and others. There are various architectures under the umbrella of LLMs, such as BERT (I'll discuss some of these in @other-llm-models).
+LLMs --- large language models --- encompass a range of technologies. These include models that generate text, but also translation tools, classification tools, and others.
 
-When most people talk about "LLMs" these days, they really mean the kind that can generate text and images, and specifically an LLM architecture called {dfn}`Generative Pre-trained Transformer`, or {dfn}`GPT`.
+There are various architectures under the LLM umbrella, such as BERT (I'll cover some of these in @other-llm-models). But when most people talk about "LLMs", they really mean the ones that can generate text and images --- and specifically, an LLM architecture called {dfn}`Generative Pre-trained Transformer`, or {dfn}`GPT`.
 
 Following that colloquial usage, this book will use "LLM" and "GPT" interchangeably.
 
@@ -26,9 +26,9 @@ The driving principle behind this book's organization is that you should be able
 - If you do know something, you can always skip past it; but you should never have to jump ahead then back to where you were.
 - In particular, this means no footnotes or appendices.
 
-That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you don't need to click through to them. Of course, human learning being the way it is, you may still need to refer back to a section you've already read to remind yourself of it.
+That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you don't need to click through to them.
 
-Basically: yes to having to flipping back, no to having to flipping ahead.
+(Of course, human learning being the way it is, you may still need to refer back to a section you've already read to remind yourself of it. Basically: yes to having to flipping back, no to having to flipping ahead.)
 
 ### Parts in the journey
 
@@ -36,7 +36,7 @@ The book is organized into four parts:
 
 1. **Introduction** (you are here), which includes a very high level overview of LLMs and a quick refresher on vectors and matrices
 2. **The LLM**, which will walk you through the architecture of an LLM from 0 to 60
-3. **Training**, which will discuss how an LLM learns the values that power that architecture
+3. **Training**, which will discuss how an LLM learns the values that drive that architecture
 4. **Further reading**, which will talk about modern improvements to the LLM, as well as other, related ML technologies.
 
 ### Callouts

@@ -1,8 +1,34 @@
-div.content-group > :first-child {
+
+@layer utilities {
   /* The first <p> within a div naturally adds margin-top; this remove that. */
-  margin-top: 0;
+  div.content-group > :first-child {
+    margin-top: 0;
+  }
+
+  /* Visually merges consecutive <dl> elements by removing extra spacing.
+   *
+   * Useful when some definitions are wrapped in a `+++` block for embedding,
+   * without affecting the overall formatting.
+   */
+  dl + dl dt:first-of-type {
+    margin-top: 0;
+  }
+  dl:has(+ dl) {
+    margin-bottom: 0 !important;
+  }
 }
 
 .big {
   font-size: 3em;
 }
+
+.no-margin {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.no-margin summary {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
