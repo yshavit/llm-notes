@@ -14,5 +14,5 @@ Why encoder-decoder exists (translation, summarization with separate input/outpu
 Why BERT exists (bidirectional context for classification/understanding tasks)
 How your decoder-only model is optimized specifically for generation
 
-It's like the bookend to your introduction—sets scope at the start, provides context at the end.
+It's like the bookend to your introduction --- sets scope at the start, provides context at the end.
 :::

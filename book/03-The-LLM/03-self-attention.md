@@ -1,9 +1,9 @@
----
+ --- 
 title: Self-attention
 downloads:
   - file: softmax.html
     title: Interactive Softmax
----
+ --- 
 
 ## What and _why_ is self-attention?
 
@@ -225,7 +225,7 @@ We call this dot product the raw {dfn}`attention score` for this key.
 {drawio}`attention scores normalize into attention weights|images/attention/llm-flow-self-attention-weight`
 :::
 
-Since we repeat the attention score process for each token in the input, we end up with an $n$-vector of attention scores. These scores can be all over the place — positive, negative, and at vastly different scales — so we normalize them to a probability distribution, which we call the {dfn}`attention weights`. The values within this distribution  are all between 0 and 1, and they all sum to 1.
+Since we repeat the attention score process for each token in the input, we end up with an $n$-vector of attention scores. These scores can be all over the place --- positive, negative, and at vastly different scales --- so we normalize them to a probability distribution, which we call the {dfn}`attention weights`. The values within this distribution  are all between 0 and 1, and they all sum to 1.
 
 Normalizing the attention scores to attention weights improves the learning process by making the attention more differentiable and keeping the scales of the values more stable.
 
@@ -330,7 +330,7 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 ### Multi-head attention and $W_o$
 
-When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above — the weight matrices, vectors, etc — forms a unit called an {dfn}`attention head`.
+When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above --- the weight matrices, vectors, etc --- forms a unit called an {dfn}`attention head`.
 
 The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
@@ -379,4 +379,4 @@ In short, "the context is full" means that the input is as long as the LLM will 
 
 An LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
 
-Note that the weight matrices ($W_\star$) are _not_ crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model — not input length.
+Note that the weight matrices ($W_\star$) are _not_ crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model --- not input length.

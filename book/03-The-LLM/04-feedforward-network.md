@@ -19,7 +19,7 @@ Until now, I've been spelling out "feedforward network" in this book, because it
 
 Feedforward networks are just one corner within the broader field of machine learning (ML). There are lots of disciplines within ML, but the ones relevant to our taxonomy are:
 
-- {dfn}`Neural networks`: Architectures that model data as weighted connections between nodes. (These architectures are inspired by biological neurons — like the ones in our brains.)
+- {dfn}`Neural networks`: Architectures that model data as weighted connections between nodes. (These architectures are inspired by biological neurons --- like the ones in our brains.)
   - {dfn}`Feedforward networks (FFNs)`: Neural networks in which information only flows in one direction (that is, doesn't produce loops).
     - {dfn}`Multi-layer perceptrons (MLPs)`: FFNs in which the network is organized into layers, each of which is fully connected to the ones before and after it.
 

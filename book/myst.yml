@@ -17,6 +17,7 @@ project:
       path: ../myst-plugins/drawio
     - type: executable
       path: ../myst-plugins/dfn
+    - ../myst-plugins/mdash.mjs
   error_rules:
     - rule: link-resolves
       keys:

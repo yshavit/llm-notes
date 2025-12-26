@@ -36,14 +36,14 @@ All of the tokens our model knows about form its vocabulary, and each one is ass
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
 :::{note} Reminder of what these values mean
-As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" — that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on — then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, index 1318 in the embedding vector for "be" may encode its existential connotation. In the embedding token for "dog", index 1318 embedding vector may connote fluffiness instead of existentialism.
+As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" --- that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on --- then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, index 1318 in the embedding vector for "be" may encode its existential connotation. In the embedding token for "dog", index 1318 embedding vector may connote fluffiness instead of existentialism.
 
 Again it's important to remember that the values don't _actually_ encode existentialism or fluffiness. They're just values which settle into being during training, and which correlate with predictive power when generating words.
 :::
 
 ## Adding positions to get to input embeddings
 
-So, now we have a bunch of token embeddings — one per token in our vocabulary — and we've applied them towards the parsed text:
+So, now we have a bunch of token embeddings --- one per token in our vocabulary --- and we've applied them towards the parsed text:
 
 {drawio}`images/input/token-embeddings`
 
@@ -53,7 +53,7 @@ But a word may mean something different if it's the first word of a sentence vs 
 Modern LLMs don't actually use positional embeddings anymore. They still care about positions, but the mechanism is different and more complex. I'll discuss positional embeddings now because they're simpler, and {ref}`beyond-the-toy-llm` will explain the modern alternative.
 :::
 
-Just as we defined a unique embedding for each token in the vocabulary — "be" always the same token embedding, for example — we'll now define a unique embedding for each position. For example, the first token in an input always used the same embedding, that of position 0. These embeddings are learned vectors, with the same dimension $d$ as the token embeddings.
+Just as we defined a unique embedding for each token in the vocabulary --- "be" always the same token embedding, for example --- we'll now define a unique embedding for each position. For example, the first token in an input always used the same embedding, that of position 0. These embeddings are learned vectors, with the same dimension $d$ as the token embeddings.
 
 :::{aside}
 

@@ -10,7 +10,7 @@ I wrote this book for myself, because there's no better way to make sure you've 
 
 ## The term "LLM"
 
-LLMs — large language models — encompass a range of technologies. These can include models that generate text, but also translation tools, classification tools, and others. There are various architectures under the umbrella of LLMs, such as BERT (I'll discuss some of these in @other-llm-models).
+LLMs --- large language models --- encompass a range of technologies. These can include models that generate text, but also translation tools, classification tools, and others. There are various architectures under the umbrella of LLMs, such as BERT (I'll discuss some of these in @other-llm-models).
 
 When most people talk about "LLMs" these days, they really mean the kind that can generate text and images, and specifically an LLM architecture called {dfn}`Generative Pre-trained Transformer`, or {dfn}`GPT`.
 
@@ -49,7 +49,7 @@ Some explanatory text.
 
 Some of these will be collapsed and are expandable; others are just visual blocks.
 
-- If the callout is collapsed, it's optional; feel free to skip it. If you're like me, you won't — but just know it's not very important.
+- If the callout is collapsed, it's optional; feel free to skip it. If you're like me, you won't --- but just know it's not very important.
 - If it's not collapsible, it's important, and you should read it.
 
 ### What I assume about you
