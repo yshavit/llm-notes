@@ -131,8 +131,8 @@ Similarly, with dot products, the useful bit is usually just to remember that it
 [mathematical optimizations]: ../03-The-LLM/06-mathematical-optimizations.md
 :::
 
-(matrix-transposition)=
 +++
+(matrix-transposition)=
 transposition
 : Swaps a matrix's rows and columns, which you can visualize as flipping along its ╲ diagonal. This is denoted as $A^T$.
 
