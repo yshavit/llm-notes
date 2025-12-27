@@ -31,7 +31,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache plugin directory
+      - name: Cache plugin drawio directory
+        id: cache-drawio
         uses: actions/cache@v5
         with:
           path: ./book/_plugin/drawio
@@ -53,6 +54,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Pull draw.io docker image
+        if: steps.cache-drawio.outputs.cache-hit != 'true'
         run: docker pull rlespinasse/drawio-desktop-headless
 
       - name: Build HTML Assets
