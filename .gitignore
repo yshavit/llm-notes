@@ -1,7 +1,8 @@
-_build
 **/spell/local.utf-8.add.spl
-venv/
 *.bkp
 *.dtmp
 *.sha1
+/spell
+/venv
+_build
 _plugin
