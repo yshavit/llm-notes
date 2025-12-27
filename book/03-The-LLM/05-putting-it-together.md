@@ -239,4 +239,4 @@ At this point, we've covered all the major components of inference! Some of the 
 
 Pause for a moment! This is a nice milestone! You now basically understand how LLM inference works.
 
-The next chapter will just describe some mathematical optimizations we can apply to make this translate better to optimized hardware, and then I'll go into training.
+The next chapter will just describe some algebraic reformulations we can apply to make this translate better to optimized hardware, and then I'll go into training.

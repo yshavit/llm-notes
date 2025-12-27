@@ -116,7 +116,7 @@ matrix multiplication:
 +++
 
 :::{note} Pay attention to the shapes of these operations
-I find that in most cases, I don't need to think about the details of these math operations (though we will need to when we look at the LLM's [mathematical optimizations]). What's more useful is the _shape_ of the operations. For example, if I have a vector of size $a$ and I need to turn it into a vector of size $b$, I know I'll need an $a \times b$ matrix:
+I find that in most cases, I don't need to think about the details of these math operations (though we will need to when we look at the LLM's [algebraic reformulations]). What's more useful is the _shape_ of the operations. For example, if I have a vector of size $a$ and I need to turn it into a vector of size $b$, I know I'll need an $a \times b$ matrix:
 
 $$
 \begin{array}{cccl}
@@ -128,7 +128,7 @@ $$
 
 Similarly, with dot products, the useful bit is usually just to remember that it turns two same-sized vectors into a single scalar.
 
-[mathematical optimizations]: ../03-The-LLM/06-mathematical-optimizations.md
+[algebraic reformulations]: ../03-The-LLM/06-algebraic-reformulations.md
 :::
 
 +++

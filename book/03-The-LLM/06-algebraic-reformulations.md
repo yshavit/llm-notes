@@ -1,6 +1,6 @@
-# Mathematical optimizations
+# Algebraic reformulations
 
-I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the mathematical optimizations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
+I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the algebraic reformulations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
 
 There are two major components to this:
 
@@ -13,7 +13,7 @@ In this chapter, I'll be relying on the common constraint that each transformati
 
 ## The architecture's conceptual shape
 
-Before we dive into the mathematical optimizations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations.
+Before we dive into the algebraic reformulations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations.
 
 I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
 

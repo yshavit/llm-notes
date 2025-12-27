@@ -1,5 +1,7 @@
 # The LLM's architecture
 
+In the previous chapter, I gave a very high-level overview of how LLMs work. In the next few chapters, I’ll describe this architecture in much more detail. I’ll cover each component of an LLM --- what it does, why it’s needed, and the nitty-gritty math that drives it.
+
 (conceptual-layers)=
 
 ## How I organize my thinking about LLMs
@@ -7,15 +9,15 @@
 I find it useful to think about LLMs in three hierarchical perspectives:
 
 1. The fundamental concepts
-2. Mathematical optimizations of those concepts
+2. Algebraic reformulations of those concepts
 3. The actual implementation
 
 This book will primarily focus on the first two perspectives, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
 
-:::{note} Mathematical "optimizations"
-I use this phrase for lack of a better term. It's all still just math, and in that sense there's nothing really to optimize. The idea I'm trying to convey is that this perspective represents the fundamental concepts in a way that can be more directly translated to optimized code.
+:::{note} This is not standard terminology
+The way I break down these perspectives --- and in particular, the separation between fundamental concepts and algebraic reformulations --- isn't standard. Most texts combine the concepts and algebraic formulations, which makes for a more streamlined description, but one that I find harder to follow.
 
-This isn't a standard term, so if you can think of a better word, let me know!
+If you read other materials on LLMs, just be aware that they'll likely combine perspectives 1 and 2 into just a single "here's what's going on".
 :::
 
 [Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
@@ -25,9 +27,9 @@ This isn't a standard term, so if you can think of a better word, let me know!
 
 In the first perspective (the conceptual perspective) data follows through the LLM in the form of vectors. In particular, we'll often work with vectors of vectors, like $[ [1, 2, 3], [4, 5, 6] ]$. To transform these vectors, we'll often use matrices.
 
-### Mathematical optimizations
+### Algebraic reformulations
 
-The second perspective (mathematical optimizations) batches the conceptual vectors into matrices, and then these matrices into tensors. The underlying concepts are exactly the same: it just lets us represent the data in a way that GPUs and TPUs can crunch in more efficiently than a CPU can.
+The second perspective (algebraic reformulations) batches the conceptual vectors into matrices, and then these matrices into tensors. The underlying concepts are exactly the same: the reformulations just let us represent the data in a way that GPUs and TPUs can crunch more efficiently than a CPU can.
 
 ```mermaid
 flowchart LR
@@ -38,7 +40,7 @@ flowchart LR
     C2[matrices]
   end
 
-  subgraph Org[Organizational Optimizations]
+  subgraph Org[Reformulations]
     direction TB
     L1[matrices]
     L2[tensors]
@@ -56,18 +58,18 @@ flowchart LR
 
 :::{seealso} Why GPUs & TPUs?
 :class: simple dropdown
-GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each item.
+GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each cell.
 
 TPUs (Tensor Processing Units) extend this by building in, at the hardware level, specific optimizations for matrix math.
 
 This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, we can process the data in parallel and with optimizations down to the hardware level.
 :::
 
-### How I'll organize explaining the perspective
+### This book's approach
 
-In the following chapters, I'll start by explaining the LLM in terms of that first perspective, the conceptual one. This will hopefully help you understand not just what's going on, but what motivates each part of the architecture. Each major component will be a separate chapter.
+In the following chapters, I'll explain LLMs in terms of that first perspective, the conceptual one. This will hopefully help you understand not just what's going on, but what motivates each part of the architecture. Each major component will be a separate chapter.
 
-Once I've described all of the components, I'll spend one chapter describing how all the bits get boiled down to the mathematical optimizations.
+Once I've described all of the components, I'll spend one chapter describing how all the bits get boiled down to the algebraic reformulations.
 
 ## Components of an LLM
 
@@ -85,7 +87,7 @@ The self-attention and FFN together form a {dfn}`transformer block`, and these b
 It's fine if you don't know what these terms mean. I explain them as we go.
 :::
 
-The output of all this is a probability distribution over every token ("word", very roughly) that the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
+The output of all this is a probability distribution over every token (every "word", very roughly) that the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
 
 {drawio}`images/overview/llm-flow`
 
