@@ -131,7 +131,7 @@ jq -n \
   class: "theme-aware-wrapper",
   children: [
     {
-      type: "span",
+      type: $type,
       class: "hidden dark:block",
       children: [{
         "type": "image",
@@ -140,7 +140,7 @@ jq -n \
       }]
     },
     {
-      type: "span",
+      type: $type,
       class: "dark:hidden",
       children: [{
         "type": "image",
