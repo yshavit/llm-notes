@@ -103,14 +103,18 @@ In addition to the components, it's important to keep separate in your head the 
 
 (parameter-vs-activation)=
 hyperparameter
-: A value decided by a human as part of the model's design, which basically determines the structure of the model. This includes how many hidden layers the feedforward network has, or how big the input embeddings are. (It's fine if you don't yet know what a hidden layer or input embedding is!)
+: A value decided by a human as part of the model's design, which determines the structure of the model. This includes how many hidden layers the feedforward network has, or how big the input embeddings are. (Again, it's fine if you don't yet know what a hidden layer or input embedding is!)
 
 learned parameter
-: A value that's part of the LLM's model: it's learned during training, and is unchanged when the model's actually used. This is what the model knows about language in general.
+: A number learned during training and then fixed when the model is used. These parameters encode what the model has learned.
 
 activation:
-: A value that's derived from the user's input. This combines that input with learned parameters. This is what the language is figuring out about your prompt specifically.
+: A value computed from the user's input and the learned parameters. This is what the model is figuring out about your prompt specifically.
+
+By way of analogy, if an LLM were a simple equation like $y = kx^2$ for some fixed $k$, then:
+
+- The fact that the equation is quadratic is a hyperparameter.
+- If the model learns that $k = 2.7$ gives the best results, that 2.7 is a learned parameter.
+- For an input of $x = 3.1$, the resulting 25.947 ($= 2.7 \times 3.1^2$) is the activation.
 
 As I introduce various parts of the LLM, I'll be explicit about which kind of value each one is.
-
-The following chapters will walk through each of the LLM's components, starting with the tokenizer and embedding layer.
