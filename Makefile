@@ -6,7 +6,7 @@ start:
 	cd book && source ../venv/bin/activate && myst start
 
 build:
-	cd book && source ../venv/bin/activate && myst build --strict --html
+	cd book && source ../venv/bin/activate && ../strict-myst build --strict --html
 
 clean:
 	cd book && source ../venv/bin/activate && myst clean
