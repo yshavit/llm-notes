@@ -68,7 +68,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Clear plugin dir on failure
-        if: failure()
-        run: rm -rf ./book/_plugin/*
