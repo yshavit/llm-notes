@@ -29,14 +29,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Get current month (for cache key)
-        id: date
-        run: echo "month=$(date +'%Y-%m')" >> $GITHUB_OUTPUT
       - name: Cache plugin directory
         uses: actions/cache@v5
         with:
-          path: ./book/_plugin
-          key: plugin-${{ steps.date.outputs.month }}
+          path: ./book/_plugin/drawio
+          key: drawio-${{ hashFiles('**/*.drawio') }}
 
       - name: Cache venv
         uses: actions/cache@v5
