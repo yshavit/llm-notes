@@ -1,9 +1,9 @@
- --- 
+---
 title: Self-attention
 downloads:
   - file: softmax.html
     title: Interactive Softmax
- --- 
+---
 
 ## What and _why_ is self-attention?
 
