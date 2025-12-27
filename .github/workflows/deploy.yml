@@ -49,6 +49,9 @@ jobs:
       - name: Set up venv
         run: python3 -m venv venv
 
+      - name: Pip install
+        run: pip install -r requirements.txt
+
       - name: Pull draw.io docker image
         run: docker pull rlespinasse/drawio-desktop-headless
 
