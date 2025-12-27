@@ -94,6 +94,7 @@ case "$1" in
 --role)
   # read the target as "<alt>|<path>".
   # If <path> is empty, then flip it so that <alt> is empty.
+  target_type=span
   IFS='|' read -r target_alt target_path <<<"$(cat - | jq -r '.node.value')"
   if [[ -z "$target_path" ]]; then
     target_path="$target_alt"
@@ -102,6 +103,7 @@ case "$1" in
   ;;
 --directive)
   all_input="$(cat -)"
+  target_type=div
   target_path="$(echo "$all_input" | jq -r .arg)"
   target_alt="$(echo "$all_input" | jq -r '.options.alt // ""')"
   ;;
@@ -123,8 +125,9 @@ jq -n \
   --rawfile dark "$dark_svg_data" \
   --rawfile light "$light_svg_data" \
   --arg alt "$target_alt" \
+  --arg type "$target_type" \
   '[{
-  type: "span",
+  type: $type,
   class: "theme-aware-wrapper",
   children: [
     {
