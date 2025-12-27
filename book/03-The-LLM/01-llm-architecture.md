@@ -95,8 +95,6 @@ The output of all this is a probability distribution over every token (every "wo
 This is a simplified model that outlines the building blocks. Later on, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
 :::
 
-Don't worry if this doesn't all fit together yet, and especially don't worry if you don't know how those various subcomponents work (or even what they mean). I'll be explaining each in the following chapters. As you read those chapters, it may be useful to refer back to this diagram to see how it all fits together.
-
 ## Hyperparameters, learned parameters, and activations
 
 In addition to the components, it's important to keep separate in your head the three kinds of data an LLM works with: {dfn}`hyperparameters`, {dfn}`learned parameters` and {dfn}`activations`.
