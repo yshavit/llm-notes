@@ -13,19 +13,23 @@ This section will talk about vectors and tokens. If you don't come from a progra
 LLMs encode pretty much all information as vectors. The overall flow is:
 
 1. Turn the input text into a vector of vectors: the "outer" vector's elements each correspond to a token in the input, and each "inner" token encodes the LLM's knowledge about that token.
-   {drawio}`images/intro/input-tokens`
+   :::{drawio} images/intro/input-tokens
+   :::
 
 2. Pass this vector-of-vector through a series of transformers. For now, you can just think of these as opaque boxes that contain the model's knowledge of language.
 
    Each transformer turns one vector-of-vectors into a different vector-of-vectors. The output vectors don't have any intuitive meaning.
-   {drawio}`images/intro/intermediate-tokens`
+   :::{drawio} images/intro/intermediate-tokens
+   :::
 
 3. Turn the last unintuitive vector-of-vectors into a vector that predicts the next token: each item in the vector corresponds to a token in the LLM's known vocabulary, and its value is the probability that it's the next token:
-   {drawio}`images/intro/predictions`
+   :::{drawio} images/intro/predictions
+   :::
 
 If we're using the LLM in a chatbot, we'll then just take the most likely next-token, append it to the input text, and then loop again from the top.
 
-{drawio}`images/intro/chatbot-loop`
+:::{drawio} images/intro/chatbot-loop
+:::
 
 ## Training and inference
 

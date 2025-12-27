@@ -13,6 +13,7 @@ function svg_data() {
 }
 
 function error_svg() {
+  echo >&2 "$*"
   local message="$(echo "$*" | sed 's/</\&lt;/g; s/>/\&gt;/g;')"
   printf '
     <svg xmlns="http://www.w3.org/2000/svg" height="1em" viewBox="0 0 150 16" role="img" aria-label="Error">
@@ -30,8 +31,10 @@ function render_drawio() {
 
   if [[ ! -f "$drawio_file" ]]; then
     error_svg "Missing file: $drawio_file" | svg_data >"$plugin_dir/${symlink_name}.data"
+    exit 1
   elif [[ "$drawio_file" != *.drawio ]]; then
     error_svg "Invalid file: $drawio_file" | svg_data >"$plugin_dir/${symlink_name}.data"
+    exit 1
   else
     rm -f "$plugin_dir/${symlink_name}.drawio"
     cp "$file_path" "$plugin_dir/${symlink_name}.drawio"
@@ -61,23 +64,52 @@ if [[ "$#" -eq 0 ]]; then
           "doc": "the path to the drawio document, without the \".drawio\" file extension"
         }
       }
+    ],
+    "directives": [
+      {
+        "name": "drawio",
+        "doc": "render a drawio document",
+        "arg": {
+          "type": "string",
+          "doc": "the path to the drawio document, without the \".drawio\" file extension"
+        },
+        "options": {
+          "alt": {
+            "type": "string",
+            "doc": "Alt text for the image"
+          }
+        }
+      }
     ]
   }'
   exit
 fi
 
-if [[ "$1" != '--role' || "$2" != 'drawio' ]]; then
-  echo "Unrecognized options: $@" >err.txt
+if [[ "$2" != 'drawio' ]]; then
+  echo "Unrecognized options: $@" >&2
   exit 1
 fi
 
-# read the target as "<alt>|<path>".
-# If <path> is empty, then flip it so that <alt> is empty.
-IFS='|' read -r target_alt target_path <<<"$(cat - | jq -r '.node.value')"
-if [[ -z "$target_path" ]]; then
-  target_path="$target_alt"
-  target_alt=""
-fi
+case "$1" in
+--role)
+  # read the target as "<alt>|<path>".
+  # If <path> is empty, then flip it so that <alt> is empty.
+  IFS='|' read -r target_alt target_path <<<"$(cat - | jq -r '.node.value')"
+  if [[ -z "$target_path" ]]; then
+    target_path="$target_alt"
+    target_alt=""
+  fi
+  ;;
+--directive)
+  all_input="$(cat -)"
+  target_path="$(echo "$all_input" | jq -r .arg)"
+  target_alt="$(echo "$all_input" | jq -r '.options.alt // ""')"
+  ;;
+*)
+  echo "Unrecognized options: $@" >&2
+  exit 1
+  ;;
+esac
 
 drawio_file="${target_path}.drawio"
 
@@ -101,7 +133,7 @@ jq -n \
       children: [{
         "type": "image",
         "url": $dark,
-        "alt": $alt
+        "alt": (if $alt == "" then null else $alt end)
       }]
     },
     {
@@ -110,7 +142,7 @@ jq -n \
       children: [{
         "type": "image",
         "url": $light,
-        "alt": $alt
+        "alt": (if $alt == "" then null else $alt end)
       }]
     }
   ]
@@ -121,4 +153,5 @@ if jq . "$tmp_file" >/dev/null; then
 else
   mv "$tmp_file" "$plugin_dir/BROKEN-$(echo "$drawio_file" | sed 's/\//-/g').json"
   echo '[]'
+  exit 1
 fi

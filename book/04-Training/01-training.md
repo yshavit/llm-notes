@@ -30,7 +30,9 @@ This improvement only applies during training.
 
 Remember that our LLM will ultimately be used to auto-complete prompts. That means that at the point where it's making predictions, it won't have access to words after the input: they haven't been written yet!
 
-{drawio}`At "Houston we have", we don't yet know "a problem"|images/attention/causal-attention`
+:::{drawio} images/attention/causal-attention
+:alt: At "Houston we have", we don't yet know "a problem"
+:::
 
 In any machine learning model, it's important that the model trains the same way it'll be used during [inference](#training-vs-inference). This means that the attention weight for any word after the query token should always be 0. For example, given the training input "Houston, we have a problem", if our query token is "have", it shouldn't attend to "a" or "problem" at all; when it comes time for inference, it won't have access to them.
 

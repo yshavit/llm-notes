@@ -89,10 +89,12 @@ It's fine if you don't know what these terms mean. I explain them as we go.
 
 The output of all this is a probability distribution over every token (every "word", very roughly) that the LLM knows about, representing how likely that token is to be the correct next token. The LLM then picks that most likely token, adds it to the text, and repeats the process with the new token added.
 
-{drawio}`images/overview/llm-flow`
+:::{drawio} images/overview/llm-flow
+:alt: "The quick brown fox" flows into the LLM, which predicts the next word is "jumps". Then, "the quick brown fox jumps" flows into the LLM, and so on.
+:::
 
 :::{important}
-This is a simplified model that outlines the building blocks. Later on, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
+This is a simplified model that outlines the building blocks. Later, I'll describe how real-world LLMs stack these building blocks to make their models more powerful.
 :::
 
 ## Hyperparameters, learned parameters, and activations

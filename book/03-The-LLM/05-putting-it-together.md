@@ -4,7 +4,9 @@
 
 So far, we've turned text into tokens, tokens into input embeddings, and augmented the input embeddings into attention. We also went over the basics of FFNs. Now we're ready to put the pieces together. We're almost there!
 
-{drawio}`Self-attention and the FFN combine to create a transformer|images/transformer/llm-flow-transformer`
+:::{drawio} images/transformer/llm-flow-transformer
+:alt: Self-attention and the FFN combine to create a transformer
+:::
 
 There are a few steps to go through. Rather than spelling them out from the start, I'll build them up bit by bit. That means this chapter will have a bit of "just one more thing," but hopefully the trade-off is that it'll provide some of the why as well as the what.
 
@@ -13,13 +15,17 @@ There are a few steps to go through. Rather than spelling them out from the star
 Let's start with the smallest thing that has the basic shape of an LLM. Most of it is what we've already covered:
 
 (smallest-llm-figure)=
-{drawio}`Simplified LLM|images/transformer/smallest-llm`
+:::{drawio} images/transformer/smallest-llm
+:alt: Simplified LLM
+:::
 
 (Note that in these examples, we'll be treating words as tokens. As discussed in @02-input-to-vectors, the actual tokens are substrings and include punctuation.) Most of this should be familiar by now, but the $W_{out}$ and output logits are new.
 
 The logits (a portmanteau of "logistic unit") are a vector of vectors. The "outer" vector's elements represent token predictions, with each element corresponding to one past the corresponding input token.
 
-{drawio}`Input tokens to output. "The quick brown" translates to "quick brown fox"|images/transformer/smallest-llm-logits`
+:::{drawio} images/transformer/smallest-llm-logits
+:alt: Input tokens to output. "The quick brown" translates to "quick brown fox"
+:::
 
 :::{aside}
 
@@ -28,7 +34,9 @@ The logits (a portmanteau of "logistic unit") are a vector of vectors. The "oute
 
 Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary. The values within these logits represent how likely that token is to be the right one.
 
-{drawio}`A single logit,|images/transformer/smallest-llm-logit-values`
+:::{drawio} images/transformer/smallest-llm-logit-values
+:alt: A single logit,
+:::
 
 Since the last logit in the outer vector represents the predictions for the next token after the input, and the highest value in that logit represents which of those tokens is most likely to be right. That's the one we'll append to the input and loop back again.
 
@@ -66,7 +74,9 @@ In the previous chapter, I mentioned that a traditional FFN [has multiple hidden
 
 Since each transformer block is just an attention layer and an FFN with a single hidden layer, to me this feels similar to a traditional, multi-layered FFN, but with that special-sauce of attention sprinkled throughout. (That said, that's not how standard literature describes it. People in the field think of transformers as a different architecture, not as a modification of FFNs.)
 
-{drawio}`Same architecture as the minimal LLM, but with multiple transformer blocks|images/transformer/multi-llm`
+:::{drawio} images/transformer/multi-llm
+:alt: Same architecture as the minimal LLM, but with multiple transformer blocks
+:::
 
 Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
@@ -116,11 +126,15 @@ To calculate the layer's normalized values:
 
    - $(\text{activations} - \text{mean})$ centers the values around 0:
 
-     {drawio}`subtracting the activations' mean from themselves centers them around zero|images/transformer/values-around-zero`
+     :::{drawio} images/transformer/values-around-zero
+     :alt: subtracting the activations' mean from themselves centers them around zero
+     :::
 
    - Since the variance comes from the square of each value's distance from the mean, $\sqrt{\text{variance}}$ gets us back to the scale of the original values (this is the standard deviation). Dividing by this value normalizes the values to roughly ±1:
 
-     {drawio}`dividing by square root of variance gets all values to be ±1|images/transformer/values-plusminus-1`
+     :::{drawio} images/transformer/values-plusminus-1
+     :alt: dividing by square root of variance gets all values to be ±1
+     :::
 
    - Adding $\varepsilon$ basically provides a minimum value for the denominator to avoid division by 0.
      :::{seealso} Details on $\varepsilon$
@@ -171,7 +185,9 @@ The solution is simple: just add each layer's original activation values back to
 - **residual connection**: also called "skip connection" or "shortcut connection"; a stateless operation (no learned or hyperparameters)
 :::
 
-{drawio}`A residual connection just adds the pre-transformed activations to the post-transformed activations|images/transformer/residual-connection`
+:::{drawio} images/transformer/residual-connection
+:alt: A residual connection just adds the pre-transformed activations to the post-transformed activations
+:::
 
 The result combines the original values with the result of the transformation. This provides just enough of a connection to let the training flow back up the stack: each layer adjusts its input rather than replacing it entirely.
 
@@ -187,7 +203,9 @@ Now that we have normalization and residual connections, we just need to fit the
 
 Each transformer looks like:
 
-{drawio}`Transformer showing normalization and residual connections|images/transformer/transformer-with-residuals`
+:::{drawio} images/transformer/transformer-with-residuals
+:alt: Transformer showing normalization and residual connections
+:::
 
 I mentioned back in the chapter on attention that the attention layer's output dimension $\delta$ is usually the same as its input $d$. Residuals are one of the main reasons we set that constraint. Without it, we'd need to add yet another transformation to match the dimensions before performing the addition. While this could technically work, it works against the residual's main goal, which is to provide a direct path of data flow throughout the LLM's layers. It's better to just set the two dimensions as equal, so that we can straightforwardly add the residual.
 
@@ -200,7 +218,9 @@ Some models also use post-normalization, but this is less common. There isn't a 
 
 The overall architecture looks like:
 
-{drawio}`Full architecture, with all transformers, normalizations, and residual connections|images/transformer/full-architecture`
+:::{drawio} images/transformer/full-architecture
+:alt: Full architecture, with all transformers, normalizations, and residual connections
+:::
 
 ## Control flow and special tokens
 

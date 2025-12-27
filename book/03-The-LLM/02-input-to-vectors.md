@@ -4,7 +4,9 @@
 
 As I've mentioned before, vectors are how LLMs encode the nuance of human language. So, the first thing we need to do is to turn each part of the text input into a vector. In the end, we'll have one vector per token in the input text.
 
-{drawio}`Self-attention sits between tokenization and the feedforward network|images/input/llm-flow-input`
+:::{drawio} images/input/llm-flow-input
+:alt: Self-attention sits between tokenization and the feedforward network
+:::
 
 We're going to process the input in three steps:
 
@@ -45,7 +47,8 @@ Again it's important to remember that the values don't _actually_ encode existen
 
 So, now we have a bunch of token embeddings --- one per token in our vocabulary --- and we've applied them towards the parsed text:
 
-{drawio}`images/input/token-embeddings`
+:::{drawio} images/input/token-embeddings
+:::
 
 But a word may mean something different if it's the first word of a sentence vs if it's at the middle or end. That could be because it has an entirely different meaning, and the different usages correlate with position; or it could have the same meaning, but with different nuance or tone. To capture this additional information, we're going to add {dfn}`positional embedding`.
 
@@ -62,7 +65,8 @@ Just as we defined a unique embedding for each token in the vocabulary --- "be" 
 
 Then, for each token in the parsed text, we just the sum its token embedding and positional embedding to get its {dfn}`input embedding`:
 
-{drawio}`images/input/token-and-positional-embeddings`
+:::{drawio} images/input/token-and-positional-embeddings
+:::
 
 (Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
 

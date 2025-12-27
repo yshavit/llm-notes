@@ -17,7 +17,9 @@ Before we dive into the algebraic reformulations, let's take a look at the LLM's
 
 I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
 
-{drawio}`An overview of the LLM architecture, showing n vectors of size d for most of the flow, and a final output of n vectors of size v|images/tensors/architecture-concepts`
+:::{drawio} images/tensors/architecture-concepts
+:alt: An overview of the LLM architecture, showing n vectors of size d for most of the flow, and a final output of n vectors of size v
+:::
 
 For most of the LLM, the activations are in the form of $n$ vectors, each size $d$. The final output is still $n$ vectors, but each sized $v$ (the vocabulary size).
 
@@ -327,7 +329,9 @@ The rest of the math is exactly the same. At the hardware level, this will just 
 
 Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ $d-sized$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix.
 
-{drawio}`The same architecture as above, but with matrices instead of vectors-of-vectors|images/tensors/architecture-matrix`
+:::{drawio} images/tensors/architecture-matrix
+:alt: The same architecture as above, but with matrices instead of vectors-of-vectors
+:::
 
 This diagram elides some of the complication, especially in the attention layer (and specifically, its multi-head architecture, as described above).
 

@@ -4,7 +4,9 @@
 
 In the self-attention layer, we took input embedding vectors and translated them into context vectors that described what each token meant in relation to the other tokens in the input. Now, we'll pass those context vectors through something called a {dfn}`feedforward network`, which will draw higher-level inferences about those tokens that we'll use to ultimately predict the next token.
 
-{drawio}`The feedforward network is the last step of the LLM|images/ffn/llm-flow-ffn`
+:::{drawio} images/ffn/llm-flow-ffn
+:alt: The feedforward network is the last step of the LLM
+:::
 
 ## What is a feedforward network (FFN)?
 
@@ -42,7 +44,9 @@ For each neuron, we'll:
 This gives us one value per neuron, which is its activation. Since we have $n$ neurons, these activations are our output vector.
 
 (ffn-overview-diagram)=
-{drawio}`Inputs feed into neurons, each of which produces one value of the output vector|images/ffn/overview`
+:::{drawio} images/ffn/overview
+:alt: Inputs feed into neurons, each of which produces one value of the output vector
+:::
 
 :::{aside}
 
@@ -65,7 +69,9 @@ Each of these neurons essentially defines a pattern the FFN can detect. For exam
 
 We need the {dfn}`bias` because each of these neurons defines a linear function in the input's $d_{in}$-dimensional space. The bias lets us compute those functions even if they don't pass through the origin:
 
-{drawio}`diagram showing liner regression intersecting the y axis at about 2.4|images/ffn/bias`
+:::{drawio} images/ffn/bias
+:alt: diagram showing liner regression intersecting the y axis at about 2.4
+:::
 
 (activation-function)=
 
@@ -101,7 +107,9 @@ The term "activation" comes from the biological metaphor that I mentioned above 
 In a generic FFN, we would have some arbitrary number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on. Each of these hidden layers, as well as the final output layer, may have any number of neurons.
 
 (multiple-layers-figure)=
-{drawio}`A FFN with two hidden layers|images/ffn/multi`
+:::{drawio} images/ffn/multi
+:alt: A FFN with two hidden layers
+:::
 
 In LLMs, we typically only have one hidden layer per FFN, so the simplified model I described above is actually the full story. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide, as I'll discuss more in @05-putting-it-together).
 
