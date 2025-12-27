@@ -1,12 +1,19 @@
-SHELL := /bin/bash
+VENV := venv
+MYST := $(abspath $(VENV)/bin/myst)
 
-.PHONY: start build clean
+.PHONY: start build clean setup
 
-start:
-	cd book && source ../venv/bin/activate && myst start
+$(VENV)/bin/pip:
+	python3 -m venv $(VENV)
+	$(VENV)/bin/pip install -r requirements.txt
 
-build:
-	cd book && source ../venv/bin/activate && ../strict-myst build --strict --html
+setup: $(VENV)/bin/pip
 
-clean:
-	cd book && source ../venv/bin/activate && myst clean
+start: $(VENV)/bin/pip
+	cd book && $(MYST) start
+
+build: $(VENV)/bin/pip
+	cd book && MYST=$(MYST) ../strict-myst build --strict --html
+
+clean: $(VENV)/bin/pip
+	cd book && $(MYST) clean

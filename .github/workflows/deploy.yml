@@ -48,10 +48,7 @@ jobs:
         uses: actions/configure-pages@v3
 
       - name: Set up venv
-        run: python3 -m venv venv
-
-      - name: Pip install
-        run: pip install -r requirements.txt
+        run: make setup
 
       - name: Pull draw.io docker image
         if: steps.cache-drawio.outputs.cache-hit != 'true'
