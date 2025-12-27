@@ -9,7 +9,7 @@ mkdir -p "$plugin_dir"
 
 function svg_data() {
   printf 'data:image/svg+xml;base64,'
-  cat - | base64
+  cat - | base64 -w0
 }
 
 function error_svg() {
@@ -84,7 +84,7 @@ drawio_file="${target_path}.drawio"
 dark_svg_data="$(render_drawio dark "$drawio_file")"
 light_svg_data="$(render_drawio light "$drawio_file")"
 
-# Write to a tmp file first. This helps with large content.
+# Workaround for large files
 tmp_file="$plugin_dir/$(uuidgen).json"
 jq -n \
   \
@@ -115,5 +115,10 @@ jq -n \
     }
   ]
 }]' >"$tmp_file"
-cat "$tmp_file"
-rm "$tmp_file"
+if jq . "$tmp_file" >/dev/null; then
+  cat "$tmp_file"
+  rm "$tmp_file"
+else
+  mv "$tmp_file" "$plugin_dir/BROKEN-$(echo "$drawio_file" | sed 's/\//-/g').json"
+  echo '[]'
+fi

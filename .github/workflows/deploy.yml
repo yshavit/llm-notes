@@ -40,8 +40,7 @@ jobs:
       - name: Install MyST
         run: npm install -g mystmd
       - name: Build HTML Assets
-        run: ../strict-myst build --strict --html
-        working-directory: book
+        run: make build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
