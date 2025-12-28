@@ -19,7 +19,7 @@ The "self" in self-attention means each token attends to other tokens within the
 In the context of LLMs, this is often shortened to just "attention".
 :::
 
-When I described the input embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first token in a sentence and "have" as the third token. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+When I described the token embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first token in a sentence and "have" as the third token. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
 In other words, we want to learn what "have" means in the context of the specific sentence we see it in, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
 
