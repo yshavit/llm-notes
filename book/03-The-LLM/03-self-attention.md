@@ -7,19 +7,19 @@ downloads:
 
 ## What and _why_ is self-attention?
 
-In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components), which will make various inferences on them. But first, we're going to use a process called {dfn}`self-attention` to determine how each word draws information from the words around it.
+In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components), which will make various inferences on them. But first, we're going to use a process called {dfn}`self-attention` to determine how each token draws information from the tokens around it.
 
 :::{drawio} images/attention/llm-flow-self-attention
 :alt: Self-attention sits between tokenization and the feedforward network
 :::
 
 :::{note} "Self attention" ↔ "Attention"
-The "self" in self-attention means each word attends to other words within the same input sequence.
+The "self" in self-attention means each token attends to other tokens within the same input sequence.
 
 In the context of LLMs, this is often shortened to just "attention".
 :::
 
-When I described the input embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first word in a sentence and "have" as the third word. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+When I described the input embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first token in a sentence and "have" as the third token. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
 In other words, we want to learn what "have" means in the context of the specific sentence we see it in, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
 
@@ -398,7 +398,7 @@ The above covers the fundamental aspects of how self-attention works, but there 
 
 When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that was a bit of a simplification. Everything I've described above --- the weight matrices, vectors, etc --- forms a unit called an {dfn}`attention head`.
 
-The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between words, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
+The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between tokens, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
 To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
 
