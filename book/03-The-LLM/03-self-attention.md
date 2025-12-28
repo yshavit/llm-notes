@@ -39,7 +39,7 @@ I'll be using the following conventions throughout this chapter, and in general 
 - $d$: dimensionality of each input token
 - $\delta$: dimensionality of each output token
 
-All three of these are hyperparameters.
+$d$ and $\delta$ are hyperparameters.
 :::
 
 :::{important} Two small but important notes
