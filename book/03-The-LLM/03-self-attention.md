@@ -112,6 +112,45 @@ $$
 $$
 :::
 
+### Focusing our attention
+
+Instead of trying to learn everything about the relationships between inputs, we'll have the attention layer focus on just one or two kinds of relationships. For example, an attention layer may focus on understanding rhyming schemes, or on learning which words are verbs.
+
+Of course, not words are verbs --- and for that matter, not all tokens are whole words. So, to learn rhyming schemes, we need to focus our attention on pairs of tokens that are whole words that rhyme. The layer should focus is attention on them, and ignore other pairings: if you're trying to learn what a rhyme is, comparing "cat" to "dog" will be noise at best, and is likely to actively interfere with learning the pattern.
+
+Once we focus on pairs of rhyming-word tokens, we want the attention layer to only output the rhyming information about them. An embedding token contains lots of information, with each nugget in a different index within the embedding: the token's semantics, whether it's a full word, whether it's in rhyming class A, whether it's in rhyming class B, how many syllable it has, and so on. (Again, remember that these meanings are only allegorical.) So, our attention layer needs to extract only the relevant indices. What's more, it needs to combine those indices to create a new meaning: maybe it takes "index 1318 signifies a single-syllable word" and "index 3016 means rhyming class A" into a single concept in the output, index 2933 meaning "words in rhyming class A".
+
+So, now we have a more tractable problem than just "find the relationships between tokens". We need to:
+
+1. Find which token pairings matter to the specific relationship that this layer is learning.
+2. Find out how to extract and combine the relevant parts of the embedding tokens to produce the attention output embedding
+
+:::{tip} Only learning one relationship?
+For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in @putting-it-together, our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they're all initialized with different random values, each will randomly converge towards a different relationship.
+
+What the relationships actually _are_ can be very opaque. When researchers look at the learned parameters, some layers seem pretty straightforward, like learning "words depend on the word before them" (i.e., that sentences have some linearity to them). Other layers seems to conflate a few seemingly unrelated relationships, and still others are totally incomprehensible. Gaining insight into what these layers mean is an area of active research.
+:::
+
+:::{warning} TODO --- move to a recap section? rm?
+In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain learned parameters. What more do these transformations add?
+
+If you're also confused, this section walks through the main parts that confused me, so maybe it can help you, too. If everything above makes sense, you can jump ahead to @computing-attention-weights.
+
+Remember our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're trying to find a more compact way to encode that information.
+
+One approach would be to save space on the $n \times n \times d \times \delta$ matrix by using the same $d \times \delta$ matrix in each cell. But that would mean each input always gets treated the same --- and in particular, its attention would be the same relative to every other input. That defeats the whole purpose of the attention layer, which is to learn the relationships between each pair of tokens. In this sense, the $W_q$ and $W_k$ weights are actually the core of attention: they're what lets us combine the A and B embeddings in each pair.
+
+So, let's focus on $W_q$ and $W_k$. What are they doing, really? I mentioned that the dot product of transformed-A and transformed-B provides a score for how much A attends to B, but how does that help?
+
+At its core, this score lets us turn certain A-B pairs on or off (on a sliding scale), which in turn lets the LLM tune out noise --- or worse, conflicting information. (Conversely, this also lets the LLM actively focus on certain relationships.) For example, if input pairing $(a, b)$'s training is in conflict with with pairing $(a, c)$, the attention layer doesn't have to try to learn an aggregate of both: it will instead learn (via $W_q$ and $W_k$) to ignore one of the pairs and focus its training on the other.
+
+As we'll see later, an LLM actually contains multiple self-attention instances (called "heads"). Each one will learn a different set of relationships, in part by emergently converging on $W_q$ and $K_k$ matrices that let it focus on different token pairings.
+
+But if that's the case, wouldn't we need a _ton_ of attention heads? After all, there's a lot of information out there!
+
+Remember that the attention layer is only one part of the transformer block --- the other being the feedforward network, which I'll cover in the next chapter. The attention layer is focused primarily on the relationships between tokens: roughly, things like "English has subject-verb-object sentence structure." The feedforward network is where most basic facts, like the capital of Massachusetts, are stored.
+:::
+
 ### Breaking down the problem
 
 So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
@@ -180,26 +219,6 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 - $W_q$ ("query weight matrices"): What am I looking for?
 - $W_k$ ("key weight matrices"): What do I offer as context?
 - $W_v$ ("value weight matrices"): What information should I pass along?
-
-### Why this specific approach?
-
-In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain learned parameters. What more do these transformations add?
-
-If you're also confused, this section walks through the main parts that confused me, so maybe it can help you, too. If everything above makes sense, you can jump ahead to @computing-attention-weights.
-
-Remember our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're trying to find a more compact way to encode that information.
-
-One approach would be to save space on the $n \times n \times d \times \delta$ matrix by using the same $d \times \delta$ matrix in each cell. But that would mean each input always gets treated the same --- and in particular, its attention would be the same relative to every other input. That defeats the whole purpose of the attention layer, which is to learn the relationships between each pair of tokens. In this sense, the $W_q$ and $W_k$ weights are actually the core of attention: they're what lets us combine the A and B embeddings in each pair.
-
-So, let's focus on $W_q$ and $W_k$. What are they doing, really? I mentioned that the dot product of transformed-A and transformed-B provides a score for how much A attends to B, but how does that help?
-
-At its core, this score lets us turn certain A-B pairs on or off (on a sliding scale), which in turn lets the LLM tune out noise --- or worse, conflicting information. (Conversely, this also lets the LLM actively focus on certain relationships.) For example, if input pairing $(a, b)$'s training is in conflict with with pairing $(a, c)$, the attention layer doesn't have to try to learn an aggregate of both: it will instead learn (via $W_q$ and $W_k$) to ignore one of the pairs and focus its training on the other.
-
-As we'll see later, an LLM actually contains multiple self-attention instances (called "heads"). Each one will learn a different set of relationships, in part by emergently converging on $W_q$ and $K_k$ matrices that let it focus on different token pairings.
-
-But if that's the case, wouldn't we need a _ton_ of attention heads? After all, there's a lot of information out there!
-
-Remember that the attention layer is only one part of the transformer block --- the other being the feedforward network, which I'll cover in the next chapter. The attention layer is focused primarily on the relationships between tokens: roughly, things like "English has subject-verb-object sentence structure." The feedforward network is where most basic facts, like the capital of Massachusetts, are stored.
 
 ## Computing attention weights
 

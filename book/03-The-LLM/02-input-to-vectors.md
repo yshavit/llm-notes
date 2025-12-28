@@ -40,7 +40,9 @@ All of the tokens our model knows about form its vocabulary, and each one is ass
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
 :::{note} Reminder of what these values mean
-As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" --- that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on --- then each of these is, very roughly by way of an analogy, a value in the token embedding vector. For example, index 1318 in the embedding vector for "be" may encode its existential connotation. In the embedding token for "dog", that same index 1318 embedding vector may connote fluffiness instead of existentialism.
+As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" --- that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on --- then each of these is, very roughly by way of an analogy, a value in the token embedding vector.
+
+Although every embedding vector is technically independent, training will generally cause them to align what each index means. For example, index 1318 may converge towards meaning something like "single-syllable word" across all embeddings in the LLM's vocabulary.
 
 Again it's important to remember that the values don't _actually_ encode existentialism or fluffiness. They're just values which settle into being during training, and which correlate with predictive power when generating words.
 :::
