@@ -7,34 +7,30 @@ downloads:
 
 ## What and _why_ is self-attention?
 
-In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components). But first, we're going to use a process called {dfn}`self-attention` to determine how each word in the input affects the other words in the input.
+In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components), which will make various inferences on them. But first, we're going to use a process called {dfn}`self-attention` to determine how each word draws information from the words around it.
 
 :::{drawio} images/attention/llm-flow-self-attention
 :alt: Self-attention sits between tokenization and the feedforward network
 :::
 
-:::{note} "Self" attention
-The "self" in self-attention refers to the fact that the input vector-of-vector looks at itself.
+:::{note} "Self attention" ↔ "Attention"
+The "self" in self-attention means each word attends to other words within the same input sequence.
 
-In the context of LLMs, it's often referred to as just "attention" (without "self-") as a shorthand.
+In the context of LLMs, this is often shortened to just "attention".
 :::
 
-When I described the input embeddings in the previous chapter, I mentioned how they're combined with position embedding. This lets us differentiate between "have" as the first word in a sentence and "have" as the third word. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
+When I described the input embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first word in a sentence and "have" as the third word. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
-In other words, we want to learn what "have" means in the context of the _specific_ sentence we see it, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
+In other words, we want to learn what "have" means in the context of the specific sentence we see it in, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
 
-:::{drawio} images/attention/attention-weights-houston
-:alt: 5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.
-:::
-
-Since this layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
+Since the attention layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
 - The input is a vector representing each token in the input. Each token is itself represented by an input embedding (as described in the previous chapter), so this is an $n$-sized vector of $d$-sized vectors, where $n$ is the input size and $d$ is the dimensionality of each embedding.
-- The output will be a vector of these attentions outputs. Each attention output is a vector. We'll call that vector's dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
-  :::{important} Two small but important notes
-  - $d$ and $\delta$ are technically independent [hyperparameters](#parameter-vs-activation), but in practice, $\delta = d$ in most LLMs. That's because if $\delta$ were smaller than $d$, you'd be losing information; and if it were bigger, you'd be encoding more information than you started with. It'd be like writing a number to 10 decimal places when your ruler only measures precisely to 2. Setting $d = \delta$ will also help us combine multiple transformers, as I'll describe in a later chapter.
-  - $\delta$ is _not_ a standard name in LLM literature. I'm picking it to show that it's conceptually different from $d$ while highlighting that in practice they're equal.
-  :::
+
+  **tl;dr:** $n$ vectors of size $d$
+- The output will be a vector of input-plus-attention elements, called an {dfn}`attention output`. Each attention output is a vector. We'll call the attention outputs' dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
+
+  **tl;dr:** $n$ vectors of size $\delta$
 
 :::{aside}
 I'll be using the following conventions throughout this chapter, and in general in the book:
@@ -42,21 +38,26 @@ I'll be using the following conventions throughout this chapter, and in general 
 - $n$: input size, in number of tokens
 - $d$: dimensionality of each input token
 - $\delta$: dimensionality of each output token
+
+All three of these are hyperparameters.
 :::
 
-To do this, we're going to first build up the basics of an attention output. Then, we'll introduce some important real-world refinements.
+:::{important} Two small but important notes
 
-## Computing attention outputs
+- $d$ and $\delta$ are technically independent hyperparameters, but in practice, $\delta = d$ in most LLMs. This allows us to stack multiple transformers in a way that makes the LLM much more powerful, as I'll describe in a later chapter.
+- $\delta$ is _not_ a standard name in LLM literature. I'm picking it to show that it's conceptually different from $d$ while highlighting that in practice they're equal.
+
+:::
+
+In the rest of this chapter, I'll explain what this attention is concretely, and how we compute it. I'll start by building an intuition and motivation around what we're building, and then go into the details of how it works. Finally, the last part of this chapter will introduce some important real-world refinements.
 
 :::{attention} Hang onto your butts!
-I found this all very hard to wrap my head around. I've tried to interweave the "what" of the computations with the "why" of why they work as best I can. Be patient with yourself: this is tricky, but it's crucial to understanding how LLMs work.
+I found this hard to wrap my head around when I first learned it. I've tried to interweave the "what" of the computations with the "why" of why they work as best I can. Be patient with yourself: this is tricky, but it's crucial to understanding how LLMs work.
 :::
 
-### Make sure you remember matrix math
+We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [earlier chapter on matrix math][math].
 
-We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [previous chapter on matrix math][prev].
-
-[prev]: ../01-Introduction/03-vectors-matrices-tensors.md
+[math]: ../01-Introduction/03-vectors-matrices-tensors.md
 
 ````{seealso} Quick refresher, if you need it
 :class: dropdown
@@ -66,15 +67,25 @@ We're going to be making extensive use of matrix math in this chapter. Make sure
 
 ````
 
+## Computing attention weights
+
 ### Building a high-level intuition of what we need
 
-As I mentioned above, what we really want to answer is: "for every input, what does it mean with respect to every other input?" That question has nuance, and as you'll recall from [my overview](#vectors-are-nuance), nuance means vectors.
+As I mentioned above, what we really want to answer is: "for every input token, what information does it draw from every other token?" That question has nuance, and as you'll recall from [my overview](#vectors-are-nuance), nuance means vectors --- or matrices.
 
-The naive approach is conceptually easy: we need an $n \times n$ grid, where each item answers "what does input token A mean with respect to input token B?" Since each of those items translates an input $d$-vector into an output $\delta$-vector, each can can be represented as a matrix:
+If we have $n$ input embeddings, and each can attend to every other (including itself), we can visualize attention as an $n \times n$ grid:
+
+:::{drawio} images/attention/attention-weights-houston
+:alt: 5 by 5 attention weight grid with "Houston we have a problem" as both rows and columns. Each cell shows how the row word attends to the column word.
+:::
+
+So, what's in each of these cells?
+
+The naive approach is pretty straightforward: Each cell tells us what input token A draws from input token B. Since that translates an input $d$-vector (the input embedding) into an output $\delta$-vector (the attention output), we can use a $d \times \delta$ matrix:
 
 $$
 \text{Input}_{1 \times d}
-\cdot \text{Transformation}_{d \times \delta}
+\cdot \underbrace{\text{Transformation}_{d \times \delta}}
 = Output_{1 \times \delta}
 $$
 
@@ -84,12 +95,12 @@ That means each element in the grid has to be a $d \times \delta$ matrix:
 :alt: n-by-n grid, where each cell is a delta-sized vector
 :::
 
-The problem is that this is an $n \times n \times d \times \delta$ tensor, which would be far too large to reasonably store and train on.
+The problem is that this is an $n \times n \times d \times \delta$ tensor, which would be far too large to reasonably store and train on. Worse yet, it grows by the square of the input size! Ideally, we'd like to have something that only grows as a function of the $d$ hyperparameter.
 
 :::{note} How big are we talking?
 :class: dropdown
 :open: false
-In a modern LLM, the embedding dimensions are roughly 4k - 10k, and the context lengths vary widely, from about 4k to 200k and up. If we assume $n = 8k$ and $d = 4k$ (we'll assume $d = \delta$), and a 4-byte float per value in the tensor, this gives us:
+In a modern LLM, the embedding dimensions $d$ are roughly 4k - 10k, and the context lengths $n$ vary widely, from about 4k to 200k and up. If we assume $n = 8k$ and $d = 4k$ (we'll assume $d = \delta$), and a 4-byte float per value in the tensor, this gives us:
 
 $$
 \begin{align}
@@ -103,28 +114,64 @@ $$
 
 So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
 
-- How _much_ does input A care about input B?
-- What information should input B pass forward in this context?
+- How much does input A care about input B?
+- How should input B express its information in this context?
 
-The first of those we'll represent with a simple scalar; the second is a nuanced question, so we'll represent it as a ($\delta$-dimensional) vector.
-
-Note that our two questions involved three usages of tokens:
+Note that our two questions involved three usages of input tokens:
 
 - How much does **(input A)** care about **(input B)**?
-- What information should **(input B)** pass forward in this context?
+- How should **(input B)** express its information in this context?
 
-Each of these usages carries some nuance, so we'll use a learned transformation for them. We'll call these $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
+Each of these usages carries some nuance, so we'll use a learned transformation for them. We'll call these transformations $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
-- What information should **(input B transformed by $W_v$)** pass forward in this context?
+- How should **(input B transformed by $W_v$)** express its information in this context?
 
-We want to represent each of these as a $\delta$-dimensional vector, which we derive from the $d$-dimensional input embedding and the respective $W_\star$ weight matrices. Remembering that we can transform a $d$-vector to a $\delta$ vector using a $d \times \delta$ matrix, this means each weight is a $d \times \delta$ matrix:
+Let's think about what shapes these transformations should be.
+
+The "how much" question is a scalar (as a mnemonic, think "on a scale from 1 to 100, how much does...?"). We have two input-transformed-by instances in this question, so if we turned each into a vector of equal length, we could calculate their dot products to get that scalar. Let's translate them into $\delta$-sized vectors. We can do this via a $d \times \delta$ matrix:
 
 $$
-Input_{1 \times d} \cdot W\star_{d \times \delta} = Output_{1 \times \delta}
+Input_{1 \times d} \cdot X = Output_{1 \times \delta}
 $$
 
-Crucially, because this approach is just an _approximation_ of the $n \times n \times d \times \delta$ matrix, we don't need a separate $W_\star$ for each cell in the $n \times n$ grid. Instead, we just have three weights total: one $W_q$, one $W_k$, and one $W_v$ for the whole attention layer.
+Since we have two separate transformations --- one for input A and one for input B --- we'll define two such matrices:
+
+$$
+\begin{align}
+W_q & \Rightarrow d \times \delta \\
+W_k & \Rightarrow d \times \delta \\
+\end{align}
+$$
+
+Note that while "how much" score is a single number, the transformation matrices that produce it encode quite a bit of nuance: each has $d \times \delta$ learned parameters!
+
+:::{tip} Why dot products?
+:class: dropdown
+So, we took two $d$-vectors, transformed them into two $\delta$ vectors, and then took their dot product to get a scalar. Why dot product?
+
+Geometrically, dot products measure how aligned two vectors are _if_ those vectors are normalized to have the same magnitude ("length", basically). But our input embeddings aren't normalized, so that doesn't apply here.
+
+The real answer, as far as I can tell, is that dot products are efficient to compute, and they work well in practice.
+
+Note that there's no reason for the two transformed vectors to be $\delta$ specifically; they could in principle be any size, as long as the two sizes are equal (so that we can dot-product them). This means that $W_q$ and $W_k$ could each be $d \times x$ for any $x$. Most LLMs use $\delta$, and we'll assume that, to keep things simple.
+:::
+
+The answer to "how should it express its information" is different --- we're not asking for a score, but for the actual content. So we'll represent this as a $\delta$-dimensional vector (which will determine our attention output's dimension). Again, this means we need a $d \times \delta$ matrix:
+
+$$
+W_v \Rightarrow d \times \delta
+$$
+
+Crucially, because this approach is just an _approximation_ of the $n \times n \times d \times \delta$ matrix, we don't need a separate set of $W_q$ / $W_k$ / $W_v$ for each cell in the $n \times n$ grid. Instead, we just have three weights total for the whole attention layer: one $W_q$, one $W_k$, and one $W_v$.
+
+:::{important} Recap
+
+- Our goal is to turn each input $d$-vector into an output $\delta$-vector, in a way that encodes the relationships between each pair of tokens.
+- The naive way to do this would be a $d \times \delta$ matrix for each of these pairs (there are $n \times n$ of them), but this is too huge.
+- Instead, we decompose the problem into three smaller problems, each encoded by a single $d \times \delta$ matrix.
+
+:::
 
 The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
 
@@ -132,19 +179,20 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 - $W_k$ ("key weight matrices"): What do I offer as context?
 - $W_v$ ("value weight matrices"): What information should I pass along?
 
-:::{tip} Why do we need these weight matrices?
-In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain a concept of nuance. What more do these transformations add?
+:::{tip} Wait, why do we need these weight matrices?
+:class: dropdown
+In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain learned parameters. What more do these transformations add?
 
-Remember that our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big. We're essentially using a couple tricks to compress it.
+If you're also confused, maybe this slight rephrasing will help.
 
-- First, we're replacing the inner $d \times \delta$ matrices with a 0-dimensional scalar that just represents how _much_ (as opposed to more generally "how") each input affects the other.
-- Then, we're applying this scalar against a vector that represents what each input embedding means _in the context of attention_.
+Remember that the attention layer encodes the _relationships_ between input tokens. Our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're essentially using a couple tricks to compress it.
 
-To translate the input embeddings to "the input embedding in the context of attention", we add the $W_v$ matrix. This matrix essentially encodes the "in the context of attention" learnings. The $W_q$ and $W_k$ matrices similarly encode "how much does A-in-attention-context affect B-in-attention-context."
+- First, we're using two $d \times \delta$ matrices ($W_q$ and $W_k$) to encode, for any pair of tokens, how much A should attend to B.
+- Then, we're using a third $d \times \delta$ matrix ($W_v$) to encode what B contributes when attended to.
 
-The math would still work if we did without these matrices and just did something like a dot product of A and B for the "how much" question, and used the B embeddings directly for "what does B mean". (We'd need to require $d = \delta$, but that wouldn't be a show-stopper.) But this would compress the attention _too_ much, and the attention layer would be hobbled.
+The math would still work if we omitted the weight matrices and just did something like a dot product of A and B for the "how much" question, and used B's embeddings directly for its contribution. But this would compress the attention _too_ much, and the attention layer would be useless. We need the learned parameters in the weight matrices; they're exactly what the attention layer brings to the table.
 
-Adding the three weight matrices gives us a happy medium: a mere $3 \times (d \times \delta \times 4 \text{ bytes})$ gives us a useful approximation of the ideal tensor at a tiny fraction of the cost (hundreds of megabytes, instead of petabytes).
+Adding the three weight matrices gives us a happy medium: a mere $3 \times (d \times \delta \times 4 \text{ bytes})$ of learned parameters gives us a useful approximation of the ideal tensor at a tiny fraction of the cost (hundreds of megabytes, instead of petabytes).
 :::
 
 The next sections will describe how these matrices fit together. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand the mechanics of how we use these weight matrices.
