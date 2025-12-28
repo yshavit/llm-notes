@@ -25,10 +25,10 @@ In other words, we want to learn what "have" means in the context of the specifi
 
 Since the attention layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
-- The input is a vector representing each token in the input. Each token is itself represented by an input embedding (as described in the previous chapter), so this is an $n$-sized vector of $d$-sized vectors, where $n$ is the input size and $d$ is the dimensionality of each embedding.
+- The input is a vector with one element per token. Each element is itself represented by an input embedding (as described in the previous chapter), so this is an $n$-sized vector of $d$-sized vectors, where $n$ is the input size and $d$ is the embedding dimension.
 
   **tl;dr:** $n$ vectors of size $d$
-- The output will be a vector of input-plus-attention elements, called an {dfn}`attention output`. Each attention output is a vector. We'll call the attention outputs' dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
+- The output will be a vector of input-plus-attention elements, called an {dfn}`attention output`. Each attention output is a vector. I'll call the attention outputs' dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
 
   **tl;dr:** $n$ vectors of size $\delta$
 
@@ -52,7 +52,7 @@ $d$ and $\delta$ are hyperparameters.
 In the rest of this chapter, I'll explain what this attention is concretely, and how we compute it. I'll start by building an intuition and motivation around what we're building, and then go into the details of how it works. Finally, the last part of this chapter will introduce some important real-world refinements.
 
 :::{attention} Hang onto your butts!
-I found this hard to wrap my head around when I first learned it. I've tried to interweave the "what" of the computations with the "why" of why they work as best I can. Be patient with yourself: this is tricky, but it's crucial to understanding how LLMs work.
+I found this hard to wrap my head around. I've tried to interweave the "what" of the computations with the "why" of why they work as best I can. Be patient with yourself: this is tricky, but it's crucial to understanding how LLMs work.
 :::
 
 We're going to be making extensive use of matrix math in this chapter. Make sure you remember how that works, and in particular the shapes of the matrices when they're multiplied. It's covered in the [earlier chapter on matrix math][math].
@@ -67,11 +67,11 @@ We're going to be making extensive use of matrix math in this chapter. Make sure
 
 ````
 
-## Computing attention weights
+## Building a high-level intuition of what we need
 
-### Building a high-level intuition of what we need
+### What if we had infinite compute power?
 
-As I mentioned above, what we really want to answer is: "for every input token, what information does it draw from every other token?" That question has nuance, and as you'll recall from [my overview](#vectors-are-nuance), nuance means vectors --- or matrices.
+As I mentioned above, what we really want to answer is: "for every input token, what information does it draw from every other token?" That question has nuance, and as you'll recall from [the earlier overview](#vectors-are-nuance), nuance means vectors --- or matrices.
 
 If we have $n$ input embeddings, and each can attend to every other (including itself), we can visualize attention as an $n \times n$ grid:
 
@@ -111,6 +111,8 @@ $$
 \end{align}
 $$
 :::
+
+### Breaking down the problem
 
 So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
 
@@ -179,21 +181,27 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 - $W_k$ ("key weight matrices"): What do I offer as context?
 - $W_v$ ("value weight matrices"): What information should I pass along?
 
-:::{tip} Wait, why do we need these weight matrices?
-:class: dropdown
+### Why this specific approach?
+
 In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain learned parameters. What more do these transformations add?
 
-If you're also confused, maybe this slight rephrasing will help.
+If you're also confused, this section walks through the main parts that confused me, so maybe it can help you, too. If everything above makes sense, you can jump ahead to @computing-attention-weights.
 
-Remember that the attention layer encodes the _relationships_ between input tokens. Our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're essentially using a couple tricks to compress it.
+Remember our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're trying to find a more compact way to encode that information.
 
-- First, we're using two $d \times \delta$ matrices ($W_q$ and $W_k$) to encode, for any pair of tokens, how much A should attend to B.
-- Then, we're using a third $d \times \delta$ matrix ($W_v$) to encode what B contributes when attended to.
+One approach would be to save space on the $n \times n \times d \times \delta$ matrix by using the same $d \times \delta$ matrix in each cell. But that would mean each input always gets treated the same --- and in particular, its attention would be the same relative to every other input. That defeats the whole purpose of the attention layer, which is to learn the relationships between each pair of tokens. In this sense, the $W_q$ and $W_k$ weights are actually the core of attention: they're what lets us combine the A and B embeddings in each pair.
 
-The math would still work if we omitted the weight matrices and just did something like a dot product of A and B for the "how much" question, and used B's embeddings directly for its contribution. But this would compress the attention _too_ much, and the attention layer would be useless. We need the learned parameters in the weight matrices; they're exactly what the attention layer brings to the table.
+So, let's focus on $W_q$ and $W_k$. What are they doing, really? I mentioned that the dot product of transformed-A and transformed-B provides a score for how much A attends to B, but how does that help?
 
-Adding the three weight matrices gives us a happy medium: a mere $3 \times (d \times \delta \times 4 \text{ bytes})$ of learned parameters gives us a useful approximation of the ideal tensor at a tiny fraction of the cost (hundreds of megabytes, instead of petabytes).
-:::
+At its core, this score lets us turn certain A-B pairs on or off (on a sliding scale), which in turn lets the LLM tune out noise --- or worse, conflicting information. (Conversely, this also lets the LLM actively focus on certain relationships.) For example, if input pairing $(a, b)$'s training is in conflict with with pairing $(a, c)$, the attention layer doesn't have to try to learn an aggregate of both: it will instead learn (via $W_q$ and $W_k$) to ignore one of the pairs and focus its training on the other.
+
+As we'll see later, an LLM actually contains multiple self-attention instances (called "heads"). Each one will learn a different set of relationships, in part by emergently converging on $W_q$ and $K_k$ matrices that let it focus on different token pairings.
+
+But if that's the case, wouldn't we need a _ton_ of attention heads? After all, there's a lot of information out there!
+
+Remember that the attention layer is only one part of the transformer block --- the other being the feedforward network, which I'll cover in the next chapter. The attention layer is focused primarily on the relationships between tokens: roughly, things like "English has subject-verb-object sentence structure." The feedforward network is where most basic facts, like the capital of Massachusetts, are stored.
+
+## Computing attention weights
 
 The next sections will describe how these matrices fit together. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand the mechanics of how we use these weight matrices.
 
@@ -238,11 +246,11 @@ Let's walk through the specifics.
 
 ### $W_q$ → query vector
 
-:::{aside}
+::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-query
 :alt: query token times Wq = query vector
 :::
-:::
+::::
 
 This is just the query token, transformed by the weight matrix $W_q$:
 
@@ -255,11 +263,11 @@ That's it! We do this just once per query input.
 
 ### Query vector and $W_k$ → attention scores
 
-:::{aside}
+::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-score
 :alt: query tokens and input tokens turn into attention scores
 :::
-:::
+::::
 
 We'll do this step once for every input token; I'll call these tokens the key tokens (though that's not a standard term).
 
@@ -281,11 +289,11 @@ We call this dot product the raw {dfn}`attention score` for this key.
 
 ### Attention scores → attention weights
 
-:::{aside}
+::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-weight
 :alt: attention scores normalize into attention weights
 :::
-:::
+::::
 
 Since we repeat the attention score process for each token in the input, we end up with an $n$-vector of attention scores. These scores can be all over the place --- positive, negative, and at vastly different scales --- so we normalize them to a probability distribution, which we call the {dfn}`attention weights`. The values within this distribution  are all between 0 and 1, and they all sum to 1.
 
@@ -345,11 +353,11 @@ attention weights
 
 ### Attention weights and $W_v$ → context vector
 
-:::{aside}
+::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-context
 :alt: attention weights combine with values to form the context vector
 :::
-:::
+::::
 
 All of the work until now has been to calculate the attention weights, which are a $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: what _is_ B, in the context of our self-attention layer?
 
