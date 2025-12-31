@@ -13,7 +13,7 @@ In [the previous chapter](./02-input-to-vectors), I described how to turn input 
 :alt: Self-attention sits between tokenization and the feedforward network
 :::
 
-:::{note} "Self attention" ↔ "Attention"
+:::{note} "Self attention" ⇄ "Attention"
 The "self" in self-attention means each token attends to other tokens within the same input sequence.
 
 In the context of LLMs, this is often shortened to just "attention".
@@ -114,48 +114,32 @@ $$
 
 ### Focusing our attention
 
-Instead of trying to learn everything about the relationships between inputs, we'll have the attention layer focus on just one or two kinds of relationships. For example, an attention layer may focus on understanding rhyming schemes, or on learning which words are verbs.
+Instead of trying to learn everything about the relationships between inputs, we'll have the attention layer focus on just one or two kinds of relationships. For example, an attention layer may focus on understanding how parentheticals fit into a sentence, or learning about subject-verb agreement.
 
-Of course, not words are verbs --- and for that matter, not all tokens are whole words. So, to learn rhyming schemes, we need to focus our attention on pairs of tokens that are whole words that rhyme. The layer should focus is attention on them, and ignore other pairings: if you're trying to learn what a rhyme is, comparing "cat" to "dog" will be noise at best, and is likely to actively interfere with learning the pattern.
+Of course, not all tokens are nouns or verbs. To learn subject-verb agreement, the attention mechanism needs to focus on the relationships between subjects and their verbs, and mostly ignore other token pairs. Otherwise, the model will train on noise or even contradictory information. For example, the suffix "-s" usually marks singular verbs but plural nouns, and conjunctions don't have the concept of pluralization at all.
 
-Once we focus on pairs of rhyming-word tokens, we want the attention layer to only output the rhyming information about them. An embedding token contains lots of information, with each nugget in a different index within the embedding: the token's semantics, whether it's a full word, whether it's in rhyming class A, whether it's in rhyming class B, how many syllable it has, and so on. (Again, remember that these meanings are only allegorical.) So, our attention layer needs to extract only the relevant indices. What's more, it needs to combine those indices to create a new meaning: maybe it takes "index 1318 signifies a single-syllable word" and "index 3016 means rhyming class A" into a single concept in the output, index 2933 meaning "words in rhyming class A".
+Once we focus on the relevant token pairs, the attention mechanism needs to extract and recombine relevant information from the first token. For example, a layer learning subject-verb agreement needs to extract whether the subject is singular or plural.
+
+In practice, this information is almost never neatly packaged into a single dimension in the token's embedding; it's spread out and entangled across several dimensions. So, the attention layer needs to learn how to extract and recombine those distributed properties into a useful representation.
 
 So, now we have a more tractable problem than just "find the relationships between tokens". We need to:
 
 1. Find which token pairings matter to the specific relationship that this layer is learning.
-2. Find out how to extract and combine the relevant parts of the embedding tokens to produce the attention output embedding
+2. Find out how to extract and combine the relevant parts of the token embeddings to produce the right output
 
 :::{tip} Only learning one relationship?
-For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in [](./05-putting-it-together.md), our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they're all initialized with different random values, each will randomly converge towards a different relationship.
+For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in [](./05-putting-it-together.md), our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they all start with different random initial values, each will randomly converge towards a different relationship.
 
-What the relationships actually _are_ can be very opaque. When researchers look at the learned parameters, some layers seem pretty straightforward, like learning "words depend on the word before them" (i.e., that sentences have some linearity to them). Other layers seems to conflate a few seemingly unrelated relationships, and still others are totally incomprehensible. Gaining insight into what these layers mean is an area of active research.
+What the relationships _actually_ are can be very opaque. When researchers look at the learned parameters, some layers seem pretty straightforward, like learning "words depend on the word before them". Other layers seem to conflate a few seemingly unrelated relationships, and still others are totally incomprehensible. Gaining insight into what these layers mean is an area of active research.
 :::
 
-:::{warning} TODO --- move to a recap section? rm?
-In trying to understand this, I kept struggling to understand why we needed these various transformations. After all, the input embeddings we previously computed already contain learned parameters. What more do these transformations add?
-
-If you're also confused, this section walks through the main parts that confused me, so maybe it can help you, too. If everything above makes sense, you can jump ahead to @computing-attention-weights.
-
-Remember our ideal transformation would be an $n \times n \times d \times \delta$ tensor, but that's too big, so we're trying to find a more compact way to encode that information.
-
-One approach would be to save space on the $n \times n \times d \times \delta$ matrix by using the same $d \times \delta$ matrix in each cell. But that would mean each input always gets treated the same --- and in particular, its attention would be the same relative to every other input. That defeats the whole purpose of the attention layer, which is to learn the relationships between each pair of tokens. In this sense, the $W_q$ and $W_k$ weights are actually the core of attention: they're what lets us combine the A and B embeddings in each pair.
-
-So, let's focus on $W_q$ and $W_k$. What are they doing, really? I mentioned that the dot product of transformed-A and transformed-B provides a score for how much A attends to B, but how does that help?
-
-At its core, this score lets us turn certain A-B pairs on or off (on a sliding scale), which in turn lets the LLM tune out noise --- or worse, conflicting information. (Conversely, this also lets the LLM actively focus on certain relationships.) For example, if input pairing $(a, b)$'s training is in conflict with with pairing $(a, c)$, the attention layer doesn't have to try to learn an aggregate of both: it will instead learn (via $W_q$ and $W_k$) to ignore one of the pairs and focus its training on the other.
-
-As we'll see later, an LLM actually contains multiple self-attention instances (called "heads"). Each one will learn a different set of relationships, in part by emergently converging on $W_q$ and $K_k$ matrices that let it focus on different token pairings.
-
-But if that's the case, wouldn't we need a _ton_ of attention heads? After all, there's a lot of information out there!
-
-Remember that the attention layer is only one part of the transformer block --- the other being the feedforward network, which I'll cover in the next chapter. The attention layer is focused primarily on the relationships between tokens: roughly, things like "English has subject-verb-object sentence structure." The feedforward network is where most basic facts, like the capital of Massachusetts, are stored.
-:::
+Let's take a look at what structures could let us answer these two questions.
 
 ### Breaking down the problem
 
-So, instead of asking "how does input A affect input B", we'll approximate that question by asking two simpler ones:
+As I covered above, instead of asking generally "how does input A affect input B", we'll approximate that question by asking two simpler ones:
 
-- How much does input A care about input B?
+- How much does input A care about input B \[for this layer's relationship]?
 - How should input B express its information in this context?
 
 Note that our two questions involved three usages of input tokens:
@@ -163,14 +147,14 @@ Note that our two questions involved three usages of input tokens:
 - How much does **(input A)** care about **(input B)**?
 - How should **(input B)** express its information in this context?
 
-Each of these usages carries some nuance, so we'll use a learned transformation for them. We'll call these transformations $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
+The LLM needs to learn something about each of these usages, so we'll use a learned transformation for each one. We'll call these transformations $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
 - How should **(input B transformed by $W_v$)** express its information in this context?
 
 Let's think about what shapes these transformations should be.
 
-The "how much" question is a scalar (as a mnemonic, think "on a scale from 1 to 100, how much does...?"). We have two input-transformed-by instances in this question, so if we turned each into a vector of equal length, we could calculate their dot products to get that scalar. Let's translate them into $\delta$-sized vectors. We can do this via a $d \times \delta$ matrix:
+The "how much" question is a scalar (as a mnemonic, think "on a scale from 1 to 100, how much does...?"). We have two input-transformed-by instances in this question, so if we turned each into a vector of equal length, we could calculate their dot product to get that scalar. Let's translate them into $\delta$-sized vectors. We can do this via a $d \times \delta$ matrix:
 
 $$
 Input_{1 \times d} \cdot X = Output_{1 \times \delta}
@@ -198,7 +182,7 @@ The real answer, as far as I can tell, is that dot products are efficient to com
 Note that there's no reason for the two transformed vectors to be $\delta$ specifically; they could in principle be any size, as long as the two sizes are equal (so that we can dot-product them). This means that $W_q$ and $W_k$ could each be $d \times x$ for any $x$. Most LLMs use $\delta$, and we'll assume that, to keep things simple.
 :::
 
-The answer to "how should it express its information" is different --- we're not asking for a score, but for the actual content. So we'll represent this as a $\delta$-dimensional vector (which will determine our attention output's dimension). Again, this means we need a $d \times \delta$ matrix:
+The answer to "how should it express its information" is different --- we're not asking for a score, but for the actual content. We'll represent this output as a $\delta$-dimensional vector (which will determine our attention output's dimension). Again, this means we need a $d \times \delta$ matrix:
 
 $$
 W_v \Rightarrow d \times \delta
@@ -210,15 +194,15 @@ Crucially, because this approach is just an _approximation_ of the $n \times n \
 
 - Our goal is to turn each input $d$-vector into an output $\delta$-vector, in a way that encodes the relationships between each pair of tokens.
 - The naive way to do this would be a $d \times \delta$ matrix for each of these pairs (there are $n \times n$ of them), but this is too huge.
-- Instead, we decompose the problem into three smaller problems, each encoded by a single $d \times \delta$ matrix.
+- Instead, we decompose the problem into two smaller problems, which we can answer using three $d \times \delta$ matrices.
 
 :::
 
 The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
 
-- $W_q$ ("query weight matrices"): What am I looking for?
-- $W_k$ ("key weight matrices"): What do I offer as context?
-- $W_v$ ("value weight matrices"): What information should I pass along?
+- $W_q$ ("query weight matrix"): What am I looking for?
+- $W_k$ ("key weight matrix"): What do I offer as context?
+- $W_v$ ("value weight matrix"): What information should I pass along?
 
 (computing-attention-weights)=
 
