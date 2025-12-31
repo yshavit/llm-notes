@@ -126,7 +126,7 @@ So, now we have a more tractable problem than just "find the relationships betwe
 2. Find out how to extract and combine the relevant parts of the embedding tokens to produce the attention output embedding
 
 :::{tip} Only learning one relationship?
-For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in @putting-it-together, our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they're all initialized with different random values, each will randomly converge towards a different relationship.
+For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in [](./05-putting-it-together.md), our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they're all initialized with different random values, each will randomly converge towards a different relationship.
 
 What the relationships actually _are_ can be very opaque. When researchers look at the learned parameters, some layers seem pretty straightforward, like learning "words depend on the word before them" (i.e., that sentences have some linearity to them). Other layers seems to conflate a few seemingly unrelated relationships, and still others are totally incomprehensible. Gaining insight into what these layers mean is an area of active research.
 :::
@@ -219,6 +219,8 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 - $W_q$ ("query weight matrices"): What am I looking for?
 - $W_k$ ("key weight matrices"): What do I offer as context?
 - $W_v$ ("value weight matrices"): What information should I pass along?
+
+(computing-attention-weights)=
 
 ## Computing attention weights
 
@@ -452,7 +454,7 @@ Lastly, in all of the above, we've been talking about "the" self-attention layer
 
 In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → feedforward network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
-I'll describe this in more detail in @05-putting-it-together. For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
+I'll describe this in more detail in [](./05-putting-it-together.md). For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
 
 ### RoPE
 
