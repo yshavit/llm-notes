@@ -260,7 +260,7 @@ This is just the query token, transformed by the weight matrix $W_q$:
 
 - We start with the query token's input embedding, which is a vector of size $d$
 - We have the query weight matrix $W_q$, of size $d \times \delta$
-- We just multiply them together: $query = embedding \cdot W_q$
+- We just multiply them together: $\underbrace{embedding}_{1 \times d} \cdot \underbrace{W_q}_{d \times \delta} = \underbrace{query}_{1 \times \delta}$
 - Out comes and we get a vector of size $\delta$
 
 That's it! We do this just once per query input.
