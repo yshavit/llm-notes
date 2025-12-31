@@ -208,22 +208,21 @@ The "query / key / value" terminology comes from an analogy to database lookups.
 
 ## Computing attention weights
 
-The next sections will describe how these matrices fit together. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand the mechanics of how we use these weight matrices.
+The next sections will describe the mechanics of calculating attention. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand how the weight matrices actually get used.
 
 ### Overview of how the weight matrices fit together
 
-For each token within the input, we'll focus on that input and do a bunch of calculations centered on it. Let's call that token the query token: it's the token for which we want to ask (that is, "query") how it attends to each token in the input.
+For each token within the input, we'll focus on that token and do a bunch of calculations centered on it. We'll call that token the {dfn}`query token`: it's the token for which we want to ask (that is, "query") how it attends to each token in the input.
 
-I'll start with an overview of the process, and then the next sections will go into details on each step.
+With that query token in mind, we'll look at each token in the input, treating each one in turn as a {dfn}`key token`.
 
-1. First, we apply each of the weight matrices:
-    1. We apply the query weight matrix ($W_q$) to the query token to get its {dfn}`query vector`: what is this token looking for?
-    2. We apply the key weight matrix ($W_k$) to every token to get the {dfn}`key vectors`: how can we match against each token?
-    3. We apply the value weight matrix ($W_v$) to every token to get the {dfn}`value vectors`: what information does each token contain?
-2. Then we combine the query with each key to compute {dfn}`attention scores`, one per token. These are scalars that tell us how much the query token should care about each other token.
-3. Then we normalize these attention scores into {dfn}`attention weights` (these are still one scalar per token).
-4. Then we combine the attention weights with each value to compute {dfn}`weighted values`, again one per token. These are vectors.
-5. Finally, we combine the weighted values to get the {dfn}`context vector`: a weighted blend of information from all tokens, focused on what's relevant to the query token.
+1. First, we'll calculate the query token's {dfn}`query vector`, using $W_q$.
+2. Then, we'll use $W_k$ to calculate the {dfn}`attention score` for each key (relative to the query token). These are scalars that tell us how much the query token should care about each key token.
+3. Then we normalize these attention scores into {dfn}`attention weights` (still one scalar per key).
+4. Then, we'll compute weighted tokens for each key:
+    1. We'll use $W_v$ to transform each key into a $\delta$-vector
+    2. We'll multiply each of those $\delta$-vectors by its respective attention weight to compute {dfn}`weighted value` vectors, again one per key.
+5. Finally, we'll combine the weighted values to get the {dfn}`context vector`, a weighted blend of information from all the tokens after transformation and normalization. This is our attention output.
 
 :::{aside}
 
