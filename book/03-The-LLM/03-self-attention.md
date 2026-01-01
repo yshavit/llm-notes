@@ -204,6 +204,14 @@ The "query / key / value" terminology comes from an analogy to database lookups:
 - $W_k$ ("key weight matrix"): Turns B into a key for the query to match against.
 - $W_v$ ("value weight matrix"): Turns B into a value that the query returns.
 
+:::{tip} Alternative mental model
+The $W_q$ and $W_k$ distinction didn't really make sense to me, in part because it feels arbitrary. Mathematically, you could swap the two names and everything still works: both weight matrices are used to transform the input embeddings into $\delta$-vectors, which then get dot-producted; and dot products are commutative.
+
+To me, a better mental model is to consider the $(A, B)$ pair as a single, composite key; and then have weight matrices $W_{k1}$ and $W_{k2}$ to transform its components before calculating their dot products.
+
+I only mention this in case the $W_q$ / $W_k$ division also trips you up. That is the standard terminology, though, so it's what I'll be using throughout this book.
+:::
+
 (computing-attention-weights)=
 
 ## Computing attention weights
