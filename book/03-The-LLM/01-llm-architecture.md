@@ -1,4 +1,4 @@
-# The LLM's architecture
+# Architectural overview
 
 In the previous chapter, I gave a very high-level overview of how LLMs work. In the next few chapters, I’ll describe this architecture in much more detail. I’ll cover each component of an LLM --- what it does, why it’s needed, and the nitty-gritty math that drives it.
 
