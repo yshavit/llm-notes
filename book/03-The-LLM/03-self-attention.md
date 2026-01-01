@@ -21,7 +21,7 @@ In the context of LLMs, this is often shortened to just "attention".
 
 When I described the token embeddings in the previous chapter, I mentioned that they're combined with position embeddings to produce the final input embedding. This lets us differentiate between "have" as the first token in a sentence and "have" as the third token. This is a decent first step, but it's not enough: we want to know that it means something different in "we'll always {u}`have`" as compared to "Houston, we {u}`have`".
 
-In other words, we want to learn what "have" means in the context of the specific sentence we see it in, factoring in the input embeddings that are around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
+In other words, we want to learn what "have" means in the context of the specific sentence we see it in, factoring in the tokens around it. In the lingo of LLMs, we want to know how "have" {dfn}`attends to` each of those other tokens. This attention is the crucial innovation that GPT-style LLMs introduced over previous ML models.
 
 Since the attention layer sits between the tokenization/embedding component and the feedforward network, I find it useful to be explicit about its inputs and outputs:
 
@@ -81,7 +81,7 @@ If we have $n$ input embeddings, and each can attend to every other (including i
 
 So, what's in each of these cells?
 
-The naive approach is pretty straightforward: Each cell tells us what input token A draws from input token B. Since that translates an input $d$-vector (the input embedding) into an output $\delta$-vector (the attention output), we can use a $d \times \delta$ matrix:
+Each cell tells us what input token A draws from input token B. Since that translates an input $d$-vector (the input embedding) into an output $\delta$-vector (the attention output), we can use a $d \times \delta$ matrix:
 
 $$
 \text{Input}_{1 \times d}
@@ -116,16 +116,16 @@ $$
 
 Instead of trying to learn everything about the relationships between inputs, we'll have the attention layer focus on just one or two kinds of relationships. For example, an attention layer may focus on understanding how parentheticals fit into a sentence, or learning about subject-verb agreement.
 
-Of course, not all tokens are nouns or verbs. To learn subject-verb agreement, the attention mechanism needs to focus on the relationships between subjects and their verbs, and mostly ignore other token pairs. Otherwise, the model will train on noise or even contradictory information. For example, the suffix "-s" usually marks singular verbs but plural nouns, and conjunctions don't have the concept of pluralization at all.
+Let's take subject-verb agreement as an example. Of course, not all tokens are nouns or verbs. To learn subject-verb agreement, the attention mechanism needs to first focus on subjects-verb pairs, and mostly ignore the others. Otherwise, the model will train on noise, or even contradictory information. For example, the suffix "-s" usually marks singular verbs but plural nouns, and conjunctions don't have the concept of pluralization at all.
 
-Once we focus on the relevant token pairs, the attention mechanism needs to extract and recombine relevant information from the first token. For example, a layer learning subject-verb agreement needs to extract whether the subject is singular or plural.
+Once it finds the relevant token pairs, the attention mechanism needs to extract the information. For example, a layer learning subject-verb agreement needs to extract whether the subject is singular or plural.
 
 In practice, this information is almost never neatly packaged into a single dimension in the token's embedding; it's spread out and entangled across several dimensions. So, the attention layer needs to learn how to extract and recombine those distributed properties into a useful representation.
 
-So, now we have a more tractable problem than just "find the relationships between tokens". We need to:
+With all that, now we have a more tractable problem than just "find the relationships between tokens". We need to:
 
-1. Find which token pairings matter to the specific relationship that this layer is learning.
-2. Find out how to extract and combine the relevant parts of the token embeddings to produce the right output
+1. Learn which token pairings matter to the specific relationship that this layer is learning.
+2. Learn how to extract and combine the relevant parts of the token embeddings to produce the right output
 
 :::{tip} Only learning one relationship?
 For purposes of understanding attention, you can think of the layer learning just one relationship, as I just described above. Of course, languages have _lots_ of relationships. As we'll see later in this chapter, and then again in [](./05-putting-it-together.md), our LLM will actually have many instances of attention layers (called "heads"). Each will focus on one relationship, but because they all start with different random initial values, each will randomly converge towards a different relationship.
@@ -137,27 +137,27 @@ Let's take a look at what structures could let us answer these two questions.
 
 ### Breaking down the problem
 
-As I covered above, instead of asking generally "how does input A affect input B", we'll approximate that question by asking two simpler ones:
+As I covered above, instead of asking generally "how does input A attend to input B", we'll approximate that question by asking two simpler ones:
 
-- How much does input A care about input B \[for this layer's relationship]?
-- How should input B express its information in this context?
+- How much does input A care about input B (for this layer's relationship)?
+- How should input B express its information (for this layer's relationship)?
 
 Note that our two questions involved three usages of input tokens:
 
 - How much does **(input A)** care about **(input B)**?
-- How should **(input B)** express its information in this context?
+- How should **(input B)** express its information?
 
 The LLM needs to learn something about each of these usages, so we'll use a learned transformation for each one. We'll call these transformations $W_q$, $W_k$, and $W_v$ (you'll see why in just a moment). Now we have:
 
 - How much does **(input A transformed by $W_q$)** care about **(input B transformed by $W_k$)**?
-- How should **(input B transformed by $W_v$)** express its information in this context?
+- How should **(input B transformed by $W_v$)** express its information?
 
 Let's think about what shapes these transformations should be.
 
-The "how much" question is a scalar (as a mnemonic, think "on a scale from 1 to 100, how much does...?"). We have two input-transformed-by instances in this question, so if we turned each into a vector of equal length, we could calculate their dot product to get that scalar. Let's translate them into $\delta$-sized vectors. We can do this via a $d \times \delta$ matrix:
+The "how much" question is a scalar (think, "on a scale from 1 to 100, how much does...?"). We have two input tokens in this question, so if we turned each into a vector of equal length, we could calculate their dot product to get that scalar. Let's translate them into $\delta$-sized vectors, which we can do via a $d \times \delta$ matrix:
 
 $$
-Input_{1 \times d} \cdot X = Output_{1 \times \delta}
+\underbrace{Input}_{1 \times d} \cdot \underbrace{Transformation}_{d \times \delta} = \underbrace{Output}_{1 \times \delta}
 $$
 
 Since we have two separate transformations --- one for input A and one for input B --- we'll define two such matrices:
@@ -182,13 +182,13 @@ The real answer, as far as I can tell, is that dot products are efficient to com
 Note that there's no reason for the two transformed vectors to be $\delta$ specifically; they could in principle be any size, as long as the two sizes are equal (so that we can dot-product them). This means that $W_q$ and $W_k$ could each be $d \times x$ for any $x$. Most LLMs use $\delta$, and we'll assume that, to keep things simple.
 :::
 
-The answer to "how should it express its information" is different --- we're not asking for a score, but for the actual content. We'll represent this output as a $\delta$-dimensional vector (which will determine our attention output's dimension). Again, this means we need a $d \times \delta$ matrix:
+The answer to "how should it express its information" is different --- we're not asking for a score, but for the actual content. We'll represent this output as a $\delta$-dimensional vector (which will determine our attention output's dimension). Again, this means we need a $d \times \delta$ matrix to transform the input $d$-vector to a $\delta$-vector:
 
 $$
 W_v \Rightarrow d \times \delta
 $$
 
-Crucially, because this approach is just an _approximation_ of the $n \times n \times d \times \delta$ matrix, we don't need a separate set of $W_q$ / $W_k$ / $W_v$ for each cell in the $n \times n$ grid. Instead, we just have three weights total for the whole attention layer: one $W_q$, one $W_k$, and one $W_v$.
+Crucially, because this approach is just an approximation of the $n \times n \times d \times \delta$ matrix, we don't need a separate set of $W_q$ / $W_k$ / $W_v$ for each cell in the $n \times n$ grid. Instead, we just have three weights total for the whole attention layer: one $W_q$, one $W_k$, and one $W_v$.
 
 :::{important} Recap
 
@@ -198,11 +198,11 @@ Crucially, because this approach is just an _approximation_ of the $n \times n \
 
 :::
 
-The "query / key / value" terminology comes from an analogy to database lookups. I personally didn't find the analogy useful, but in case you do, the idea is:
+The "query / key / value" terminology comes from an analogy to database lookups:
 
-- $W_q$ ("query weight matrix"): What am I looking for?
-- $W_k$ ("key weight matrix"): What do I offer as context?
-- $W_v$ ("value weight matrix"): What information should I pass along?
+- $W_q$ ("query weight matrix"): Turns A into a query.
+- $W_k$ ("key weight matrix"): Turns B into a key for the query to match against.
+- $W_v$ ("value weight matrix"): Turns B into a value that the query returns.
 
 (computing-attention-weights)=
 
