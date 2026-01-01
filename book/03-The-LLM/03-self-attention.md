@@ -217,12 +217,14 @@ For each token within the input, we'll focus on that token and do a bunch of cal
 With that query token in mind, we'll look at each token in the input, treating each one in turn as a {dfn}`key token`.
 
 1. First, we'll calculate the query token's {dfn}`query vector`, using $W_q$.
-2. Then, we'll use $W_k$ to calculate the {dfn}`attention score` for each key (relative to the query token). These are scalars that tell us how much the query token should care about each key token.
-3. Then we normalize these attention scores into {dfn}`attention weights` (still one scalar per key).
-4. Then, we'll compute weighted tokens for each key:
+2. Then, we'll use $W_k$ to calculate the {dfn}`key vector` per key. We'll take the dot product of the query and key vectors to get an {dfn}`attention score` for each key. These are scalars that tell us how much the query token should care about each key token.
+3. Then, we'll normalize these attention scores into {dfn}`attention weights` (still one scalar per key).
+4. Then, we'll compute {dfn}`value vectors` for each key, weighted by their respective attention weights:
     1. We'll use $W_v$ to transform each key into a $\delta$-vector
-    2. We'll multiply each of those $\delta$-vectors by its respective attention weight to compute {dfn}`weighted value` vectors, again one per key.
-5. Finally, we'll combine the weighted values to get the {dfn}`context vector`, a weighted blend of information from all the tokens after transformation and normalization. This is our attention output.
+    2. We'll multiply each of those $\delta$-vectors by its respective attention weight to compute the weighted value vectors, again one per key.
+5. Finally, we'll sum the weighted values to get the {dfn}`context vector`, which is the output for this query token. Since this is the sum of $\delta$-vectors, it is also a $\delta$-vector.
+
+We'll repeat this process for each of the $n$ tokens in the input, treating each one as the query token in turn. The result is $n$ vectors of size $\delta$, the layer's output.
 
 :::{aside}
 
