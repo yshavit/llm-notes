@@ -224,8 +224,6 @@ With that query token in mind, we'll look at each token in the input, treating e
     2. We'll multiply each of those $\delta$-vectors by its respective attention weight to compute the weighted value vectors, again one per key.
 5. Finally, we'll sum the weighted values to get the {dfn}`context vector`, which is the output for this query token. Since this is the sum of $\delta$-vectors, it is also a $\delta$-vector.
 
-We'll repeat this process for each of the $n$ tokens in the input, treating each one as the query token in turn. The result is $n$ vectors of size $\delta$, the layer's output.
-
 :::{aside}
 
 - **$W_q$, $W_k$, $W_v$**: learned parameter matrices; each has size $d \times \delta$, where $d$ and $\delta$ are both hyperparameters, and typically $d = \delta$
@@ -239,12 +237,12 @@ We'll repeat this process for each of the $n$ tokens in the input, treating each
 :alt: visual representation of the overall flow described above
 :::
 
-Again, all of that work is just for a single query token. We'll repeat it for each token in the input to produce a context vector per token. The final result is a vector of vectors, which we'll represent as a matrix. This matrix is our self-attention layer's output.
+Again, all of that work is just for a single query token. We'll repeat it for each token in the input to produce $n$ context vectors of size $\delta$. This is our attention layer's output.
 
 :::{important}
 
-- In contrast to most other [fundamental concepts](#conceptual-layers) in LLMs, the attention parameters really are matrices, not vectors.
-- There is only _one_ $W_q$, one $W_k$, and one $W_v$. Each matrix gets paired with various tokens as we'll see below, and its training will reflect that. But there isn't a different $W_q$ per query token, for example. $W_q$ essentially encodes what it means to be a query token, independent of any particular embedding; and similarly for $W_k$ and $W_v$.
+- In contrast to most other [fundamental concepts](#conceptual-layers) in LLMs, the attention parameters are matrices, not vectors. (This is because what we're learning is how to transform vectors.)
+- There is only _one_ $W_q$, one $W_k$, and one $W_v$. There isn't a different $W_q$ per query token, for example. $W_q$ essentially encodes what it means to be a query token, independent of any particular embedding; and similarly for $W_k$ and $W_v$.
 - The attention weights themselves are [activations](#parameter-vs-activation) based on the specific prompt that the LLM is looking at.
 :::
 
