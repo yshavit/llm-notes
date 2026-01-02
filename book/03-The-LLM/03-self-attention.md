@@ -359,17 +359,17 @@ attention weights
 : Normalized values that represent the percentage of attention that each token gets. These are all between 0 and 1, and they sum to 1.
 :::
 
-### Attention weights and $W_v$ → context vector
+### $W_v$ → weighted value vectors
 
 ::::{aside}
-:::{drawio} images/attention/llm-flow-self-attention-context
-:alt: attention weights combine with values to form the context vector
+:::{drawio} images/attention/llm-flow-self-attention-weighted-value
+:alt: attention weights combine with key embeddings to form the vector vectors
 :::
 ::::
 
-All of the work until now has been to calculate the attention weights, which are a $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: what _is_ B, in the context of our self-attention layer?
+All of the work until now has been to calculate the attention weights, which are an $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: how should input B express its information?
 
-We'll start with familiar ground, by turning our $d$-sized input embeddings into $\delta$-sized vectors by multiplying them by a weight matrix to translate the embedding into an attention-specific space. This time we'll use the $W_v$ weight matrix, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
+We'll start with familiar ground, by turning our $d$-sized key embeddings into $\delta$-sized vectors by multiplying them by a weight matrix. This time we'll use the $W_v$ weight matrix, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
 
 From here, we calculate intermediate "weighted values" by multiplying each value vector by its corresponding attention weight. For example, let's say:
 
@@ -386,7 +386,19 @@ $$
 \end{align}
 $$
 
-We do this calculation for each of the input tokens to get all of the weighted value vectors. Then, we simply sum those up to get the {dfn}`context vector`. (To sum up vectors, we just sum up their corresponding elements.)
+We do this calculation for each key embedding to get $n$ weighted value vectors.
+
+### weighted value vectors → context vector
+
+::::{aside}
+:::{drawio} images/attention/llm-flow-self-attention-context
+:alt: attention weights combine with values to form the context vector
+:::
+::::
+
+At this point, we have $n$ weighted values. Each is a $\delta$-sized vector that represents its respective key embedding, scaled by how much the query token cares about it and projected to represent what that key means in the context of the relationship this attention layer is learning.
+
+We simply [sum those vectors](#adding-matrices) to get the {dfn}`context vector`, which is also a $\delta$-sized vector. This represents the attention layer's output for this query token.
 
 ### Recap
 

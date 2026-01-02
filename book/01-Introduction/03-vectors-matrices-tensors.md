@@ -143,8 +143,10 @@ transposition
   $$
 +++
 
-adding two matrices
-: We can add two matrices (or vectors) as long as they're the same size. This just means adding their corresponding elements:
++++
+(adding-matrices)=
+adding matrices
+: We can add two or more matrices as long as they're the same size. This just means adding their corresponding elements:
 
   $$
   \begin{bmatrix}
@@ -161,6 +163,16 @@ adding two matrices
   44 & 55 & 66
   \end{bmatrix}
   $$
+
+  Adding vectors works the same way: we just treat an $n$-vector as a $1 \times n$ matrix:
+
+  $$
+  \begin{bmatrix} 1 & 2 & 3 \end{bmatrix}
+  +
+  \begin{bmatrix} 10 & 20 & 30 \end{bmatrix}
+  = \begin{bmatrix} 11 & 22 & 33 \end{bmatrix}
+  $$
++++
 
 multiplying by a scalar
 : We can multiply a matrix (or vector) by a scalar, which just means applying the multiplication to each element:
