@@ -481,14 +481,19 @@ If you haven't heard about these yet, you can forget I mentioned them for now. I
 
 If you've used LLMs, you may have heard about "the context" as an almost mythical thing to be kept safe. The context can't get too full; you can't let it get too confused with bad prompts or intermediate results; some parts of it belong to the tooling and some belong to you.
 
-If you read about the "context vector" above and wondered if these are related: good news, they are! In fact, you now have enough to build a solid understanding of what this all-important context _is_.
+If you read about "context vectors" above and wondered if these are related: good news, they are! In fact, you now have enough to build a solid understanding of what this all-important context _is_.
 
 In short, "the context is full" means that the input is as long as the LLM will allow. This is primarily driven by two factors:
 
-- **The attention scores and attention weights**, each of which are $n \times n$ matrices. This means that the memory and processing the LLM needs grows as the square of the input length.
-  - We have one set of these matrices per head, so with 8 - 12 heads per layer, and multiple layers per model, this really adds up!
-- **The training of these scores and weight matrices.** We haven't talked much about training yet, but hopefully you're starting to build an intuition about it (feel free to review [the analogy in the overview chapter](#training-analogy) if it's helpful). But essentially, since the weight matrices represent attention between two tokens, the model needs to have seen enough data to train on the relationship between those two tokens. This includes their relative positions (either via positional encodings, or RoPE.)
+- **The attention score and weight matrices grow quadratically with input length.** For each query token, we compute $n$ attention scores and weights (one per key token). Across all $n$ query tokens, this gives us an $n \times n$ matrix of scores and another $n \times n$ matrix of weights.
+  - This means that the memory and processing the LLM needs grows as the square of the input length.
+  - We have one set of these matrices per head, so with 8 - 96 heads per layer, and multiple layers per model, this really adds up!
+- **Training on longer sequences is expensive.** Recall the $n \times n$ attention grid where each cell represents the relationship between two tokens. For the model to make useful inferences about a token pair $X$ tokens apart, it needs to have been trained on data with at least $X$ tokens --- and as the above bullet point mentions, this gets expensive quickly.
 
-An LLM designers need to balance the cost of the training data and computational resources against the usefulness of the LLM when determining the maximum context length the model will support.
+LLM designers must balance the cost of training on long sequences against the usefulness of longer context windows.
 
-Note that the weight matrices ($W_\star$) are _not_ crucial to context limits. The three per-head matrices ($W_{q/k/v}$) are each $d \times \delta$, and the multi-head combining matrix $W_o$ is $\delta \times \delta$. That means they're a constant size, where the constant is based purely on the hyperparameters of the model --- not input length.
+Note that the learned weight matrices ($W_q$, $W_k$, $W_v$, and $W_o$) are _not_ what limits context length. These matrices have fixed sizes based purely on the model's hyperparameters ($d$ and $\delta$), not on input length.
+
+## Next up
+
+As I've mentioned already, attention is the first part of an LLM's transformer block. In the next chapters, I'll explain the second part of the transformer block --- the feedforward network --- and then how all the pieces fit together to form a full LLM.
