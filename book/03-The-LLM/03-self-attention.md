@@ -245,6 +245,7 @@ With that query token in mind, we'll look at each token in the input, treating e
 - {dfn}`context vectors`: $\delta$-sized vector activations based on the attention weights
 :::
 
+(attention-overview-graphic)=
 :::{drawio} images/attention/overview
 :alt: visual representation of the overall flow described above
 :::
@@ -266,6 +267,12 @@ Let's walk through the specifics.
 :::{drawio} images/attention/llm-flow-self-attention-query
 :alt: query token times Wq = query vector
 :::
+
+:::{div}
+:class: text-center aside-caption
+[Step 1](#attention-overview-graphic)
+:::
+
 ::::
 
 This just transforms the query token by the weight matrix $W_q$:
@@ -285,6 +292,12 @@ That's it!
 :::{drawio} images/attention/llm-flow-self-attention-score
 :alt: query tokens and input tokens turn into attention scores
 :::
+
+:::{div}
+:class: text-center aside-caption
+[Step 2](#attention-overview-graphic)
+:::
+
 ::::
 
 This step happens for each key token (that is, each embedding in the input vector).
@@ -300,6 +313,11 @@ We call this dot product the raw {dfn}`attention score` for this key.
 ::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-weight
 :alt: attention scores normalize into attention weights
+:::
+
+:::{div}
+:class: text-center aside-caption
+[Step 3](#attention-overview-graphic)
 :::
 ::::
 
@@ -365,6 +383,11 @@ attention weights
 :::{drawio} images/attention/llm-flow-self-attention-weighted-value
 :alt: attention weights combine with key embeddings to form the vector vectors
 :::
+
+:::{div}
+:class: text-center aside-caption
+[Step 4](#attention-overview-graphic)
+:::
 ::::
 
 All of the work until now has been to calculate the attention weights, which are an $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: how should input B express its information?
@@ -393,6 +416,11 @@ We do this calculation for each key embedding to get $n$ weighted value vectors.
 ::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-context
 :alt: attention weights combine with values to form the context vector
+:::
+
+:::{div}
+:class: text-center aside-caption
+[Step 5](#attention-overview-graphic)
 :::
 ::::
 
