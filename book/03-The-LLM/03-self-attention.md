@@ -400,17 +400,19 @@ At this point, we have $n$ weighted values. Each is a $\delta$-sized vector that
 
 We simply [sum those vectors](#adding-matrices) to get the {dfn}`context vector`, which is also a $\delta$-sized vector. This represents the attention layer's output for this query token.
 
-### Recap
+### Repeat to get the full layer output
 
 Recall that all of this happened from the perspective of a single input, which we called the query token. For this token, we:
 
-1. Calculated a query vector ($\text{query token} \cdot W_q$)
-2. Dot-producted that query vector against every input's key vector ($\text{token} \cdot W_k$) to get, for each input, a raw attention score
-3. Normalized those attention scores into probabilities, one per input
-4. Applied each of those probabilities to a corresponding value vector ($\text{token} \cdot W_v$) to get weighted value vectors, one per input
+1. Calculated a query vector ($query\ token \cdot W_q$).
+2. Dot-producted that query vector against every input's key vector ($key\ token \cdot W_k$) to get, for each input, a raw attention score.
+3. Normalized those attention scores into probabilities, one per input; we called these the attention weights.
+4. Applied each of those probabilities to a corresponding value vector ($key\ token \cdot W_v$) to get weighted value vectors, one per input
 5. Summed up those weighted value vectors to get a single context vector
 
-All of this gives us the $\delta$-dimensional context vector for that one query token. We then repeat this for each of the $n$ inputs, and the result is our attention layer's output: the full {dfn}`attention output matrix`, or just {dfn}`attention output` for short. This has one context vector for each input, so it's an $n \times \delta$ matrix.
+All of this gives us the $\delta$-dimensional context vector for that one query token.
+
+We then repeat this for each of the $n$ inputs, treating each as the query token in turn. The result is our attention layer's output: the full {dfn}`attention output matrix`, or just {dfn}`attention output` for short. This has one context vector for each input, so it's $n$ vectors of size $\delta$.
 
 :::{drawio} images/attention/llm-flow-self-attention-output-matrix
 :alt: attention weights combine with values to form the context vector
