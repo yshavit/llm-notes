@@ -28,7 +28,7 @@ Since the attention layer sits between the tokenization/embedding component and 
 - The input is a vector with one element per token. Each element is itself represented by an input embedding (as described in the previous chapter), so this is an $n$-sized vector of $d$-sized vectors, where $n$ is the input size and $d$ is the embedding dimension.
 
   **tl;dr:** $n$ vectors of size $d$
-- The output will be a vector of input-plus-attention elements, called an {dfn}`attention output`. Each attention output is a vector. I'll call the attention outputs' dimensionality $\delta$, so the ultimate output will be a $n \times \delta$ matrix.
+- The output will be a vector of $n$ input-plus-attention elements, called an {dfn}`attention output`. Each attention output is a vector whose dimensionality I'll call $\delta$.
 
   **tl;dr:** $n$ vectors of size $\delta$
 
@@ -220,19 +220,21 @@ I only mention this in case the $W_q$ / $W_k$ division also trips you up. That i
 
 The next sections will describe the mechanics of calculating attention. If the above doesn't make sense, it may be useful to move on for now, and then re-read it once you understand how the weight matrices actually get used.
 
-### Overview of how the weight matrices fit together
+### Overview
 
 For each token within the input, we'll focus on that token and do a bunch of calculations centered on it. We'll call that token the {dfn}`query token`: it's the token for which we want to ask (that is, "query") how it attends to each token in the input.
 
 With that query token in mind, we'll look at each token in the input, treating each one in turn as a {dfn}`key token`.
 
-1. First, we'll calculate the query token's {dfn}`query vector`, using $W_q$.
-2. Then, we'll use $W_k$ to calculate the {dfn}`key vector` per key. We'll take the dot product of the query and key vectors to get an {dfn}`attention score` for each key. These are scalars that tell us how much the query token should care about each key token.
-3. Then, we'll normalize these attention scores into {dfn}`attention weights` (still one scalar per key).
-4. Then, we'll compute {dfn}`value vectors` for each key, weighted by their respective attention weights:
-    1. We'll use $W_v$ to transform each key into a $\delta$-vector
-    2. We'll multiply each of those $\delta$-vectors by its respective attention weight to compute the weighted value vectors, again one per key.
-5. Finally, we'll sum the weighted values to get the {dfn}`context vector`, which is the output for this query token. Since this is the sum of $\delta$-vectors, it is also a $\delta$-vector.
+1. First, calculate the query token's {dfn}`query vector`, using $W_q$.
+2. Then calculate {dfn}`attention scores` for each key token. These are scalars that tell us how much the query token should care about each key token. There is one per key token. To calculate these scores:
+    1. Use $W_k$ to calculate the {dfn}`key vector` per key.
+    2. Take the dot product of the query and key vectors to get the attention score for each key.
+3. Next, normalize these attention scores into {dfn}`attention weights` (still one scalar per key token).
+4. Next, compute {dfn}`value vectors` for each key, weighted by their respective attention weights:
+    1. Use $W_v$ to transform each key into a $\delta$-vector
+    2. Multiply each of those $\delta$-vectors by its respective attention weight to compute the weighted value vectors, again one per key.
+5. Finally, sum the weighted values to get the {dfn}`context vector`, which is the output for this query token. Since this is the sum of $\delta$-vectors, it is also a $\delta$-vector.
 
 :::{aside}
 
