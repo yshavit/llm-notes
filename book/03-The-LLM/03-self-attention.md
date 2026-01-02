@@ -420,7 +420,7 @@ We then repeat this for each of the $n$ inputs, treating each as the query token
 
 ## Real-world improvements
 
-The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. None of these are very complicated, so the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
+The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. Don't worry: the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
 
 (multi-head)=
 
@@ -430,20 +430,26 @@ When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that w
 
 The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between tokens, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
-To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own attention patterns to learn.
+To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own relationship to learn.
 
-In this {dfn}`multi-head` arrangement, each head's output has $\delta / h$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
+In this {dfn}`multi-head` arrangement, each head's output has $\frac{\delta}{h}$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
 
 :::{aside}
 
 - **$h$**: hyperparameter; the number of heads in a multi-head attention
 :::
 
-Each head's output is an $n \times \frac{\delta}{h}$ matrix. We then concatenate them to get our desired shape, an $n \times \delta$ matrix. (The reason to make each head be $\delta / h$, as opposed to keeping each head at $\delta$ and having the concatenated result be $h\delta$, is just for efficiency. Dividing the learning space into several smaller, independent spaces lets the model learn more relationships for a given dimensionality.)
+Each head's output is $n$ rows of size $\frac{\delta}{h}$, and we can think these as $n \times \frac{\delta}{h}$ matrices. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
 
 You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them and combine them into a single, coherent input?
 
 To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
+
+$$
+\underbrace{concatenated\ heads}_{n \times \delta}
+\cdot \underbrace{W_o}_{\delta \times \delta}
+= \underbrace{layer\ output}_{n \times \delta}
+$$
 
 :::{drawio} images/attention/multi-head
 :alt: In multi-head attention, each head produces its own output, and the W_o matrix combines them into a single output for the layer
@@ -453,7 +459,7 @@ To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "
 
 Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
 
-In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. Those two form a {dfn}`transformer block`: attention → feedforward network. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
+In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. The attention layer and feedforward network together form a {dfn}`transformer block`. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
 I'll describe this in more detail in [](./05-putting-it-together.md). For now, just know that the description of "the" attention feeding into "the" feedforward network is a simplification.
 
