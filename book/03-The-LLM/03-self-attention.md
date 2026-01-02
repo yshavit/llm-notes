@@ -457,7 +457,7 @@ $$
 
 ### Multiple layers
 
-Lastly, in all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
+In all of the above, we've been talking about "the" self-attention layer, as if there's only one. In practice, an LLM will have many attention layers.
 
 In the [next section](./04-feedforward-network), I'll describe the LLM's feedforward network, which makes inferences about the attention output matrix we've been developing in this chapter. The attention layer and feedforward network together form a {dfn}`transformer block`. Modern LLMs stack several of these blocks together, with each block's output feeding into the next's attention.
 
@@ -468,6 +468,14 @@ I'll describe this in more detail in [](./05-putting-it-together.md). For now, j
 As I mentioned in the previous chapter, modern LLMs don't add positional encoding to the input embeddings. Instead, they use something called RoPE, which gets applied in the attention layer.
 
 For now, I'll just mention that this exists. I'll describe it more in {ref}`beyond-the-toy-llm`.
+
+### Causal masking and dropout
+
+There are two more concepts important to self-attention: causal masking (also known as "causal attention") and dropout.
+
+These aren't a part of the attention architecture: they're only applied at training. As such, I'm going to put them off until the later chapters on training.
+
+If you haven't heard about these yet, you can forget I mentioned them for now. I only bring them up in case you're also using another resource (another book, or asking an LLM questions) and it mentions them. They're often taught as part of attention, but I think they're best held off until we give training its full treatment.
 
 ## "The context is full"
 
