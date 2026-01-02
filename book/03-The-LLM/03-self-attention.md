@@ -173,11 +173,11 @@ Note that while "how much" score is a single number, the transformation matrices
 
 :::{tip} Why dot products?
 :class: dropdown
-So, we took two $d$-vectors, transformed them into two $\delta$ vectors, and then took their dot product to get a scalar. Why dot product?
+So, we took two $d$-vectors, transformed them into two $\delta$ vectors, and then took their dot product to get a scalar. But why use a dot product?
 
 Geometrically, dot products measure how aligned two vectors are _if_ those vectors are normalized to have the same magnitude ("length", basically). But our input embeddings aren't normalized, so that doesn't apply here.
 
-The real answer, as far as I can tell, is that dot products are efficient to compute, and they work well in practice.
+The real answer, as far as I can tell, is that dot products are efficient to compute, and they work well in practice. They are also differentiable, which will be important for training.
 
 Note that there's no reason for the two transformed vectors to be $\delta$ specifically; they could in principle be any size, as long as the two sizes are equal (so that we can dot-product them). This means that $W_q$ and $W_k$ could each be $d \times x$ for any $x$. Most LLMs use $\delta$, and we'll assume that, to keep things simple.
 :::
@@ -268,14 +268,16 @@ Let's walk through the specifics.
 :::
 ::::
 
-This is just the query token, transformed by the weight matrix $W_q$:
+This just transforms the query token by the weight matrix $W_q$:
 
 - We start with the query token's input embedding, which is a vector of size $d$
-- We have the query weight matrix $W_q$, of size $d \times \delta$
-- We just multiply them together: $\underbrace{embedding}_{1 \times d} \cdot \underbrace{W_q}_{d \times \delta} = \underbrace{query}_{1 \times \delta}$
-- Out comes and we get a vector of size $\delta$
+- We have the query weight matrix $W_q$, which is $d \times \delta$
+- We just multiply them together, and the result is a vector of size $\delta$:
+  $$
+  \underbrace{query\ token}_{1 \times d} \cdot \underbrace{W_q}_{d \times \delta} = \underbrace{query\ vector}_{1 \times \delta}
+  $$
 
-That's it! We do this just once per query input.
+That's it!
 
 ### Query vector and $W_k$ → attention scores
 
@@ -285,21 +287,11 @@ That's it! We do this just once per query input.
 :::
 ::::
 
-We'll do this step once for every input token; I'll call these tokens the key tokens (though that's not a standard term).
+This step happens for each key token (that is, each embedding in the input vector).
 
-First, we'll calculate the key for each key token, which is a $\delta$-sized vector. Similar to how we computed the query vector, this key vector is just $key\ embedding \times W_k$.
+First, we'll calculate the key vector for each key token. This is a $\delta$-sized vector. Similar to how we calculated the query vector, this is just $key\ embedding \cdot W_k$.
 
-Now we have two $\delta$-sized vectors: the query (from the previous step) and the key. We can compute their [dot product](#dot-product-math) to combine them into a scalar.
-
-:::{note} Why dot products?
-:class: dropdown
-
-Geometrically, a dot product represents how aligned two vectors are, assuming the vectors are normalized. Our query and key vectors have _not_ been normalized; but over training, the $W_q$ and $W_k$ matrices' values will converge to capture meaningful relationships.
-
-Additionally, dot products are cheap to compute, and are differentiable (which will be important for training, as I'll explain later).
-
-In other words, the dot product of these two vectors represents how aligned they are; or, in LLM terms, how much the query "makes sense" relative to the key. This tells us how much the query token cares about the input token that corresponds to this key.
-:::
+Now we have two $\delta$-sized vectors: the query (from the previous step) and the key. We compute their dot-product-math to combine them into a scalar.
 
 We call this dot product the raw {dfn}`attention score` for this key.
 
@@ -311,49 +303,49 @@ We call this dot product the raw {dfn}`attention score` for this key.
 :::
 ::::
 
-Since we repeat the attention score process for each token in the input, we end up with an $n$-vector of attention scores. These scores can be all over the place --- positive, negative, and at vastly different scales --- so we normalize them to a probability distribution, which we call the {dfn}`attention weights`. The values within this distribution  are all between 0 and 1, and they all sum to 1.
+At this point, we have $n$ raw attention scores, each corresponding to a key token.
+
+These scores can be all over the place --- positive, negative, and at vastly different scales --- so we normalize them to a probability distribution. This distribution is an $n$-vector called the {dfn}`attention weights`. Its values are all between 0 and 1, and they all sum to 1.
 
 Normalizing the attention scores to attention weights improves the learning process by making the attention more differentiable and keeping the scales of the values more stable.
 
-To normalize the values, we use two functions:
+This normalization happens in two steps:
 
-1. First, we divide the attention scores by $\sqrt{\delta}$ (the square root of the output embedding size)
-2. Then, we apply a function called softmax, which takes a vector of values and normalizes them to a probability distribution.
+1. First, we divide each attention score by $\sqrt{\delta}$ (the square root of the output embedding size)
+2. Then, we apply a function called softmax, which takes a vector of scalars and normalizes them to a probability distribution.
 
 I'll explain these backwards: first softmax, then the scaling.
 
 Softmax is a function that converts a vector of numbers into a probability distribution. You don't actually need to know its definition, but what _is_ important is that it's sensitive to the scale of its inputs: The larger the scale, the more softmax magnifies differences in probabilities.
 
-:::{tip} Softmax details (very optional)
+:::{tip} Softmax details
 :class: dropdown
 :open: false
 
-[Softmax] is defined as:
+Softmax is defined as:
 
 $$
 \text{softmax}(v)_i = \sigma(v)_i = \frac{e^{v_i}}{\sum_{j} e^{v_j}}
 $$
 
-In prose: each element $v_i$ is transformed into its exponential, divided by the sum of all the exponentials.
+In English: each element $v_i$ is transformed into its exponential ($e^{v_i}$) and then divided by the sum of all the exponentials.
 
 The exponential function $e^x$ is very sensitive to its inputs, and in particular, large numbers cause it to change a lot. This means that if two numbers are 10% different, the exponential function and thus softmax will react a lot more if they're bigger. For example, here are three vectors that each have two numbers 10% from each other:
 
 $$
-\begin{align}
-\sigma( & [1.0, 1.1] ) &= [0.475, 0.525] \\
-\sigma( & [10, 11] ) &= [0.269, 0.731] \\
-\sigma( & [100, 110] ) &= [0.000045, 0.999955]
-\end{align}
+\begin{array}{lll}
+\sigma( \, [ \, 1.0, & 1.1 & ] ) = [ \, 0.475, 0.525 \, ] \\
+\sigma( \, [ \, 10,  & 11  & ] ) = [ \, 0.269, 0.731 \, ] \\
+\sigma( \, [ \, 100, & 110 & ] ) = [ \, 0.000045, 0.999955 \, ]
+\end{array}
 $$
 
 The top of this page has a download link to an interactive softmax visualizer, if you want to play around with it.
-
-[Softmax]: https://en.wikipedia.org/wiki/Softmax_function
 :::
 
-To keep softmax from becoming too extreme, we first divide the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the dot product is the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of the embedding dimension. This ensures that softmax operates in a reasonable range where it can learn nuanced attention patterns.
+To keep softmax from becoming too extreme, we first divide the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the raw attention score is a dot product that's the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of $\delta$. This ensures that softmax operates in a reasonable range, and doesn't get thrown off by large scales.
 
-Basically, as $\delta$ grows, so do the dot products' variance. This growth happens by a factor of $\sqrt{\delta}$, and left unchecked it would cause softmax to lose nuance between values that are actually fairly close. Dividing by $\sqrt{\delta}$ lets softmax keep that nuance. Note that I wrote above that the terms are roughly independent, but of course they're not _actually_ independent: the whole point of training is to find patterns in them. Still, the $\sqrt{\delta}$ scaling has empirically been found to work, so that's what people use.
+In other words, as $\delta$ grows, so do the dot products' variance. This growth happens by a factor of $\sqrt{\delta}$, and left unchecked it would cause softmax to lose nuance between values that are actually fairly close. Dividing by $\sqrt{\delta}$ lets softmax keep that nuance. Note that I wrote above that the terms are roughly independent, but of course they're not _actually_ independent: the whole point of training is to find patterns in them. Still, the $\sqrt{\delta}$ scaling has empirically been found to work, so that's what people use.
 
 This "scaling plus softmax" is called, appropriately enough, the scaled dot-product attention. When it's applied to the raw attention scores we calculated earlier, the result is the normalized {dfn}`attention weights`.
 
@@ -361,7 +353,7 @@ This "scaling plus softmax" is called, appropriately enough, the scaled dot-prod
 These two terms are similar, but it's crucial to keep them separate.
 
 attention scores
-: "Raw" outputs from the combination of query token, $W_q$, key token, and $W_k$. These can be pretty much any value, but they're only used to calculate the attention weights.
+: "Raw" outputs from the combination of query vector and key vector. These can be pretty much any value, but they're only used to calculate the attention weights.
 
 attention weights
 : Normalized values that represent the percentage of attention that each token gets. These are all between 0 and 1, and they sum to 1.
