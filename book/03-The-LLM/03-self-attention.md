@@ -351,7 +351,7 @@ $$
 \end{array}
 $$
 
-You can play around with a visualization of softmax [here](../static/softmax.html).
+You can play around with [a visualization of softmax](../static/softmax.html) to get a sense of how it works.
 :::
 
 To keep softmax from becoming too extreme, we first divide the attention scores by $\sqrt{\delta}$. This factor comes from statistics. Remember that the raw attention score is a dot product that's the sum of $\delta$ terms, one per dimension. These terms are roughly independent, so the standard deviation of their sum grows as $\sqrt{\delta}$ (this is standard statistics, which we don't need to get into the details of here). By dividing by $\sqrt{\delta}$, we keep the typical magnitude of attention scores consistent regardless of $\delta$. This ensures that softmax operates in a reasonable range, and doesn't get thrown off by large scales.
