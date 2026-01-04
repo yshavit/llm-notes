@@ -2,7 +2,7 @@
 
 ## Overview
 
-In the self-attention layer, we took input embedding vectors and translated them into context vectors that described what each token meant in relation to the other tokens in the input. Now, we'll pass those context vectors through something called a {dfn}`feedforward network`, which will draw higher-level inferences about those tokens that we'll use to ultimately predict the next token.
+In the self-attention layer, we took input embedding vectors and translated them into context vectors that described what each token meant in relation to the other tokens in the input. Now, we'll pass those context vectors through something called a {dfn}`feedforward network`, which will draw additional inferences.
 
 :::{drawio} images/ffn/llm-flow-ffn
 :alt: The feedforward network is the last step of the LLM
@@ -10,7 +10,7 @@ In the self-attention layer, we took input embedding vectors and translated them
 
 ## What is a feedforward network (FFN)?
 
-At a high level, a {dfn}`feedforward network (FFN)` takes an input vector, transforms it through a series of learned vector parameters, and spits out an output vector. In that sense, it's similar to some of the transformations we saw in the previous chapter on self-attention. But FFNs add one more twist: the ability to apply transformations _conditionally_. This lets different parts of the FFN specialize on particular patterns in the input.
+At a high level, a {dfn}`feedforward network (FFN)` takes an input vector, transforms it through learned vector parameters, and spits out an output vector. In that sense, it's similar to some of the transformations we saw in the previous chapter on self-attention. But FFNs add one more twist: they contain groups of learned parameters, called neurons, that activate selectively based on the input. Each neuron can specialize on a different pattern, which makes FFNs great for learning isolated facts.
 
 :::{important} An FFN by any other name
 Until now, I've been spelling out "feedforward network" in this book, because it's been an unfamiliar and thus jargony word. But from here on, I'll be referring to it as an FFN.
@@ -28,20 +28,28 @@ Feedforward networks are just one corner within the broader field of machine lea
 GPT-style LLMs use MLPs, but the standard literature refers to them by the more general term "FFN". I'll be keeping that convention.
 :::
 
-An FFN consists of multiple layers: an input, an output, and one or more {dfn}`hidden layers` consisting of {dfn}`neurons` (sometimes called {dfn}`nodes`). Between each layer are learned parameters that transform one layer to the next.
+An FFN consists of multiple layers: an input, an output, and one or more {dfn}`hidden layers` between them. Each layer consists of {dfn}`neurons` (sometimes called {dfn}`nodes`). Between each layer are learned parameters that transform one layer into the next.
 
-If our input layer has dimension $d_{in}$ and we want an output with $n$ dimensions, we'll accomplish this by creating $n$ neurons. Each neuron consists of two sets of learned parameters:
+## Components of an FFN layer
 
-- a vector of size $d_{in}$
+If one layer has dimension $d_{in}$ and the next layer has $d_{out}$ dimensions, we'll define $d_{out}$ neurons. Each neuron transforms the input vector into one output scalar, called the neuron's {dfn}`activation`; this basically defines how aligned the input is to the pattern that neuron is looking for.
+
+:::{drawio} images/ffn/overview-high-level
+:alt: input layer connected to neurons connected to output layer
+:::
+
+To do this, each neuron defines two sets of learned parameters:
+
+- a weight vector of size $d_{in}$
 - a scalar, which we call a {dfn}`bias`
 
 For each neuron, we'll:
 
-1. Take the dot product of the input and learned vector; this gives us a scalar.
+1. Take the dot product of the input and the neuron's weight vector; this gives us a scalar.
 2. Add the bias.
-3. Pass that sum through an {dfn}`activation function`, which I'll explain in just a moment, and which produces another scalar
+3. Pass that sum through an {dfn}`activation function`, which I'll explain in just a moment, to produce the neuron's activation.
 
-This gives us one value per neuron, which is its activation. Since we have $n$ neurons, these activations are our output vector.
+This gives us one value per neuron, which is its activation. Since we have $d_{out}$ neurons, these activations are the layer's output vector.
 
 (ffn-overview-diagram)=
 :::{drawio} images/ffn/overview
@@ -58,60 +66,82 @@ This gives us one value per neuron, which is its activation. Since we have $n$ n
 :::
 
 :::{warning} Confusing terminology
-"Neuron" and "layers" are somewhat ambiguous terms that conflates the learned parameters, the computations that involve them, and the resulting activations. I'll try to be clear about which I mean as we go.
+"Neuron" and "layers" are somewhat ambiguous terms that often conflate the learned parameters, the computations that involve them, and the resulting activations. I'll try to be clear about which I mean as we go.
 
-The parameters feeding into a layer (in the true sense of the activation) are sometimes called the {dfn}`layer parameters`.
+The parameters that are used to compute a layer's activations are sometimes called the {dfn}`layer parameters`.
 :::
 
-Each of these neurons essentially defines a pattern the FFN can detect. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
+Each of these neurons essentially learns a pattern in the input. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter.)
 
-### Bias parameters
+### Weight vector and bias parameters
 
-We need the {dfn}`bias` because each of these neurons defines a linear function in the input's $d_{in}$-dimensional space. The bias lets us compute those functions even if they don't pass through the origin:
+Each neuron's weight vector and bias define a linear function in the input's $d_{in}$-dimensional space:
 
-:::{drawio} images/ffn/bias
-:alt: diagram showing liner regression intersecting the y axis at about 2.4
-:::
+$$
+\text{linear output} =
+\underbrace{(w_1 \cdot input_1) + (w_2 \cdot input_2) + \dots}_{\text{dot product of weight vector and input}} + b
+$$
+
+Note that this is _not_ defining a best-fit linear regression on the input data. A better mental model is that the weights define a direction in $d_{in}$-space, and the bias defines a minimum divergence from that direction before the neuron fires, as we'll see in the next section.
+
+To see what I mean by divergence from the direction, let's take just one of the terms:
+
+$$
+(w_k \cdot input_k)
+$$
+
+If the learned weight parameter $w_k$ and the actual input $input_k$ have the same sign (both positive or both negative), this term will be positive, and the input is aligned with the neuron on this dimension. If the weight parameter and input have opposite signs, they're misaligned.
+
+- If $w_k$ is large, the alignment or misalignment is amplified; this is an important component of the weight vector's direction.
+- If $input_k$ is large, the alignment or misaligned is also amplified; this is an important component in the input.
 
 (activation-function)=
 
 ### Activation function
 
-Finally, we define the {dfn}`activation function`. This can technically be any non-linear function that takes the raw output from the linear function ( $(input \cdot weights) + bias$ ) and produces another scalar. In practice, a common one is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated at 0":
+The activation function is an FFN's special sauce. This can technically be any non-linear function that translates a scalar to another scalar, but to be useful, the activation function needs a couple other properties. We don't need to get into those properties yet, though they'll come up when I discuss training later (TODO: make sure I do this).
+
+A common activation function is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are truncated to 0":
 
 $$
 ReLU(x) = \max(0, x)
 $$
 
-The activation function is crucial for neuron specialization, because it lets each neuron deactivate when the input is sufficiently misaligned with the pattern that the neuron detects. This has two main benefits:
+:::{drawio} images/ffn/relu
+:alt: graph of ReLU
+:::
 
-- It lets the neuron signal that it hasn't detected what it's looking for.
-- It treats all such highly-misaligned values as equivalent, which means that at training time, it won't learn from them. (This is good, because if a neuron is looking for happy words, we don't want it to learn anything from "purple"!)
+This activation function is where the bias comes in: the higher the bias is, the easier it is for any given input to survive the ReLU cutoff. This means that the higher the bias, the more lax the neuron is about what it considers relevant input. (Of course, the bias can also be negative, meaning the neuron is even stricter than the weights alone would be.)
 
-Combined, these two benefits get at the real power of ReLU, and of FFNs in general: they combine linear functions in a non-linear way, and thus let us find complex, non-linear patterns in the input.
+The activation function is crucial for neuron specialization because it lets each neuron deactivate when the input is sufficiently misaligned with the pattern that the neuron detects (for ReLU, this means when the neuron's activation is negative). This has two main benefits:
+
+- It lets the neuron say that it hasn't detected what it's looking for.
+- It treats all such highly-misaligned values as equivalent, which means that at training time, it won't learn from them. (For example, if a neuron is looking for happy words, we don't want it to learn anything from "purple"!)
+
+Combined, these two benefits get at the real power of FFNs: they let each neuron effectively ignore inputs that don't pertain to the pattern it's learning, which lets the FFN as a whole learn many different patterns.
 
 :::{warning} More confusing terminology
 
 This chapter has talked about two different concepts with similar names:
 
 - The {dfn}`activation function` is a hyperparameter that's the same for every neuron in a given layer; it's basically just a line of code in the model.
-- The {dfn}`activations` are scalars that are computed at inference (and training), and are derived from the specific inputs (as well as the layer's learned parameters).
+- The {dfn}`activations` are the neuron's scalar values that are computed at inference (and training).
 
-In addition, throughout this book we've been using "activations" to refer to _any_ value that's derived from inputs during inference. The activations in this chapter are the origin of this term: the other activations are called that essentially as a metaphor to the ones in this chapter.
+In addition, throughout this book, I've been using "activations" to refer to _any_ value that's computed from inputs (as opposed to learned parameters). The activations in this chapter are the origin of this term: the other activations are called that essentially as a metaphor to the ones in this chapter.
 
 The term "activation" comes from the biological metaphor that I mentioned above was the inspiration for neural networks. Just as biological neurons fire in a living being in response to specific stimuli, so do the neurons in our FFN, thanks to the activation function.
 :::
 
-### Multiple layers
+## Multiple layers
 
-In a generic FFN, we would have some arbitrary number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on. Each of these hidden layers, as well as the final output layer, may have any number of neurons.
+An FFN can have any number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on.
 
 (multiple-layers-figure)=
 :::{drawio} images/ffn/multi
 :alt: A FFN with two hidden layers
 :::
 
-In LLMs, we typically only have one hidden layer per FFN, so the simplified model I described above is actually the full story. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide, as I'll discuss more in @05-putting-it-together).
+In LLMs, we typically only have one hidden layer per FFN, as we'll see in the next chapter. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide.)
 
 ## Fitting the FFN into the LLM
 
@@ -121,7 +151,4 @@ Let's do! From Claude:
 You'll probably want to cover:
 
 - Position-wise application (FFN processes each token position independently)
-- The typical transformer FFN structure (two layers: expand then contract)
-- How it fits in the transformer block (after attention, before next block)
-- Dimensionality: typically d_model → 4*d_model → d_model
 :::
