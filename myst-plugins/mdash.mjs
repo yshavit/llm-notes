@@ -8,7 +8,7 @@ const plugin = {
       plugin: (_, utils) => (node) => {
         utils.selectAll('text', node).forEach((textNode) => {
           if (textNode.value && textNode.value.includes('---')) {
-            textNode.value = textNode.value.replace(/ ?--- ?/g, '—');
+            textNode.value = textNode.value.replace(/ ?--- ?/g, ' — ');
           }
         });
       },
