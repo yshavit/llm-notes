@@ -148,6 +148,10 @@ In all of the above, the FFN's input is a vector of scalars. But if you remember
 
 Within the LLM, we just pass each of these embeddings through the same FFN, in parallel. In other words, the FFN's input is a single embedding vector, and its output is a single output embedding. We don't have one FFN per token position, or anything like that: the same exact FFN --- with the same weights and biases --- gets applied to each input embedding in parallel.
 
+:::{drawio} images/ffn/position-wise-application
+:alt: Each input embedding (vector of vectors of scalars) is independently processed through the FFN to produce an output embedding (a different vector of vector of scalars)
+:::
+
 ## Multiple layers
 
 As I mentioned above, an FFN can have any number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on. (Again, the actual patterns it finds are much more abstract than that.)
