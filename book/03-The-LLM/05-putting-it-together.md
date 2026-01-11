@@ -21,7 +21,7 @@ Let's start with the smallest thing that has the basic shape of an LLM. Most of 
 
 (Note that in these examples, we'll be treating words as tokens. As discussed in @02-input-to-vectors, the actual tokens are substrings and include punctuation.) Most of this should be familiar by now, but the $W_{out}$ and output logits are new.
 
-The logits (a portmanteau of "logistic unit") are a vector of vectors. The "outer" vector's elements represent token predictions, with each element corresponding to one past the corresponding input token.
+The logits (a portmanteau of "logistic unit") are a vector of vectors. The "outer" vector's elements represent token predictions, with each element containing the prediction --- logit --- for the corresponding input token.
 
 :::{drawio} images/transformer/smallest-llm-logits
 :alt: Input tokens to output. "The quick brown" translates to "quick brown fox"
@@ -29,44 +29,49 @@ The logits (a portmanteau of "logistic unit") are a vector of vectors. The "oute
 
 :::{aside}
 
-- **logit**: The final output of the LLM iteration; a $v$-sized vector. Can also be the whole $n \times v$ output.
+- **logit**: (Activations) The final output of the LLM iteration; a $v$-sized vector. Can also be the whole $n \times v$ output.
 :::
 
-Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary. The values within these logits represent how likely that token is to be the right one.
+Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary. The values within these logits represent how likely that token is to be the correct prediction .
 
 :::{drawio} images/transformer/smallest-llm-logit-values
 :alt: A single logit,
 :::
 
-Since the last logit in the outer vector represents the predictions for the next token after the input, and the highest value in that logit represents which of those tokens is most likely to be right. That's the one we'll append to the input and loop back again.
+To predict the input's next token, we just need to look at the last logit --- that is, the one that makes a prediction for the last input token --- and pick the token with the highest value. That's the one we'll append to the input and loop back again.
 
-If you remember, the output from the FFN was a $n$-sized vector (one per token) of $d$-sized vectors (the FFN's inferences; we'll get to $d$'s sizing below). We need to turn each of these $d$-vectors into a $v$-vector, where $v$ is the vocabulary size. Hopefully this will be enough that you can guess how we do this: we need a $d \times v$ matrix, which I'll call $W_{out}$:
+:::{drawio} images/transformer/smallest-llm-logits-zoom
+:alt: The LLM takes the highest-value token in the last logit
+:::
+
+If you remember, the output from the FFN was a $n$-sized vector (one per token) of $d$-sized vectors (the FFN's output dimension). We need to turn each of these $d$-vectors into a $v$-vector, where $v$ is the vocabulary size. Hopefully this vector-to-vector transformation is familiar enough that you can guess how we do it: we need a $d \times v$ matrix, which I'll call $W_{out}$:
 
 $$
-\text{FFN Output}_{(n \times d)} \cdot W_{out\ (d \times v)} = \text{Logits}_{(n \times v)}
+\underbrace{\text{FFN Output}}_{n \times d}
+\cdot \underbrace{W_{out}}_{d \times v}
+= \underbrace{\text{Logits}}_{n \times v}
 $$
 
 This matrix doesn't have a standard name. It can be called the output projection, the LM (language modeling) head, or the unembedding layer. It's a learned parameter matrix.
 
 :::{aside}
 
-- **projection layer**: a learned matrix, $d \times v$
+- **output projection**: a learned matrix, $d \times v$
 :::
 
 Note that unembedding is basically the reverse of the original translation from tokens to token embeddings that we did back in @02-input-to-vectors. Some models even use the same weights in both, to cut down on the model size.
 
 :::{tip} Why do we output $n$ logits?
+:class: dropdown
 
 When I learned that the LLM outputs an $n$ logits but that we only use the last one, I found myself wondering why we don't just output a single vector.
 
 Part of the issue is that there isn't actually a great way to turn an $n \times d$ matrix into a $v$ vector (or, equivalently, a $1 \times v$ matrix).
 
-But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. For example, if the output of "The quick brown fox" had produced an output that predicted "fox" (input token 4, output logit 3) as unlikely, we could use that as feedback during training. The $n$-logit output gives us $n$ such training opportunities per pass.
-
-We can't optimize this away at inference time, because we'd need to do that via a different projection matrix, and we won't have the training to fill in that matrix's values.
+But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. In the example above, our third logit predicted that the token after "brown" is "fox", which we know from our input is the correct prediction. If it had predicted "hen", our training would use this to adjust the model's learned parameters.
 :::
 
-At this point, you should understand everything in [the image above](#smallest-llm-figure).
+At this point, you should understand everything in [the simple LLM diagram above](#smallest-llm-figure). That's all we need in order for the equations and dimensions to all add up, so we could call that an LLM. In practice, such an LLM wouldn't work well: its predictions won't be good enough. So, let's beef it up.
 
 ## Stacking transformer blocks
 
