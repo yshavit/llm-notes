@@ -79,6 +79,19 @@ In the previous chapter, I mentioned that a traditional FFN [has multiple hidden
 
 Since each transformer block is just an attention layer and an FFN with a single hidden layer, to me this feels similar to a traditional, multi-layered FFN, but with an attention layer sitting between each traditional FFN layer. That said, that's not how standard literature describes it. People in the field think of transformers as a different architecture, not as a modification of FFNs.
 
+:::{tip} Attention vs FFN within a transformer
+:class: dropdown
+You may be wondering why each transformer contains both an attention layer and an FFN. Why won't just one of these suffice?
+
+The short answer is that this architecture just seems to work.
+
+But beyond that, each layer focuses on different kinds of patterns. The attention layer tends to focus on relationships, and the FFN tends to focus on individual facts.
+
+For example, if we were predicting the next token in "The capital of Massachusetts is", then the attention layer is (roughly speaking) responsible for learning that the next word should be whatever the capital of Massachusetts is; and the FFN is responsible for knowing that the capital of Massachusetts is Boston.
+
+This division of labor isn't always so clear-cut in practice, though, and it's a point of active research.
+:::
+
 :::{drawio} images/transformer/multi-llm
 :alt: Same architecture as the minimal LLM, but with multiple transformer blocks
 :::
