@@ -77,13 +77,17 @@ At this point, you should understand everything in [the simple LLM diagram above
 
 In the previous chapter, I mentioned that a traditional FFN [has multiple hidden layers](#multiple-layers-figure), but that LLMs don't. Instead, LLMs stack multiple transformer blocks.
 
-Since each transformer block is just an attention layer and an FFN with a single hidden layer, to me this feels similar to a traditional, multi-layered FFN, but with that special-sauce of attention sprinkled throughout. (That said, that's not how standard literature describes it. People in the field think of transformers as a different architecture, not as a modification of FFNs.)
+Since each transformer block is just an attention layer and an FFN with a single hidden layer, to me this feels similar to a traditional, multi-layered FFN, but with an attention layer sitting between each traditional FFN layer. That said, that's not how standard literature describes it. People in the field think of transformers as a different architecture, not as a modification of FFNs.
 
 :::{drawio} images/transformer/multi-llm
 :alt: Same architecture as the minimal LLM, but with multiple transformer blocks
 :::
 
-Within each transformer block, the FFN's hidden layer takes input of dimension $d$, expands it to dimension $4d$, and then contracts it back to $d$. This approach was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
+In a typical LLM, within each transformer block, the FFN's takes an input of dimension $d$, expands it to a hidden layer with dimension $4d$, and then contracts it back to $d$. This approach (and specifically the $4\times$ dimension multiplier) was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
+
+:::{drawio} images/transformer/ffn-4d
+:alt: FFNs within an LLM typically expand an input from size d to a hidden layer of size 4d, and then back down to an output of size d
+:::
 
 (llm-stacking-depth)=
 A small LLM may have a couple dozen transformer blocks, and large, commercial ones have 80-100 or more.
