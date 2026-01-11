@@ -44,7 +44,7 @@ To predict the input's next token, we just need to look at the last logit --- th
 :alt: The LLM takes the highest-value token in the last logit
 :::
 
-If you remember, the output from the FFN was a $n$-sized vector (one per token) of $d$-sized vectors (the FFN's output dimension). We need to turn each of these $d$-vectors into a $v$-vector, where $v$ is the vocabulary size. Hopefully this vector-to-vector transformation is familiar enough that you can guess how we do it: we need a $d \times v$ matrix, which I'll call $W_{out}$:
+So, that's our desired output shape: $n$ vectors of size $v$ (where $v$ is the vocabulary size). If you remember, the [output from the FFN](#ffn-output-shape) was a $n$ vectors of size $d$ (the FFN output dimension). This means we need to transform each $d$-vectors into a $v$-vector. Hopefully this transformation is familiar enough by now that you can guess how we do it: we need a $d \times v$ matrix, which I'll call $W_{out}$:
 
 $$
 \underbrace{\text{FFN Output}}_{n \times d}

@@ -142,17 +142,19 @@ In addition, throughout this book, I've been using "activations" to refer to _an
 The term "activation" comes from the biological metaphor that I mentioned above was the inspiration for neural networks. Just as biological neurons fire in a living being in response to specific stimuli, so do the neurons in our FFN, thanks to the activation function.
 :::
 
+(ffn-output-shape)=
+
 ## Position-wise application
 
 In all of the above, the FFN's input is a vector of scalars. But if you remember, the output of the attention layer was a vector of _vectors_, each called an embedding.
 
-Within the LLM, we just pass each of these embeddings through the same FFN, independently. We don't have one FFN per token position, or anything like that: the same exact FFN --- with the same weights and biases --- gets applied to each input embedding.
+So, in the FFN layer, we just independently pass each of these embeddings through the same FFN. In other words, the FFN layer takes $n$ token embeddings, each of size $d_{in}$; and turns them into $n$ outputs, each of size $d_{out}$.
+
+We don't have one FFN per token position, or anything like that: the same exact FFN --- with the same weights and biases --- gets applied to each input embedding.
 
 :::{drawio} images/ffn/position-wise-application
 :alt: Each input embedding (vector of vectors of scalars) is independently processed through the FFN to produce an output embedding (a different vector of vector of scalars)
 :::
-
-In other words, the FFN layer takes $n$ token embeddings, each of size $d_{in}$; and turns them into $n$ outputs, each of size $d_{out}$.
 
 In practice, GPUs and TPUs can run these computations in parallel and very efficiently.
 
