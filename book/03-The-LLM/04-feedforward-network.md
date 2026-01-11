@@ -154,7 +154,7 @@ Within the LLM, we just pass each of these embeddings through the same FFN, inde
 
 In practice, GPUs and TPUs can run these computations in parallel and very efficiently.
 
-## Multiple layers
+## Next up
 
 As I mentioned above, an FFN can have any number of hidden layers. Each hidden layer's output is the next layer's input, until the last one produces the FFN's overall output. These layers can produce a hierarchy of increasingly complex concepts: one may identify features like happy words or active voice; another may recognize patterns that combine happy words with active voice verbs; another may detect a pattern that builds off of this happy-plus-active pattern; and so on. (Again, the actual patterns it finds are much more abstract than that.)
 
@@ -163,6 +163,6 @@ As I mentioned above, an FFN can have any number of hidden layers. Each hidden l
 :alt: A FFN with two hidden layers
 :::
 
-In LLMs, we typically only have one hidden layer per FFN. (LLMs have a slightly different approach to achieving the sophistication that a multi-layered FFN would provide.)
+In LLMs, though, we typically only have one hidden layer per FFN. LLMs still need the complex inference that deep FFNs provide, but they accomplish it in a slightly different way.
 
 In the next chapter, I'll show how the attention layer and FFN combine into a transformer block, and how we can stack multiple of these blocks together to create the full LLM.
