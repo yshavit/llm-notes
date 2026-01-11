@@ -127,7 +127,7 @@
         <mxCell id="OaAdOaz1uEOPdAWkdDQn-55" parent="1" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;legacyAnchorPoints=0;" value="" vertex="1">
           <mxGeometry height="49" width="20" x="340" y="-2069" as="geometry" />
         </mxCell>
-        <mxCell id="OaAdOaz1uEOPdAWkdDQn-56" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Parallel Evaluation against Same FFN" vertex="1">
+        <mxCell id="OaAdOaz1uEOPdAWkdDQn-56" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=10;" value="Independent Evaluation against Same FFN" vertex="1">
           <mxGeometry height="50" width="60" x="360" y="-2070" as="geometry" />
         </mxCell>
       </root>

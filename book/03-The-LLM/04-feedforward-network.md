@@ -146,11 +146,13 @@ The term "activation" comes from the biological metaphor that I mentioned above 
 
 In all of the above, the FFN's input is a vector of scalars. But if you remember, the output of the attention layer was a vector of _vectors_, each called an embedding.
 
-Within the LLM, we just pass each of these embeddings through the same FFN, in parallel. In other words, the FFN's input is a single embedding vector, and its output is a single output embedding. We don't have one FFN per token position, or anything like that: the same exact FFN --- with the same weights and biases --- gets applied to each input embedding in parallel.
+Within the LLM, we just pass each of these embeddings through the same FFN, independently. In other words, the FFN's input is a single embedding vector, and its output is a single output embedding. We don't have one FFN per token position, or anything like that: the same exact FFN --- with the same weights and biases --- gets applied to each input embedding.
 
 :::{drawio} images/ffn/position-wise-application
 :alt: Each input embedding (vector of vectors of scalars) is independently processed through the FFN to produce an output embedding (a different vector of vector of scalars)
 :::
+
+In practice, GPUs and TPUs can run these computations in parallel and very efficiently.
 
 ## Multiple layers
 
