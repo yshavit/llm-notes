@@ -105,28 +105,21 @@ In a typical LLM, within each transformer block, the FFN takes an input of dimen
 :alt: FFNs within an LLM typically expand an input from size d to a hidden layer of size 4d, and then back down to an output of size d
 :::
 
-## Architectural tweaks to aid training
+## Refining deep transformer stacks
 
-If all we had to worry about were inference, we'd be done at this point. Unfortunately, we still need to train our model, and deeply stacked transformers are going to cause issues when we do so. To solve this, we're going to add two new ideas: normalization and residual connections.
+At this point, we've stubbed out a basic LLM and built it out with multiple transformer blocks, with each deeper transformer learning different patterns. Generally speaking, the deeper the transformer (that is, the further it is from the input and closer to output), the more sophisticated and complex its patterns.
 
-:::{note} Getting ahead of ourselves, by necessity
-Normalization and residual connections are all about training, which I haven't talked about yet.
+Unfortunately, each transformer also represents a discontinuity in the flow from input to inference. For example, remember that the output from each attention layer doesn't include everything in its input embeddings: it only outputs the information relevant to the relationships its heads detect. What if a deeper transformer would have needed something that isn't part of that projection?
 
-These components aren't part of the LLM's core conceptual architecture in the same way that attention or even FFNs are. They're "just" engineering workarounds that have been empirically found to make training better. Training is a crucial part of creating a good LLM, so these pieces are extremely important in practice; but I'll cover training later, so don't worry if the motivation for adding them doesn't click yet.
-:::
+What we really need is for each of these transformers to augment, rather than fully replace, its input. We'll do this with two different tweaks to the transformer stack: normalization and residual connections.
 
-Without getting into technical details, it turns out that our stacked transformers would have two problems at training time:
-
-1. Activations that jump too wildly from layer to layer will make it hard for the model to learn stable patterns.
-2. The deep transformer stacking acts as a dampening effect, such that layers earlier in the model (and thus farther from the prediction that training will check against) will receive a much softer training signal than later layers.
-
-We'll solve the first problem with {dfn}`normalization`, and the second with {dfn}`residual connections`.
-
-I'll describe what each layer is first, and then show how they fit into the architecture.
+I'll describe each of these in isolation first --- what they do, how they work --- and then show how both plug into the LLM's architecture.
 
 ### Normalization
 
-The goal of normalization is to ensure that activations (that is, the values at inference time) don't vary too wildly. Our goal is to center the values roughly around 0, and also "squash" them so they're roughly ±1.
+Normalization is mostly for the benefit of training, which I haven't described yet. For now, the important thing to know is that training relies on gradients, so the more stable those gradients are, the easier it'll be for the training process.
+
+So, the goal of normalization is to ensure that activations (that is, the values that are derived from any particular input) don't vary too wildly. To do this, we'll center the values roughly around 0, and also "squash" them so they're roughly ±1.
 
 To calculate the layer's normalized values:
 
@@ -136,7 +129,7 @@ To calculate the layer's normalized values:
     :class: dropdown
     Variance is a standard measure in statistics that describes how spread out a set of values is.
 
-    We calculate it by computing the values average; then, computing how far each value is from the average; then squaring those distances; then taking the average.
+    We calculate it by computing the values' average; then, computing how far each value is from the average; then squaring those distances; then taking the average of those squares.
     :::
 
 2. Next, we'll get the "plain" normalized values:
@@ -176,9 +169,7 @@ The scale and shift are both vectors of size $d$, the dimension of the layer to 
 - **normalization shift**: a learned $d$-sized vector
 :::
 
-These parameters basically let the training adjust the normalization: instead of the values being roughly 0±1, they'll be roughly _shift_ ± _scale_.
-
-Although the training can technically settle on any values for these parameters, in practice they often stay pretty close to 1 and 0.
+These parameters basically let the training adjust the normalization: instead of the values being roughly 0±1, they'll be roughly _shift_ ± _scale_. Although the training can technically settle on any values for these parameters, in practice they often stay pretty close to 1 and 0.
 
 Putting all of the above together, we get:
 
@@ -198,7 +189,12 @@ The above algorithm is called LayerNorm. There are other algorithms, some of whi
 
 ### Residual connections
 
-Although the [non-linear stacking](#activation-function) of multiple transformer blocks lets the model learn sophisticated patterns, that same non-linearity serves to "disconnect" adjacent layers. At training, this can dampen the effect that each lower layer has on the one above it. Since LLMs typically have [many layers](#llm-stacking-depth), this presents a real problem in practice.
+Although the [non-linear stacking](#activation-function) of multiple transformer blocks lets the model learn sophisticated patterns, that same non-linearity serves to partially "disconnect" adjacent layers. I described above how attention replaces its input embeddings with only the information relevant for the attention's relationships; FFNs do a similar thing with their inferences. Effectively, attention and FFNs both act as a hurdle between their inputs and outputs.
+
+This has two main problems:
+
+- At inference (which flows from input to output) layers may discard information that deeper layers would have needed
+- At training (which flows backwards, from inference to input), the hurdle makes it harder for the feedback signals to travel up the stack.
 
 The solution is simple: just add each layer's original activation values back to the post-transformed values. This is called a {dfn}`residual connection`.
 
