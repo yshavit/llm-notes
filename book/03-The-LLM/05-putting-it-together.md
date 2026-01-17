@@ -1,5 +1,8 @@
 # Putting it all together
 
+:::{status} 2
+:::
+
 ## Overview
 
 So far, we've turned text into tokens, tokens into input embeddings, and augmented the input embeddings into attention. We also went over the basics of FFNs. Now we're ready to put the pieces together. We're almost there!

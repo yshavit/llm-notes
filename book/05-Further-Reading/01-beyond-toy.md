@@ -2,6 +2,9 @@
 
 # Beyond the toy LLM
 
+:::{status} 0
+:::
+
 :::{warning} WIP
 TODO
 

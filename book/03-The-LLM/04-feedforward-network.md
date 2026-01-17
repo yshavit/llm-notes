@@ -1,5 +1,8 @@
 # Feedforward network
 
+:::{status} 2
+:::
+
 ## Overview
 
 In the self-attention layer, we took input embedding vectors and translated them into context vectors that described the relationship between tokens. Now, we'll pass those context vectors through something called a {dfn}`feedforward network`, which will draw additional inferences.

@@ -18,6 +18,7 @@ project:
     - type: executable
       path: ../myst-plugins/dfn
     - ../myst-plugins/mdash.mjs
+    - ../myst-plugins/status.mjs
   error_rules:
     - rule: link-resolves
       keys:

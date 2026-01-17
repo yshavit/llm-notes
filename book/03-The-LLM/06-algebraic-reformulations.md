@@ -1,5 +1,8 @@
 # Algebraic reformulations
 
+:::{status} 1
+:::
+
 I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the algebraic reformulations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
 
 There are two major components to this:

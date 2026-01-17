@@ -1,5 +1,8 @@
 (introduction-to-training)=
 
+:::{status} 0
+:::
+
 # Introduction to training
 
 :::{warning} WIP

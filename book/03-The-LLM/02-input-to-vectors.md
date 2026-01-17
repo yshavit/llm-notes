@@ -1,5 +1,8 @@
 # Turning input text into vectors
 
+:::{status} 2
+:::
+
 ## Overview
 
 As I've mentioned before, vectors are how LLMs encode the nuance of human language. So, the first thing we need to do is to turn each part of the text input into a vector. In the end, we'll have one vector per token in the input text.

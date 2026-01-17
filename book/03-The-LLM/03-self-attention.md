@@ -1,5 +1,8 @@
 # Self-attention
 
+:::{status} 2
+:::
+
 ## What and _why_ is self-attention?
 
 In [the previous chapter](./02-input-to-vectors), I described how to turn input text into a list of vectors. In the next section, we'll be using those vectors in a [feedforward network](#llm-components), which will make various inferences on them. But first, we're going to use a process called {dfn}`self-attention` to determine how each token draws information from the tokens around it.

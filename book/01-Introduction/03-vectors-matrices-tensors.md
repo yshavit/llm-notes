@@ -1,5 +1,8 @@
 # Refresher on Vectors and Matrices
 
+:::{status} 2
+:::
+
 Before we get into the meat of LLMs, let's do a quick refresher on vectors, matrices, and tensors.
 
 This subject can take up whole chapters of a math text book, but we only need to know a few things:

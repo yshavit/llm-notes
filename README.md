@@ -1,4 +1,4 @@
-## What is this?
+# What is this?
 
 A 0-to-60 book for myself on how LLMs work.
 

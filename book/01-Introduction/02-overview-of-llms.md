@@ -1,5 +1,8 @@
 # Overview of LLMs
 
+:::{status} 2
+:::
+
 Before we get into the meat of things, I think it's useful to provide a 20,000-foot view of LLMs to help orient ourselves.
 
 As you may have heard, LLMs are essentially "autocomplete on steroids": given a bunch of input text, they predict the next word. But how?
