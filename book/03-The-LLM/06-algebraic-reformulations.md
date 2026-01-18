@@ -364,12 +364,12 @@ A TPU is going to eat this for breakfast!
 
 #### Multi-head attention
 
-Back in the chapter on attention, I talked about how [LLMs use multiple heads](#multi-head) within a single attention layer, each (hopefully!) learning different patterns. The attention layer concatenates these heads, and then uses a final projection $W_o$ to combine them.
+Back in the chapter on attention, I talked about how [LLMs use multiple heads](#multi-head) within a single attention layer, each (hopefully!) learning a different relationship. The attention layer concatenates these heads, and then uses a final projection $W_o$ to combine them.
 
-Described as such, this would require looping over each of the heads to perform the attention function I just described. It may not surprise you that this can be done without looping, using tensor math!
+Described as such, this would require looping over each of the heads to perform the attention function we just saw. It may not surprise you that this can be done without looping, using tensor math.
 
-- Instead of the weights being $d_{model} \times d$, they're $d_{model} \times d_{model}$; in other words, each weight matrix contains the full, multi-head parameters.
-- When we multiply the input $X$ against these, we get matrices of size $n \times d_{model}$
+- Instead of the weights being $d \times d$, they're $d \times dh$; in other words, each weight matrix contains the full, multi-head parameters.
+- When we multiply the input $T$ (an $n \times d$ matrix) against the multi-head weights, we get matrices of size $n \times dh$. These are the new, multi-head $Q$, $K$, and $V$ matrices.
 - We "reshape" these into rank-3 tensors $(n, h, d)$. This basically just means conceptually splitting along the columns:
 
   $$
@@ -385,23 +385,28 @@ Described as such, this would require looping over each of the heads to perform 
     e & f \\
     i & j
     \end{bmatrix}
-  }_{\text{head 0}}
+  }_{\text{head 1}}
   \underbrace{
     \begin{bmatrix}
     c & d \\
     g & h \\
     k & l
     \end{bmatrix}
-  }_{\text{head 1}}
+  }_{\text{head 2}}
   $$
-- We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. At this point, each head is an $n \times d$ matrix.
+
+  For example, $(3, 2, 1)$ corresponds to row 3, head 2, embedding dimension 1: element $k$ above.
+
+  At this point, each head is an $n \times dh$ matrix.
+
+- We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. For example, $k$ would now be $(2, 3, 1$.
 - Now we calculate the attention weights $A$ as we did before.
-  - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension; but the actual implementation is highly optimized.
-  - The result is an $(h, n, n)$ tensor.
-- We then multiply this by our $V_{(h,n,d)}$ to get an attention output $(h, n, d)$
+  - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension. This means they do the matrix multiplication on each $h$ of the $(n, d)$ sub-matrices. The actual implementation is highly optimized.
+  - Each $n \times d$ matrix becomes an $n \times n$ matrix, so the result is an $h \times n \times n$ tensor.
+- We then multiply this by the multi-head value matrix $V_{h,n,d}$ to get an attention output $(h, n, d)$
 - And finally, we transpose this back to $(n, h, d)$, reshape it back to $(n, d_{model})$ and apply the $W_o$ projection.
 
-These operations are highly optimized in the software that runs them, and down to the hardware level.
+These operations are highly optimized in the software that runs them, and down to the hardware level. In particular, the transposition operations don't move any actual data: they just change how the data gets indexed. This means they take essentially no time.
 
 ### FFNs
 
