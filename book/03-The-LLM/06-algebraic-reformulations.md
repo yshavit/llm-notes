@@ -15,7 +15,7 @@ In this chapter, I'll assume that each transformation's input and output dimensi
 :::
 
 :::{warning} Warning! Math!
-Parts of this chapter may be a bit dense -- sorry!
+Parts of this chapter may be a bit dense.
 
 Until now, we've been able to mostly get by with just understanding the shapes of various operations, like dot products and matrix multiplication. In this chapter, you'll need to understand the actual operations.
 
@@ -72,6 +72,7 @@ Recall that we calculated attention by doing a nested loop over the input embedd
         1. Calculate the key vector $k = t_k \times W_k$. This vector has size $d$.
         2. Calculate the dot product $q \cdot k$ to get the attention score (a scalar).
     3. Treat those $n$ attention scores as a vector; scale and softmax that vector to get the attention weight vector (size $n$).
+    (calculate-value-vectors)=
     4. Calculate value vectors:
         1. For every input embedding $t_v$, calculate a value vector $v = t_v \times W_v$. There are $n$ such vectors, each size $d$.
         2. Multiply each value vector by the corresponding attention weight (the $n$ scalars from the previous step). The result is still $n$ vectors, each size $d$.
@@ -81,7 +82,7 @@ There are $n$ inputs (that is, $n$ iterations of the $t_q$ loop), so we ended up
 
 Let's see how much of this we can turn into matrix math. (Spoiler alert: almost all of it.) Instead of a nested loop that generates $n$ vectors of size $d$, we'll use matrix math to generate an $n \times d$ matrix.
 
-#### Calculating the query matrix $Q$
+#### Calculating the query matrix
 
 I'll start with step 1.1 above. We'll focus on one iteration of the loop --- call it $i$ --- and calculate the key vector $q_i$ for input $t_i$. (Remember that $t_i$ is a $d$-sized embedding vector.)
 
@@ -225,7 +226,7 @@ Just to belabor the point: we've turned all of the nested looping in steps 1 →
 
 1. $Q = TW_q$
 2. $K = TW_k$
-3. transpose $K$ (this doesn't even require moving any memory: it's just a bit of metadata to tell the computer to treat $i,j$ as $j,i$)
+3. Transpose $K$ (this doesn't even require moving any memory: it's just a bit of metadata to tell the computer to treat $i,j$ as $j,i$)
 4. $\text{attention scores} = QK^T$
 
 (scale-and-softmax-matrix)=
@@ -234,81 +235,114 @@ Just to belabor the point: we've turned all of the nested looping in steps 1 →
 
 Next, we just need to scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 1.3 above.
 
+$$
+\text{attention weights} = A = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)
+$$
+
 Note:
 
 - Dividing a matrix by a scalar ($\sqrt{d}$) just divides each of its cells by that scalar.
 - Softmax operates on vectors. When we apply it to a matrix, this really just means to applying it to each row in that vector. Each of those rows will have softmax calculated independently, but GPUs and TPUs can parallelize the work efficiently across those rows.
 
-$$
-\text{attention weights} = A = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)
-$$
-
 Neither the scalar division nor softmax changes the dimensions of the matrix, so it's still $n \times n$.
 
-#### Applying values to get attention
+#### Context matrix
 
-:::{warning} TODO
-review starting here
-:::
+Finally, we'll apply our weights against the value vectors, and sum the results. This corresponds to step 1 → (1.4, 1.5) above.
 
-Finally, we'll apply our weights against the value vectors, and sum the results. This corresponds to steps 3 - 4 above.
-
-First, we'll get the value matrix $V$, similar to the above. This is step 3.
+First, we'll get the value matrix $V$, similar to the above. This is step 1.4.1.
 
 $$
-V = \underbrace{X \cdot W_v}_{n \times d}
+V = \underbrace{TW_v}_{n \times d}
 $$
 
 Each row in this matrix is one value vector.
 
-Before we go further, let's step back and try to compute just a single context vector (that is, just a single token's attentions) with what we have. This means that within the context of a single query token $Q_i$, we want to:
+Before we go further, let's step back and compute just a single context vector (that is, just a single token's attentions) the matrices we've computed so far.
 
-- take all the value vectors:
+Just to recap, here's what we need to do:
+
+::::{blockquote}
+
+1. For each input $t_q$:
+
+   ...
+
+   :::{embed} #calculate-value-vectors
+   :::
+::::
+
+This means that within the context of a single query token $Q_i$, we need to:
+
+- Take all the value vectors (step 1.4.1):
 
   $$
-  \left.\begin{bmatrix} V_0 \\ V_1 \\ \vdots \end{bmatrix}\right\} \text{$n$ vectors, each size $d$}
+  \left.\begin{bmatrix} V_1 \\ V_2 \\ \vdots \end{bmatrix}\right\} \text{$n$ vectors, each size $d$}
   $$
-- multiply each one by the corresponding attention weights for this query token:
+
+  (Remember that $V$ is an $n \times d$ matrix; each row $V_i$ is a $d$-vector.)
+
+- Multiply each value vector by its corresponding attention weight for query token $i$ (step 1.4.2):
 
   $$
-  \begin{bmatrix}A_{i,0}V_0 \\ A_{i,1}V_1 \\ \vdots \end{bmatrix}
-  = \left.
-    \underbrace{
-      \begin{bmatrix}
-      A_{i,0}V_{0,0} & A_{i,0}V_{0,1} & \dots \\
-      A_{i,1}V_{1,0} & A_{i,1}V_{1,1} & \dots \\
+  \begin{align}
+  & \begin{bmatrix}A_{i,1} \, V_1 \\ A_{i,2} \, V_2 \\ \vdots \end{bmatrix} \\[2em]
+  = & \left.
+    \begin{bmatrix}
+      A_{i,1} \, V_{1,1} & A_{i,1} \, V_{1,2} & \cdots \\
+      A_{i,2} \, V_{2,1} & A_{i,2} \, V_{2,2} & \cdots \\
       \vdots & \vdots & \ddots
-      \end{bmatrix}
-    }_{d}
+    \end{bmatrix}
     \right\} n
+  \end{align}
   $$
-- sum the $n$ vectors to get a single vector, size $d$
+
+- Sum the $n$ weighted vectors to get the context vector for query $i$ (step 1.5):
 
   $$
   \begin{bmatrix}
-  (A_{i,0}V_{0,0} + A_{i,1}V_{1,0} + \dots)
-  & (A_{i,0}V_{0,1} + A_{i,1}V_{1,1} + \dots)
-  & \dots
+  \underbrace{A_{i,1} \, V_{1,1} + A_{i,2} \, V_{2,1} + \cdots}_{\text{weighted sum of column 1}}
+  & \underbrace{A_{i,1} \, V_{1,2} + A_{i,2} \, V_{2,2} + \cdots}_{\text{weighted sum of column 2}}
+  & \cdots
   \end{bmatrix}
   $$
 
-Now that we have the context vector for a given query vector $Q_i$, let's see what they'd look like stacked as rows of a matrix:
+We'll call this vector $C_i$, the context vector for the $i$-th query token. Let's see what all the $C_i$s look like stacked as rows of a matrix:
 
 $$
-\begin{bmatrix}
-(A_{0,0}V_{0,0} + A_{0,1}V_{1,0} + \dots) & (A_{0,0}V_{0,1} + A_{0,1}V_{1,1} + \dots) & \dots
-\\[1em]
-(A_{1,0}V_{0,0} + A_{1,1}V_{1,0} + \dots) & (A_{1,0}V_{0,1} + A_{1,1}V_{1,1} + \dots) & \dots
-\\[1em]
+\begin{align}
+\begin{bmatrix} C_1 \\ C_2 \\ \vdots \end{bmatrix}
+& = \begin{bmatrix}
+(A_{1,1}V_{1,1} + A_{1,2}V_{2,1} + \cdots) & (A_{1,1}V_{1,2} + A_{1,2}V_{2,2} + \cdots) & \cdots \\
+(A_{2,1}V_{1,1} + A_{2,2}V_{2,1} + \cdots) & (A_{2,1}V_{1,2} + A_{2,2}V_{2,2} + \cdots) & \cdots \\
 \vdots & \vdots & \ddots
+\end{bmatrix}
+\end{align}
+$$
+
+Each cell $i,j$ is a sum of terms: each of row $A_i$'s columns multiplied by column $V_{\star,j}$'s rows. In other words, each cell is a dot product:
+
+$$
+= \begin{bmatrix}
+  \begin{bmatrix} A_{1,1} & A_{1,2} & \cdots \end{bmatrix}
+    \begin{bmatrix} V_{1,1} \\ V_{2,1} \\ \vdots \end{bmatrix}
+  & \begin{bmatrix} A_{1,1} & A_{1,2} & \cdots \end{bmatrix}
+    \begin{bmatrix} V_{1,2} \\ V_{2,2} \\ \vdots \end{bmatrix}
+  & \cdots \\[2.5em]
+    \begin{bmatrix} A_{2,1} & A_{2,2} & \cdots \end{bmatrix}
+  \begin{bmatrix} V_{1,1} \\ V_{2,1} \\ \vdots \end{bmatrix}
+  & \begin{bmatrix} A_{2,1} & A_{2,2} & \cdots \end{bmatrix}
+    \begin{bmatrix} V_{1,2} \\ V_{2,2} \\ \vdots \end{bmatrix}
+  & \cdots \\[2.5em]
+  \vdots & \vdots & \ddots
 \end{bmatrix}
 $$
 
 This may look familiar: it's just the matrix multiplication $AV$.
 
-#### Putting it together
+#### The full attention calculation
 
-If we substitute $A$ in the expression above with the expression from @scale-and-softmax-matrix above, we get:
+So, attention is $AV$. If we substitute $A$ with the expression from @scale-and-softmax-matrix above, we get:
 
 $$
 \text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)V
@@ -316,10 +350,17 @@ $$
 
 This is the canonical representation of attention, and is somewhat famous within the literature of LLMs.
 
-This means we can calculate the attention for a head using pretty much all matrix math:
+This means we've now turned the all of the attention calculation --- a logically multiple-nested loop --- into a few matrix multiplications and a bit of parallelizable manipulation:
 
-- calculate $Q$, $K$, and $V$ as $XW_q$, $XW_k$, and $XW_v$ respectively
-- plug them into the $\text{Attention}(Q, K, V)$ function above
+1. $Q = TW_q$
+2. $K = TW_k$
+3. $V = TW_v$
+4. $\text{attention scores} = QK^T$
+5. divide these by $\sqrt{d}$
+6. apply softmax to each row to get $A$, the attention weight matrix
+7. $\text{Attention} = AV$
+
+A TPU is going to eat this for breakfast!
 
 #### Multi-head attention
 
