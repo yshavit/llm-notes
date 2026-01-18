@@ -221,23 +221,35 @@ $$
 \text{attention scores} = QK^T
 $$
 
+Just to belabor the point: we've turned all of the nested looping in steps 1 → (1.1 - 1.2) into just a few matrix operations:
+
+1. $Q = TW_q$
+2. $K = TW_k$
+3. transpose $K$ (this doesn't even require moving any memory: it's just a bit of metadata to tell the computer to treat $i,j$ as $j,i$)
+4. $\text{attention scores} = QK^T$
+
 (scale-and-softmax-matrix)=
 
 #### Scale and softmax
 
-:::{warning} TODO
-Need to review starting from here.
-:::
+Next, we just need to scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 1.3 above.
 
-Next, we just need to scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 2 above.
+Note:
+
+- Dividing a matrix by a scalar ($\sqrt{d}$) just divides each of its cells by that scalar.
+- Softmax operates on vectors. When we apply it to a matrix, this really just means to applying it to each row in that vector. Each of those rows will have softmax calculated independently, but GPUs and TPUs can parallelize the work efficiently across those rows.
 
 $$
 \text{attention weights} = A = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)
 $$
 
-Neither of these changes the dimensions of the matrix, so it's still $n \times n$.
+Neither the scalar division nor softmax changes the dimensions of the matrix, so it's still $n \times n$.
 
 #### Applying values to get attention
+
+:::{warning} TODO
+review starting here
+:::
 
 Finally, we'll apply our weights against the value vectors, and sum the results. This corresponds to steps 3 - 4 above.
 
