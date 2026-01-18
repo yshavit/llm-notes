@@ -18,6 +18,10 @@
   }
 }
 
+.wide-image {
+  min-width: 85%;
+}
+
 .big {
   font-size: 3em;
 }

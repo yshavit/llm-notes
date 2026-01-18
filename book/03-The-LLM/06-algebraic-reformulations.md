@@ -5,169 +5,229 @@
 
 I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the algebraic reformulations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
 
-There are two major components to this:
+There are two major parts to this:
 
 - Turning vectors-of-vectors into matrices
 - Increasing the rank of all tensors by 1, so that we can add a batching dimension
 
 :::{note} Assume $d = \delta$
-In this chapter, I'll be relying on the common constraint that each transformation's input and output dimensions are the same. I mentioned that this is a common model constraint in the chapter on attention, and the previous chapter provided additional motivation for it in the context of residual connections. Since it also simplifies this chapter's math, I'll just assume it from here on out.
+In this chapter, I'll assume that each transformation's input and output dimensions are the same. I mentioned that this is a common model constraint in the chapter on attention, and the previous chapter provided additional motivation for it in the context of residual connections. Since it also simplifies this chapter's math, I'll just assume it from here on out.
+:::
+
+:::{warning} Warning! Math!
+Parts of this chapter may be a bit dense -- sorry!
+
+Until now, we've been able to mostly get by with just understanding the shapes of various operations, like dot products and matrix multiplication. In this chapter, you'll need to understand the actual operations.
+
+If you don't remember how these work, you may want to review the earlier chapter on [vector and matrix math](#matrix-math-details).
 :::
 
 ## The architecture's conceptual shape
 
-Before we dive into the algebraic reformulations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations.
-
-I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
-
-:::{drawio} images/tensors/architecture-concepts
-:alt: An overview of the LLM architecture, showing n vectors of size d for most of the flow, and a final output of n vectors of size v
-:::
+Before we dive into the algebraic reformulations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations. I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
 
 For most of the LLM, the activations are in the form of $n$ vectors, each size $d$. The final output is still $n$ vectors, but each sized $v$ (the vocabulary size).
 
+:::{drawio} images/tensors/architecture-concepts
+:alt: An overview of the LLM architecture, showing n vectors of size d for most of the flow, and a final output of n vectors of size v
+:class: wide-image
+:::
+
 ## Vectors of vectors → matrices
 
-The basic "lifting" we'll do is to to turn vectors of vectors into matrices. This will let us turn "for each outer vector, do some stuff" loops into matrix multiplication. This doesn't change what's going on conceptually, but it lets us do the math on GPUs and TPUs that process it much more quickly.
+The basic "lifting" we'll do is to to turn vectors of vectors into matrices. This will let us turn the various "for each outer vector, do some stuff" loops that we've been working with into matrix multiplication (I'll describe each of these in detail below). This doesn't change what's going on conceptually, but it lets us do the math on GPUs and TPUs that process it much more quickly.
 
 All we need to do is turn each "outer" vector into a row in a matrix:
 
 $$
+\underbrace{
 \begin{array}{llll}
-[\; 1.32, & 5.91, & 5.71, & \dots \;] \\
-[\; 6.16, & 4.81, & 3.62, & \dots \;] \\
-[\; 8.27, & 9.53, & 2.44, & \dots \;] \\
-[\; \dots, & \dots, & \dots, & \dots \;]
+[\; 1.32 \,, & 5.91 \,, & 5.71 \,, & \dots \;] \\[0.15em]
+[\; 6.16 \,, & 4.81 \,, & 3.62 \,, & \dots \;] \\[0.15em]
+[\; 8.27 \,, & 9.53 \,, & 2.44 \,, & \dots \;] \\[0.15em]
+[\; \dots\,, & \dots\,, & \dots\,, & \dots \;] \\[0.50em]
 \end{array}
+}_{\vphantom{\big|}n \text{ vectors of size } d}
 \quad \Longrightarrow \quad
+\underbrace{
 \begin{bmatrix}
 1.32 & 5.91 & 5.71 & \dots \\
 6.16 & 4.81 & 3.62 & \dots \\
 8.27 & 9.53 & 2.44 & \dots \\
-\dots & \dots & \dots & \dots
+\vdots & \vdots & \vdots & \ddots
 \end{bmatrix}
+\rule[-2.75em]{0pt}{0pt}
+}_{\vphantom{M}n \times d \text{ matrix}}
 $$
-
-When we apply this to the right-hand column of the diagram above, it turns "$n$ vectors of size $d$" into "a single $n \times d$ matrix".
 
 Let's work through what that means for the calculations I've described in the previous chapters.
 
 ### Calculating attention
 
-Recall that for a single query embedding token $t_q$, we calculated attention by:
+Recall that we calculated attention by doing a nested loop over the input embeddings:
 
-1. For each input embedding, calculating its query vector $q = t_q \cdot W_q$ (size $d$). Then:
-    1. For every input embedding $t_i$ (there are $n$ of them), calculate an attention score:
-        1. Calculate the key vector $k = t_i \cdot W_k$ (size $d$)
-        2. Calculate the dot product $q \cdot k$ to get the attention score (a scalar)
-    2. Treat those $n$ attention scores as a vector; scale and softmax that to get the attention weight vector (size $n$)
-    3. For every input embedding $t_i$, calculate a value vector $v = t_i \cdot W_v$ (there are $n$ such vectors, each size $d$)
-    4. For each value vector $v$ (there are $n$ of them), multiply that $d$-sized value vector by the corresponding attention weight (a scalar). This gives you $n$ $d$-sized vectors.
-    5. Sum them to get the context vector (size $d$)
+1. For each input embedding $t_q$ (there are $n$ of them):
+    1. Calculate the query vector $q = t_q \times W_q$. This vector has size $d$.
+    2. For each input embedding $t_k$ (the same $n$ embeddings as for the query vector), calculate the attention score of $q$ against $t_k$:
+        1. Calculate the key vector $k = t_k \times W_k$. This vector has size $d$.
+        2. Calculate the dot product $q \cdot k$ to get the attention score (a scalar).
+    3. Treat those $n$ attention scores as a vector; scale and softmax that vector to get the attention weight vector (size $n$).
+    4. Calculate value vectors:
+        1. For every input embedding $t_v$, calculate a value vector $v = t_v \times W_v$. There are $n$ such vectors, each size $d$.
+        2. Multiply each value vector by the corresponding attention weight (the $n$ scalars from the previous step). The result is still $n$ vectors, each size $d$.
+    5. Sum the value vectors to get the context vector. This vector has size $d$.
 
-Let's see how much of this we can turn into matrix math. (Spoiler alert: all of it.)
+There are $n$ inputs (that is, $n$ iterations of the $t_q$ loop), so we ended up with $n$ context vectors, each of size $d$.
 
-:::{warning} Warning! Math!
-This part is a bit dense, sorry. Make sure you understand @matrix-math-details from the background chapter on matrix math.
-:::
+Let's see how much of this we can turn into matrix math. (Spoiler alert: almost all of it.) Instead of a nested loop that generates $n$ vectors of size $d$, we'll use matrix math to generate an $n \times d$ matrix.
 
-#### Calculating the key matrix $K$
+#### Calculating the query matrix $Q$
 
-I'll start with step 1.1.1. Let's calculate the key vector $k_i$ for input embedding $t_i$. I'll be using $model$ as the embedding dimension size, which is common nomenclature. (The math in this section is per head, so typically $d = \frac{d_{model}}{head}$.)
+I'll start with step 1.1 above. We'll focus on one iteration of the loop --- call it $i$ --- and calculate the key vector $q_i$ for input $t_i$. (Remember that $t_i$ is a $d$-sized embedding vector.)
 
 $$
 \begin{align}
-k_i & = t_i \cdot W_k \\
-    & = \begin{bmatrix} t_{i,1} & t_{i,2} & \dots \end{bmatrix} \cdot W_k \\
-    & = \underbrace{\begin{bmatrix} t_{i,0} & t_{i,1} & \dots \end{bmatrix}}_{1 \times d_{model}} \cdot \underbrace{\begin{bmatrix} w_{0,0} & w_{0,1} & \dots \\ w_{1,0} & w_{1,1} & \dots \\ \vdots & \vdots & \ddots \end{bmatrix}}_{d_{model} \times d} \\
+q_i & = t_i \times W_k \\
+    & = \underbrace{\begin{bmatrix} t_{i,1} & t_{i,2} & \dots \end{bmatrix}}_{1 \times d} \cdot \underbrace{W_k}_{d \times d} \\
+    & = \begin{bmatrix} t_{i,1} & t_{i,2} & \dots \end{bmatrix} \cdot \begin{bmatrix} w_{1,1} & w_{1,2} & \dots \\ w_{2,1} & w_{2,2} & \dots \\ \vdots & \vdots & \ddots \end{bmatrix} \\
     & = \begin{bmatrix}
-          \begin{bmatrix} t_{i,0} & t_{i,1} & \dots \end{bmatrix}
-          \cdot
-          \begin{bmatrix} w_{0,0} \\ w_{1,0} \\ \dots \end{bmatrix}
-          \quad
+          \left(
+            \begin{bmatrix} t_{i,1} & t_{i,2} & \dots \end{bmatrix}
+            \begin{bmatrix} w_{1,1} \\ w_{2,1} \\ \vdots \end{bmatrix}
+          \right) \;
         &
-          \begin{bmatrix} t_{i,0} & t_{i,1} & \dots \end{bmatrix}
-            \cdot
-          \begin{bmatrix} w_{0,1} \\ w_{1,1} \\ \dots \end{bmatrix}
-          \quad
+          \left(
+          \begin{bmatrix} t_{i,1} & t_{i,2} & \dots \end{bmatrix}
+          \begin{bmatrix} w_{1,2} \\ w_{2,2} \\ \vdots \end{bmatrix}
+          \right) \;
         & \dots
       \end{bmatrix}
 \end{align}
 $$
 
-As you can see, $k_i$ is a vectors that's the result of a $d_{model}$ vector (which is equivalent to a $a \times d_{model}$ matrix) multiplied by a $d_{model} \times d$ matrix, in this case $W_k$.
+If we do this for each embedding, we get a matrix that we'll call $Q$. This matrix represents the 1.1 step executed across all of the top-level iterations:
 
-If we do this for each embedding, we get a matrix that we'll call $K$:
+$$
+\left.
+\begin{array}{l}
+\text{1. For each input embedding } t_q\\
+\quad \text{1. Calculate the query vector } q = t_q \times W_q
+\end{array}
+\right\} Q_{(n \times d)}
+$$
+
+Let's put each of those iterations into a row of a matrix:
 
 $$
 \begin{align}
-K & = \left. \begin{bmatrix}
-        t_0 \cdot W_k \\
-        t_1 \cdot W_k \\
+Q & = \left. \begin{bmatrix}
+        t_1 \times W_q \\
+        t_2 \times W_q \\
         \vdots
-      \end{bmatrix} \right\} n \text{ elements} \\[3.5em]
-  & = \begin{bmatrix}
-        \begin{bmatrix} t_{0,0} & t_{0,1} & \dots \end{bmatrix}
-        \cdot
-        \begin{bmatrix} w_{0,0} \\ w_{1,0} \\ \dots \end{bmatrix}
-        \quad
-      &
-        \begin{bmatrix} t_{0,0} & t_{0,1} & \dots \end{bmatrix}
-          \cdot
-        \begin{bmatrix} w_{0,1} \\ w_{1,1} \\ \dots \end{bmatrix}
-        \quad
-      & \dots
-      \\[2.5em]
-        \begin{bmatrix} t_{1,0} & t_{1,1} & \dots \end{bmatrix}
-        \cdot
-        \begin{bmatrix} w_{0,0} \\ w_{1,0} \\ \dots \end{bmatrix}
-        \quad
-      &
-        \begin{bmatrix} t_{1,0} & t_{1,1} & \dots \end{bmatrix}
-          \cdot
-        \begin{bmatrix} w_{0,1} \\ w_{1,1} \\ \dots \end{bmatrix}
-        \quad
-      & \dots
-      \\ \vdots & \vdots &\ddots
-    \end{bmatrix} \\[3.5em]
-  & = \underbrace{X \cdot W_k}_{n \times d}
+      \end{bmatrix} \right\} n \text{ rows} \\[2.5em]
+  & = \underbrace{
+        \begin{bmatrix}
+          \left(
+            \begin{bmatrix} t_{1,1} & t_{1,2} & \dots \end{bmatrix}
+            \begin{bmatrix} w_{1,1} \\ w_{2,1} \\ \dots \end{bmatrix}
+          \right)
+        &
+          \left(
+            \begin{bmatrix} t_{1,1} & t_{1,2} & \dots \end{bmatrix}
+            \begin{bmatrix} w_{1,2} \\ w_{2,2} \\ \dots \end{bmatrix}
+          \right)
+        & \dots
+        \\[2.5em]
+          \left(
+            \begin{bmatrix} t_{2,1} & t_{2,2} & \dots \end{bmatrix}
+            \begin{bmatrix} w_{1,1} \\ w_{2,1} \\ \dots \end{bmatrix}
+          \right)
+        &
+          \left(
+            \begin{bmatrix} t_{2,1} & t_{2,2} & \dots \end{bmatrix}
+            \begin{bmatrix} w_{1,2} \\ w_{2,2} \\ \dots \end{bmatrix}
+          \right)
+        & \dots
+        \\ \vdots & \vdots &\ddots
+        \end{bmatrix}
+        \rule[-5.25em]{0pt}{0pt}
+      }_{d \text{ elements} }
 \end{align}
 $$
 
-Each row in this matrix corresponds to an input embedding's key vector.
+This looks like matrix multiplication --- and it is! Specifically, the $t_{i,j}$ elements make up a $T$ matrix whose rows are the $n$ inputs and whose columns are each input's $d$ embedding dimensions; and the $w_{k,l}$ elements represent the $d \times d$ weight matrix.
+
+This means we can calculate $Q$ with just one matrix multiplication:
+
+$$
+Q = \underbrace{TW_q}_{n \times d}
+$$
+
+This is really powerful! It means the first part of the nested loop (steps 1 → 1.1) can be reduced to a single matrix multiplication, which GPUs and TPUs are extremely efficient at processing. We'll be doing similar things for the key and value vectors, so I'd suggest taking the time to work through the above and make sure it makes sense to you.
 
 #### Calculating attention scores matrix
 
-Now, we can move onto the raw attention scores. This corresponds to step 1.1.2 above.
+Now, we can move onto the raw attention scores. This corresponds to step 1.2 above.
 
-First, let's calculate the query matrix $Q$. This is exactly the same as the key matrix $K$, except that it uses $W_q$ instead of $W_k$. Because the progression from vectors-of-vectors to matrix is the same, I won't spell it out in full.
-
-$$
-Q = \underbrace{X \cdot W_q}_{n \times d}
-$$
-
-We want the attention scores as a matrix, with each row containing one token's scores. To do this, we'll start with $Q$, and for each of its rows, we want the result's columns to be that row dot-producted with each key vector:
+First, let's calculate the key matrix $K$. This is exactly the same as the query matrix $Q$, except that it uses $W_k$ instead of $W_q$. Because the progression from vectors-of-vectors to matrix is the same, I won't spell it out in full.
 
 $$
-\text{attention scores} = \begin{bmatrix}
-  (Q_0 \cdot \text{(key vector 0)}) & (Q_0 \cdot \text{(key vector 1)}) & \dots \\
-  (Q_1 \cdot \text{(key vector 0)}) & (Q_1 \cdot \text{(key vector 1)}) & \dots \\
+K = \underbrace{TW_k}_{n \times d}
+$$
+
+Next, we'll calculate all the attention scores as a matrix. Each row will correspond to a query token, and each column will be the attention score between that query token and the corresponding key token:
+
+$$
+\begin{align}
+\text{attention scores} & = \begin{bmatrix}
+    q_1 \cdot k_1 & q_1 \cdot k_2 & \dots \\
+    q_2 \cdot k_1 & q_2 \cdot k_2 & \dots \\
+    \vdots & \vdots & \ddots
+  \end{bmatrix} \\
+& = \begin{bmatrix}
+  Q_1 \cdot \text{(key vector 1)} & Q_1 \cdot \text{(key vector 2)} & \dots \\
+  Q_2 \cdot \text{(key vector 1)} & Q_2 \cdot \text{(key vector 2)} & \dots \\
+  \vdots & \vdots & \ddots
+\end{bmatrix}
+\end{align}
+$$
+
+Once again, this looks like matrix multiplication! The one problem is the key vectors. In that matrix multiplication for the attention scores, each $\textit{(key vector } i \textit{)}$ needs to be a $d$-sized vector corresponding to a horizontal row within $K$. But, if we calculated this matrix as $\textbf{attention scores} = QK$, then the thing that should be $d$-sized key vectors would instead be the $n$-sized vertical slices of $K$:
+
+$$
+= \begin{bmatrix}
+  \left( Q_1 \begin{bmatrix}K_{1,1} \\ K_{2,1} \\ \vdots \end{bmatrix} \right) & \left( Q_1 \begin{bmatrix}K_{1,2} \\ K_{2,2} \\ \vdots \end{bmatrix} \right) & \dots \\[2.5em]
+  \left( Q_2 \begin{bmatrix}K_{1,1} \\ K_{2,1} \\ \vdots \end{bmatrix} \right) & \left( Q_2 \begin{bmatrix}K_{1,2} \\ K_{2,2} \\ \vdots \end{bmatrix} \right) & \dots \\
   \vdots & \vdots & \ddots
 \end{bmatrix}
 $$
 
-We _almost_ have this: the only problem is that our $K$ matrix has each key vector as a row, and we need them as columns. In other words, we need to [transpose](#matrix-transposition) it:
+Not only is this not what we want, but the math isn't even defined: we're taking the dot products of $d$-sized $Q_i$ vectors and $n$-sized $K_{\star \,,\,j}$ vectors.
+
+What we need is to replace the vertical slicing of $K$ with horizontal slicing. To do that, we just need to [transpose](#matrix-transposition) $K$. This turns its rows into columns --- meaning that when take vertical slices of the transposed $K^T$ matrix during multiplication, what we actually get are the rows of $K$.
+
+Now we can just multiply $Q$ by $K^T$. For example, the first cell in this matrix would be:
 
 $$
 \begin{align}
-\text{attention scores} & = Q \cdot K^T \\
- & = \underbrace{QK^T}_{n \times n} \; \text{(as it's more commonly written)}
+\text{attention scores}_{(1,1)} & = Q_1 \begin{bmatrix}{K^T}_{1,1} \\ {K^T}_{2,1} \\ \vdots \end{bmatrix} \\[2.5em]
+& = Q_1 \begin{bmatrix}K_{1,1} \\ K_{1,2} \\ \vdots \end{bmatrix}
 \end{align}
+$$
+
+Now the math works out: we're multiplying $Q_{n \times d}$ by ${K^T}_{d \times n}$ to get an $n \times n$ matrix, the raw attention scores:
+
+$$
+\text{attention scores} = QK^T
 $$
 
 (scale-and-softmax-matrix)=
 
 #### Scale and softmax
+
+:::{warning} TODO
+Need to review starting from here.
+:::
 
 Next, we just need to scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 2 above.
 

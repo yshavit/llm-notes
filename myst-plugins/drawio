@@ -77,6 +77,10 @@ if [[ "$#" -eq 0 ]]; then
           "alt": {
             "type": "string",
             "doc": "Alt text for the image"
+          },
+          "class": {
+            "type": "string",
+            "doc": "optional class names, space-delimited"
           }
         }
       }
@@ -90,6 +94,7 @@ if [[ "$2" != 'drawio' ]]; then
   exit 1
 fi
 
+target_classes=''
 case "$1" in
 --role)
   # read the target as "<alt>|<path>".
@@ -106,6 +111,7 @@ case "$1" in
   target_type=div
   target_path="$(echo "$all_input" | jq -r .arg)"
   target_alt="$(echo "$all_input" | jq -r '.options.alt // ""')"
+  target_classes="$(echo "$all_input" | jq -r '.options.class // ""')"
   ;;
 *)
   echo "Unrecognized options: $@" >&2
@@ -126,6 +132,7 @@ jq -n \
   --rawfile light "$light_svg_data" \
   --arg alt "$target_alt" \
   --arg type "$target_type" \
+  --arg classes "$target_classes" \
   '[{
   type: $type,
   class: "theme-aware-wrapper",
@@ -135,6 +142,7 @@ jq -n \
       class: "hidden dark:block",
       children: [{
         "type": "image",
+        "class": $classes,
         "url": $dark,
         "alt": (if $alt == "" then null else $alt end)
       }]
@@ -144,6 +152,7 @@ jq -n \
       class: "dark:hidden",
       children: [{
         "type": "image",
+        "class": $classes,
         "url": $light,
         "alt": (if $alt == "" then null else $alt end)
       }]
