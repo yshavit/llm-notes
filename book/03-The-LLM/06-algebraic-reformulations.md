@@ -397,9 +397,9 @@ Described as such, this would require looping over each of the heads to perform 
 
   For example, $(3, 2, 1)$ corresponds to row 3, head 2, embedding dimension 1: element $k$ above.
 
-  At this point, each head is an $n \times dh$ matrix.
+  At this point, each head is an $n \times d$ matrix.
 
-- We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. For example, $k$ would now be $(2, 3, 1$.
+- We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. For example, $k$ would now be $(2, 3, 1)$.
 - Now we calculate the attention weights $A$ as we did before.
   - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension. This means they do the matrix multiplication on each $h$ of the $(n, d)$ sub-matrices. The actual implementation is highly optimized.
   - Each $n \times d$ matrix becomes an $n \times n$ matrix, so the result is an $h \times n \times n$ tensor.
@@ -411,29 +411,68 @@ These operations are highly optimized in the software that runs them, and down t
 :::{note} Terminology note
 In this section, I've been using $d$ for the per-head dimensionality, and $dh$ for the attention's overall dimensionality. This keeps things consistent with the terminology I've used throughout the book, which treats $d$ as the attention's conceptual dimensionality, and the multi-head configuration as an optimization.
 
-Most LLM literature inverts this: it treats the multi-head dimensionality as the "real" one, labeled $d$ or $d_{model}$, and the per-head dimensionality as just $\frac{d_{model}}{h}$.
+Most LLM literature inverts this: it treats the multi-head dimensionality as the "real" one, labeled $d$ or $d_{model}$, and the per-head dimensionality as $\frac{d_{model}}{h}$.
 :::
 
 ### FFNs
 
-Recall that [in the FFN](#ffn-overview-diagram), each layer has:
+As I mentioned [in the previous chapter](#typical-ffn), each FFN in an LLM typically consists of the input sized $d$, one hidden layer sized $4d$, and an output layer sized $d$. The FFN's input and output correspond to a single token embedding; this gets evaluated [separately for each token](#ffn-output-shape), though GPUs and TPUs are able to do those separate evaluations efficiently in parallel.
+
+Let's look at the FFN from the perspective of one layer. Remember from [the chapter on FFNs](#ffn-overview-diagram) that each layer has:
 
 - an input vector of scalars, sized $d_{in}$
 - $d_{out}$ neurons, each containing a $d_{in}$-sized vector of weights
 - for each neuron, we:
   - calculate the dot product of the input and that neuron's weights; this gives us a scalar
   - add a scalar bias, one per neuron
-  - pass that through an activations to get one scalar per neuron, which is that neuron's activation
+  - pass that through an activation function to get one scalar per neuron, which is that neuron's activation
 
-Since this takes an input vector of scalars, this corresponds to a single embedding. As above, the full input is thus an $n \times d_{in}$ matrix. We can represent the neuron weights as a $d_{in} \times d_{out}$ matrix, which I'll call $W$ (this is not a standard term; there isn't really a standard term for these weights).
-
-Since the first step of the FFN is to calculate the dot product of the input vector each column in $W$, we can calculate all of those dot products at once via the matrix multiplication $XW$. We can then add the biases as a $d_{out}$-sized vector $b$. Applying the activation to each of these gives us the full matrix-ified layer:
+We can visualize the neuron weights as $d_{out}$ column vectors, each with $d_{in}$ elements:
 
 $$
-\text{Layer} = \text{activation}( XW + b )
+d_{in} \text{ weights}
+\left\{
+  \vphantom{\begin{matrix} \\ \\ \\ \\ \end{matrix}}
+\right.
+\underbrace{
+  \begin{bmatrix} \alpha \\ \beta \\ \gamma \\ \delta \end{bmatrix}
+  \begin{bmatrix} \epsilon \\ \zeta \\ \eta \\ \theta \end{bmatrix}
+  \begin{bmatrix} \iota \\ \kappa \\ \lambda \\ \mu \end{bmatrix}
+}_{
+  \substack{\text{$d_{out}$ sets of weights,} \\[.5em] \text{one per neuron}}
+}
 $$
 
-The activation function is applied to each element in the matrix; but GPUs and TPUs can do this in parallel and very efficiently.
+You may already see where this is going: we can treat this as a single $d_{in} \times d_{out}$ matrix. I'll call this matrix $W$.
+
+We can also treat the layer's $d_{in}$-vector as a $1 \times d_{in}$ matrix, which I'll call X. If we do, we see that the matrix multiplication $XW$ gives us the right shape:
+
+$$
+\underbrace{X}_{1 \times d_{in}}
+\cdot
+\underbrace{W}_{d_{in} \times d_{out}}
+= \underbrace{\text{layer}
+}_{\substack{1 \times d_{out} \text{ matrix} \\[.5em] \Downarrow \\ d_{out}\text{ vector} }}
+$$
+
+Furthermore, each column in the output is the right value for the pre-bias neuron activation. For every column $j$ in $XW$, its value is:
+
+$$
+\begin{bmatrix}X_{1,\,1} & X_{1,\,2} & \dots & X_{1,\,d_{in}} \end{bmatrix}
+\begin{bmatrix}W_{1,\,j} \\ W_{2,\,j} \\ \vdots \\ W_{d_{in},\,j} \end{bmatrix}
+$$
+
+Now we need to add the biases. There are $d_{out}$ of them, one per neuron. Instead of treating them as separate values and adding them one at a time,we'll treat them as a single $1 \times d_{out}$ matrix, and [add this](#adding-matrices) to the $1 \times d_{out}$ result from $jW$. I'll call this bias matrix $B$.
+
+After that, we just need to apply the activation function. This does have to be applied to each value separately, but GPUs and TPUs can efficiently parallelize that work.
+
+This gives the full representation of each FFN layer:
+
+$$
+\text{Layer} = \text{Activation}( XW + B )
+$$
+
+To create the FFN, we just apply each layer serially.
 
 ### Normalization
 

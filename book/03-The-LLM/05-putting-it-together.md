@@ -102,6 +102,7 @@ This division of labor isn't always so clear-cut in practice, though, and it's a
 (llm-stacking-depth)=
 A small LLM may have a couple dozen transformer blocks. Large, commercial LLMs will have 80 - 100 or more.
 
+(typical-ffn)=
 In a typical LLM, within each transformer block, the FFN takes an input of dimension $d$, expands it to a hidden layer with dimension $4d$, and then contracts it back to $d$. This approach (and specifically the $4\times$ dimension multiplier) was mostly just found to empirically work; I don't think it has any deep, _a priori_ rationale.
 
 :::{drawio} images/transformer/ffn-4d
