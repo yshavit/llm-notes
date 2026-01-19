@@ -1,6 +1,6 @@
 # Algebraic reformulations
 
-:::{status} 1
+:::{status} 2
 :::
 
 I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the algebraic reformulations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
@@ -476,12 +476,16 @@ To create the FFN, we just apply each layer serially.
 
 ### Normalization
 
-Recall that for each embedding token, normalization layer is calculated as:
+Recall that for each embedding token, the normalization layer is calculated as:
 
 :::{embed} #normalization-function
 :::
 
-To matrix-ify this, we'll just take our input matrix X ($n \times d$) and apply the normalization function per row. This still requires various per-element operations, but GPUs and TPUs can process each row in parallel, and the operations themselves are highly optimized.
+We need to apply this to each input embedding separately. Unfortunately, here there's nothing tricky we can do with matrix math: not only does each embedding need to be evaluated separately, but calculating the mean and variance requires per-element calculations.
+
+Luckily, the calculations themselves are pretty simple. And, as before, GPUs and TPUs can handle these efficiently and in parallel.
+
+The $n$ tokens of embedding $d$ _do_ get treated as a single $n \times d$ matrix. This is partially because GPUs, and TPUs to an even greater extent, know how to parallelize work efficiently across rows of matrices. It's also convenient for feeding the normalization into the attention layer, which as we've seen does gain from seeing the whole input as a single $n \times d$ matrix.
 
 ## Batching
 
@@ -489,11 +493,11 @@ Up until now, we've been working with one input at a time. In practice, GPUs and
 
 This doesn't affect the learned parameters at all; just the activations. Basically, we just lift them into a tensor of 1 higher rank. Instead of representing the input as an $n \times d$ matrix, we'll represent it as a $b \times n \times d$ tensor.
 
-The rest of the math is exactly the same. At the hardware level, this will just result in the same operations (including the same weights) being applied to different inputs at the same time. TPUs are highly optimized for this.
+The rest of the math is exactly the same. At the hardware level, this will result in the same operations (including the same weights) being applied to different inputs at the same time. GPUs and TPUs are highly optimized for this.
 
 ## The final architecture
 
-Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ $d-sized$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix.
+Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ vectors of size $d$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix. This lets us reformulate the operations we've already seen as matrix operations instead of logical loops, which lets us compute them far more efficiently on GPUs and TPUs. TPUs in particular are literally designed for exactly this sort of work (which is why you probably never even heard of them until AI started hitting mainstream consumer devices, and especially phones, circa 2016).
 
 :::{drawio} images/tensors/architecture-matrix
 :alt: The same architecture as above, but with matrices instead of vectors-of-vectors
