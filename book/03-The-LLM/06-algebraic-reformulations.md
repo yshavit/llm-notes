@@ -404,9 +404,15 @@ Described as such, this would require looping over each of the heads to perform 
   - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension. This means they do the matrix multiplication on each $h$ of the $(n, d)$ sub-matrices. The actual implementation is highly optimized.
   - Each $n \times d$ matrix becomes an $n \times n$ matrix, so the result is an $h \times n \times n$ tensor.
 - We then multiply this by the multi-head value matrix $V_{h,n,d}$ to get an attention output $(h, n, d)$
-- And finally, we transpose this back to $(n, h, d)$, reshape it back to $(n, d_{model})$ and apply the $W_o$ projection.
+- And finally, we transpose this back to $(n, h, d)$, reshape it back to $(n, d)$ and apply the $W_o$ projection.
 
 These operations are highly optimized in the software that runs them, and down to the hardware level. In particular, the transposition operations don't move any actual data: they just change how the data gets indexed. This means they take essentially no time.
+
+:::{note} Terminology note
+In this section, I've been using $d$ for the per-head dimensionality, and $dh$ for the attention's overall dimensionality. This keeps things consistent with the terminology I've used throughout the book, which treats $d$ as the attention's conceptual dimensionality, and the multi-head configuration as an optimization.
+
+Most LLM literature inverts this: it treats the multi-head dimensionality as the "real" one, labeled $d$ or $d_{model}$, and the per-head dimensionality as just $\frac{d_{model}}{h}$.
+:::
 
 ### FFNs
 
