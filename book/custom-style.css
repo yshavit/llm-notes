@@ -48,3 +48,13 @@
 .wip-status .myst-admonition-body {
   font-style: italic;
 }
+
+.emoticon {
+  font-family: 'Trebuchet MS', serif;
+  font-size: 1.1em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  display: inline-block;
+  transform: translateY(-0.05em) rotate(10deg);
+  margin: 0 0.15em;
+}

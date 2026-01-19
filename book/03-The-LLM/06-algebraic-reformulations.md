@@ -517,4 +517,4 @@ This diagram elides some of the complication, especially in the attention layer 
 
 That's it! **You have an LLM!**
 
-If someone were to provide you good values for all the weights throughout the architecture, you'd have enough to build an LLM that would have been competitive in early 2020. You're not about to take down OpenAI or Anthropic, but that's still pretty neat!
+If someone were to provide you good values for all the weights throughout the architecture (and a _lot_ of AWS credits {emoticon}`;-)`), you'd have enough to build an LLM that would have been competitive in early 2020. You're not about to take down OpenAI or Anthropic, but that's still pretty neat!
