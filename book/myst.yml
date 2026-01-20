@@ -12,6 +12,7 @@ project:
     - ".*.drawio.*"
     - "*.bkp"
     - "*.dtmp"
+    - sidebar_footer.md
   plugins:
     - type: executable
       path: ../myst-plugins/drawio
