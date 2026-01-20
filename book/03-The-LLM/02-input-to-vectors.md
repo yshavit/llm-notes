@@ -42,22 +42,22 @@ All of the tokens our model knows about form its vocabulary, and each one is ass
 
 Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
+Since we've already tokenized the input, now we just need to create a vector of vectors: each outer vector corresponds to one token in the input, and the inner vector is that token's embedding:
+
+:::{drawio} images/input/token-embeddings
+:::
+
 :::{note} Reminder of what these values mean
 As mentioned in {ref}`the training analogy <training-analogy>`, these values are just values that emerge through training. If we intuitively think of the various aspects of the word "be" --- that it can be a semantically light auxiliary verb, that it can denote existence, that it's used in philosophical existentialism, and so on --- then each of these is, very roughly by way of an analogy, a value in the token embedding vector.
 
 Although every embedding vector is technically independent, training will generally cause them to align what each index means. For example, index 1318 may converge towards meaning something like "single-syllable word" across all embeddings in the LLM's vocabulary.
 
-Again it's important to remember that the values don't _actually_ encode existentialism or fluffiness. They're just values which settle into being during training, and which correlate with predictive power when generating words.
+Again it's important to remember that the values don't _actually_ encode existentialism or syllable count. They're just values which settle into being during training, and which correlate with predictive power when generating words.
 :::
 
 ## Adding positions to get to input embeddings
 
-So, now we have a bunch of token embeddings --- one per token in our vocabulary --- and we've applied them towards the parsed text:
-
-:::{drawio} images/input/token-embeddings
-:::
-
-But a word may mean something different if it's the first word of a sentence vs if it's at the middle or end. That could be because it has an entirely different meaning, and the different usages correlate with position; or it could have the same meaning, but with different nuance or tone. To capture this additional information, we're going to add {dfn}`positional embedding`.
+A word's meaning may change depending on where in a sentence it appears. That could be because it has an entirely different meaning, and the different usages correlate with position; or it could have the same meaning, but with different nuance or tone. To capture this additional information, we're going to add a {dfn}`positional embedding` to each input.
 
 :::{note}
 Modern LLMs don't actually use positional embeddings anymore. They still care about positions, but the mechanism is different and more complex. I'll discuss positional embeddings now because they're simpler, and {ref}`beyond-the-toy-llm` will explain the modern alternative.
@@ -70,7 +70,7 @@ Just as we defined a unique embedding for each token in the vocabulary --- "be" 
 - **positional embedding** (learned parameter): vector of size $d$
 :::
 
-Then, for each token in the parsed text, we just the sum its token embedding and positional embedding to get its {dfn}`input embedding`:
+For each token in the parsed text, we just the sum its token embedding and positional embedding to get its {dfn}`input embedding`:
 
 :::{drawio} images/input/token-and-positional-embeddings
 :::
