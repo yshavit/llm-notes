@@ -43,18 +43,18 @@ Note that each layer can have any number of neurons. The number of layers in an 
 
 To show how the transformations work, I'll focus on the transformation from just one layer to the next. Every transformation works fundamentally the same way.
 
-Then, if one layer has $d_{in}$ neurons and the next layer has $d_{out}$, we'll define $d_{out}$ sub-transformations. Each sub-transformation treats the input as a $d_{in}$-sized vector and transforms it into one output scalar, called the {dfn}`activation`. Since we have $d_{out}$ of these sub-transformations, we'll have $d_{out}$ activations: these are the resulting layer.
+If one layer has $d_{in}$ neurons and the next layer has $d_{out}$, we'll define $d_{out}$ neuron-transformations. Each neuron-transformation treats the input as a $d_{in}$-sized vector and transforms it into one output scalar, called the {dfn}`activation`. Since we have $d_{out}$ of these neuron-transformations, we'll have $d_{out}$ activations: these are the resulting layer.
 
 :::{drawio} images/ffn/overview-high-level-layer
 :alt: input layer connected to neurons connected to output layer
 :::
 
-To do this, each sub-transformation defines two sets of learned parameters:
+To do this, each neuron-transformation defines two sets of learned parameters:
 
 - a weight vector of size $d_{in}$
 - a scalar, which we call a {dfn}`bias`
 
-For each sub-transformation, we'll:
+For each neuron-transformation, we'll:
 
 1. Take the dot product of the input and the neuron's weight vector; this gives us a scalar.
 2. Add the bias.
@@ -77,7 +77,7 @@ For each sub-transformation, we'll:
 :::{warning} Terminology confusion
 The standard literature for FFNs doesn't have a name for the transformations between layers, so it often calls each stack of weights, bias, and activation a "neuron". Effectively, it conflates the true neuron --- the activation scalar --- with the computational unit that generated it.
 
-I've introduced "sub-transformations" and "weight vectors" to try to reduce this confusion, but be aware that these are not standard terms.
+I've introduced "neuron-transformations" and "weight vectors" to try to reduce this confusion, but be aware that these are not standard terms.
 :::
 
 Each neuron essentially learns one pattern in the input. For example, you may have one neuron that specializes in looking for happy words, another that looks for angry words, and another that looks for something unrelated to sentiment, like past tense. (We'll get into more detail later about how these specializations emerge via training. If you need a refresher of the intuitive version, you can reread [the training analogy](#training-analogy) from the earlier overview chapter. As always, remember that the real patterns are more abstract and opaque than "happy" or "past tense".)
