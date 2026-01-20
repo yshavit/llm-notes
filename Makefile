@@ -1,10 +1,14 @@
 VENV := venv
 MYST := $(abspath $(VENV)/bin/myst)
+FEEDBACK_FORM_URL ?=
 
 .PHONY: setup build serve start clean
 
 build: $(VENV)/bin/pip
-	cd book && MYST=$(MYST) ../strict-myst build --strict --html
+	cd book && \
+		MYST=$(MYST) ../strict-myst build --strict --html && \
+		cd _build/html && \
+		find . -type f -exec sed -i 's|FEEDBACK_FORM_URL|$(FEEDBACK_FORM_URL)|g' {} +
 
 setup: $(VENV)/bin/pip
 

@@ -11,6 +11,12 @@ This book is my attempt to synthesize my understanding of how LLMs work. It's ba
 
 I wrote this book for myself, because there's no better way to make sure you've learned something than to try to explain it. But it's my hope that others may find it useful as well.
 
+## Feedback encouraged!
+
+If you open up the main nav from any page (the {keyboard}`≡` icon at the top bar), the bottom of the nav includes a feedback form. This is an anonymous Google Sheets form. I don't track your email when you submit, and you don't need to be logged in.
+
+I welcome any corrections, comments or questions. Please make sure to include the page and chapter you were on, as the form won't include them.
+
 ## The term "LLM"
 
 LLMs --- large language models --- encompass a range of technologies. These include models that generate text, but also translation tools, classification tools, and others.

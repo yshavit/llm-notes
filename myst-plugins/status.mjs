@@ -29,7 +29,9 @@ const plugin = {
       },
       run: (data) => {
         const status = data.arg;
-        if (/^\d+$/.test(status)) {
+        if (status === 'none') {
+          return [{ type: 'status', status: null }];
+        } else if (/^\d+$/.test(status)) {
           return [{ type: 'status', status: parseInt(status) }];
         } else {
           console.error('invalid arg to status', status);
@@ -73,6 +75,9 @@ const plugin = {
           return;
         }
         const status = statuses[0];
+        if (status === null) {
+          return; // explicitly requested no status banner
+        }
         if (status < 0 || status >= statusDescriptions.length) {
           console.error(icon, `status must be between 0 and ${statusDescriptions.length - 1}, inclusive`);
           return;

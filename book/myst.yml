@@ -30,3 +30,5 @@ site:
   options:
     logo_text: Intro to LLMs
     style: ./custom-style.css
+  parts:
+    primary_sidebar_footer: sidebar_footer.md
