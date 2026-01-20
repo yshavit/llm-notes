@@ -39,6 +39,12 @@ For example, an FFN with four neuron layers would look like:
 
 Note that each layer can have any number of neurons. The number of layers in an FFN, as well as the number of neurons in each layer, are hyperparameters of the model.
 
+FFNs were in use well before LLMs came about. Depending on an FFN's purpose, its input and output layers may have clear semantics. For example, you could imagine an FFN where the input vector encodes an image, and the output vector encodes the ASCII values of text in that image.
+
+The hidden layers' neurons never have any clear semantics: they're just intermediaries formed by the transformations, and the transformations are based on opaque parameters that the FFN has learned can transform the input to desired output.
+
+In an LLM, as we'll see in the next chapter, FFNs sit between various components whose inputs and outputs themselves don't have clear meaning. This means that for our purposes, even the inputs and outputs of an FFN have opaque semantics.
+
 ## Components of an FFN layer
 
 To show how the transformations work, I'll focus on the transformation from just one layer to the next. Every transformation works fundamentally the same way.
