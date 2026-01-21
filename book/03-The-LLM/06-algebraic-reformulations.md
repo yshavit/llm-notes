@@ -35,7 +35,7 @@ For most of the LLM, the activations are in the form of $n$ vectors, each size $
 
 ## Vectors of vectors → matrices
 
-The basic "lifting" we'll do is to to turn vectors of vectors into matrices. This will let us turn the various "for each outer vector, do some stuff" loops that we've been working with into matrix multiplication (I'll describe each of these in detail below). This doesn't change what's going on conceptually, but it lets us do the math on GPUs and TPUs that process it much more quickly.
+The basic "lifting" we'll do is to to turn vectors of vectors into matrices. This will let us turn the various "for each outer vector, do some stuff" loops that we've been working with into matrix multiplication (I'll describe each of these in detail below). This doesn't change what's going on conceptually, but it lets us do the math on GPUs that process it much more quickly.
 
 All we need to do is turn each "outer" vector into a row in a matrix:
 
@@ -164,7 +164,7 @@ $$
 Q = \underbrace{TW_q}_{n \times d}
 $$
 
-This is really powerful! It means the first part of the nested loop (steps 1 → 1.1) can be reduced to a single matrix multiplication, which GPUs and TPUs are extremely efficient at processing. We'll be doing similar things for the key and value vectors, so I'd suggest taking the time to work through the above and make sure it makes sense to you.
+This is really powerful! It means the first part of the nested loop (steps 1 → 1.1) can be reduced to a single matrix multiplication, which GPUs are extremely efficient at processing. We'll be doing similar things for the key and value vectors, so I'd suggest taking the time to work through the above and make sure it makes sense to you.
 
 #### Calculating attention scores matrix
 
@@ -242,7 +242,7 @@ $$
 Note:
 
 - Dividing a matrix by a scalar ($\sqrt{d}$) just divides each of its cells by that scalar.
-- Softmax operates on vectors. When we apply it to a matrix, this really just means to applying it to each row in that vector. Each of those rows will have softmax calculated independently, but GPUs and TPUs can parallelize the work efficiently across those rows.
+- Softmax operates on vectors. When we apply it to a matrix, this really just means to applying it to each row in that vector. Each of those rows will have softmax calculated independently, but GPUs can parallelize the work efficiently across those rows.
 
 Neither the scalar division nor softmax changes the dimensions of the matrix, so it's still $n \times n$.
 
@@ -360,7 +360,7 @@ This means we've now turned the all of the attention calculation --- a logically
 6. apply softmax to each row to get $A$, the attention weight matrix
 7. $\text{Attention} = AV$
 
-A TPU is going to eat this for breakfast!
+A GPU is going to eat this for breakfast!
 
 #### Multi-head attention
 
@@ -416,7 +416,7 @@ Most LLM literature inverts this: it treats the multi-head dimensionality as the
 
 ### FFNs
 
-As I mentioned [in the previous chapter](#typical-ffn), each FFN in an LLM typically consists of the input sized $d$, one hidden layer sized $4d$, and an output layer sized $d$. The FFN's input and output correspond to a single token embedding; this gets evaluated [separately for each token](#ffn-output-shape), though GPUs and TPUs are able to do those separate evaluations efficiently in parallel.
+As I mentioned [in the previous chapter](#typical-ffn), each FFN in an LLM typically consists of the input sized $d$, one hidden layer sized $4d$, and an output layer sized $d$. The FFN's input and output correspond to a single token embedding; this gets evaluated [separately for each token](#ffn-output-shape), though GPUs are able to do those separate evaluations efficiently in parallel.
 
 Let's look at the FFN from the perspective of one layer. Remember from [the chapter on FFNs](#ffn-overview-diagram) that each layer has:
 
@@ -464,7 +464,7 @@ $$
 
 Now we need to add the biases. There are $d_{out}$ of them, one per neuron. Instead of treating them as separate values and adding them one at a time,we'll treat them as a single $1 \times d_{out}$ matrix, and [add this](#adding-matrices) to the $1 \times d_{out}$ result from $jW$. I'll call this bias matrix $B$.
 
-After that, we just need to apply the activation function. This does have to be applied to each value separately, but GPUs and TPUs can efficiently parallelize that work.
+After that, we just need to apply the activation function. This does have to be applied to each value separately, but GPUs can efficiently parallelize that work.
 
 This gives the full representation of each FFN layer:
 
@@ -483,21 +483,21 @@ Recall that for each embedding token, the normalization layer is calculated as:
 
 We need to apply this to each input embedding separately. Unfortunately, here there's nothing tricky we can do with matrix math: not only does each embedding need to be evaluated separately, but calculating the mean and variance requires per-element calculations.
 
-Luckily, the calculations themselves are pretty simple. And, as before, GPUs and TPUs can handle these efficiently and in parallel.
+Luckily, the calculations themselves are pretty simple. And, as before, GPUs can handle these efficiently and in parallel.
 
-The $n$ tokens of embedding $d$ _do_ get treated as a single $n \times d$ matrix. This is partially because GPUs, and TPUs to an even greater extent, know how to parallelize work efficiently across rows of matrices. It's also convenient for feeding the normalization into the attention layer, which as we've seen does gain from seeing the whole input as a single $n \times d$ matrix.
+The $n$ tokens of embedding $d$ _do_ get treated as a single $n \times d$ matrix. This is partially because GPUs know how to parallelize work efficiently across rows of matrices. It's also convenient for feeding the normalization into the attention layer, which as we've seen does gain from seeing the whole input as a single $n \times d$ matrix.
 
 ## Batching
 
-Up until now, we've been working with one input at a time. In practice, GPUs and especially TPUs can process multiple inputs in parallel.
+Up until now, we've been working with one input at a time. In practice, GPUs can process multiple inputs in parallel.
 
 This doesn't affect the learned parameters at all; just the activations. Basically, we just lift them into a tensor of 1 higher rank. Instead of representing the input as an $n \times d$ matrix, we'll represent it as a $b \times n \times d$ tensor.
 
-The rest of the math is exactly the same. At the hardware level, this will result in the same operations (including the same weights) being applied to different inputs at the same time. GPUs and TPUs are highly optimized for this.
+The rest of the math is exactly the same. At the hardware level, this will result in the same operations (including the same weights) being applied to different inputs at the same time. GPUs are highly optimized for this.
 
 ## The final architecture
 
-Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ vectors of size $d$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix. This lets us reformulate the operations we've already seen as matrix operations instead of logical loops, which lets us compute them far more efficiently on GPUs and TPUs. TPUs in particular are literally designed for exactly this sort of work (which is why you probably never even heard of them until AI started hitting mainstream consumer devices, and especially phones, circa 2016).
+Our LLM now has essentially the same architecture as before: the only real difference is that we're treating the inputs not as $n$ vectors of size $d$ vectors, but a single $n \times d$ matrix. Similarly, the output is an $n \times v$ matrix. This lets us reformulate the operations we've already seen as matrix operations instead of logical loops, which lets us compute them far more efficiently on GPUs.
 
 :::{drawio} images/tensors/architecture-matrix
 :alt: The same architecture as above, but with matrices instead of vectors-of-vectors

@@ -32,7 +32,7 @@ In the first perspective (the conceptual perspective) data follows through the L
 
 ### Algebraic reformulations
 
-The second perspective (algebraic reformulations) batches the conceptual vectors into matrices, and then these matrices into tensors. The underlying concepts are exactly the same: the reformulations just let us represent the data in a way that GPUs and TPUs can crunch more efficiently than a CPU can.
+The second perspective (algebraic reformulations) batches the conceptual vectors into matrices, and then these matrices into tensors. The underlying concepts are exactly the same: the reformulations just let us represent the data in a way that GPUs can crunch more efficiently than a CPU can.
 
 ```mermaid
 flowchart LR
@@ -51,7 +51,7 @@ flowchart LR
 
   subgraph Implementation
     direction TB
-    Hardware[GPUs / TPUs]
+    Hardware[GPUs]
   end
 
   C1 -.-> L1 -.-> Hardware
@@ -59,11 +59,9 @@ flowchart LR
   
 ```
 
-:::{seealso} Why GPUs & TPUs?
+:::{seealso} Why GPUs?
 :class: simple dropdown
 GPUs are great at taking a ton of data (for example, the elements of a matrix) and applying the same logic to each data point in parallel; for example, they can do matrix multiplication in a single go, without having to loop over each cell.
-
-TPUs (Tensor Processing Units) extend this by building in, at the hardware level, specific optimizations for matrix math.
 
 This means that if we can express our data not as a bunch of separate vectors, but as a single matrix or tensor, we can process the data in parallel and with optimizations down to the hardware level.
 :::

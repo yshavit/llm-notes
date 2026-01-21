@@ -165,7 +165,7 @@ We don't have one FFN per token position, or anything like that: the same exact 
 :alt: Each input embedding (vector of vectors of scalars) is independently processed through the FFN to produce an output embedding (a different vector of vector of scalars)
 :::
 
-In practice, GPUs and TPUs can run these computations in parallel and very efficiently.
+In practice, GPUs can run these computations in parallel and very efficiently.
 
 ## Next up
 

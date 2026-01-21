@@ -1,6 +1,5 @@
 Raschka
 Raschka's
-TPUs
 attentioned
 tokenization
 ChatGPT
@@ -51,7 +50,6 @@ relu
 logit's
 blockquote
 parallelizable
-TPU
 unshifted
 AWS
 nav
