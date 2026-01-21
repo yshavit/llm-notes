@@ -13,7 +13,7 @@ I wrote this book for myself, because there's no better way to make sure you've 
 
 ## Feedback encouraged!
 
-If you open up the main nav from any page (the {keyboard}`≡` icon at the top bar), the bottom of the nav includes a feedback form. This is an anonymous Google Sheets form. I don't track your email when you submit, and you don't need to be logged in.
+The bottom of the main nav (either the left pane, or the {keyboard}`≡` icon at the top bar, depending on your screen) includes a feedback form. This is an anonymous Google Sheets form. I don't track your email when you submit, and you don't need to be logged in.
 
 I welcome any corrections, comments or questions. Please make sure to include the page and chapter you were on, as the form won't include them.
 
