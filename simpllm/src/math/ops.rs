@@ -42,11 +42,33 @@ impl MatrixOps for CpuOps {
         }
 
         let mut row_vals = vec![0.0; a.num_cols()];
-
         for row_idx in 0..a.num_rows() {
             row_vals.fill(0.0);
-            for col_idx in 0..b.num_cols() {
-                row_vals[col_idx] = Self::dot(a.row(row_idx), b.col(col_idx));
+
+            // Conceptually, what we want is just a bunch of dot products:
+            //
+            //     for col_idx in 0..b.num_cols() {
+            //         row_vals[col_idx] = Self::dot(a.row(row_idx), b.col(col_idx));
+            //     }
+            //
+            // This performs badly in practice, because the b.col(col_idx) iteration has to jump from row to row. Each
+            // one of those jumps will be a cache miss: so basically, the dot product will have as many cache misses as
+            // it has elements.
+            //
+            // Instead, we're going to go row by row on both matrices, calculating only a portion of the dot product at
+            // a time. We start with the first row of a. We fetch the first item of that a row, and then multiply it
+            // with each value in the b row. Then we fetch the second value of a, and again multiply it with each value
+            // in the b row, adding those terms to our first value -- and so on. Note that while this is a triple-nested
+            // loop (each row of a will have to iterate over b's row N times, where N is a's column count), a and b are
+            // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
+            // cache lines to predict our reads.
+            let a_row = a.row(row_idx);
+            for k in 0..a.num_cols() {
+                let a_val = a_row.get(k);
+                let b_row = b.row(k);
+                for col_idx in 0..b.num_cols() {
+                    row_vals[col_idx] += a_val * b_row.get(col_idx);
+                }
             }
             out.row_mut(row_idx).set_all(&row_vals);
         }
@@ -134,8 +156,8 @@ mod tests {
             N
         }
 
-        fn iter(&self) -> impl Iterator<Item = f32> {
-            self.as_slice().iter().copied()
+        fn get(&self, idx: usize) -> f32 {
+            self[idx]
         }
     }
 
@@ -144,8 +166,8 @@ mod tests {
             N
         }
 
-        fn iter(&self) -> impl Iterator<Item = f32> {
-            self.as_slice().iter().copied()
+        fn get(&self, idx: usize) -> f32 {
+            self[idx]
         }
     }
 

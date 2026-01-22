@@ -11,6 +11,10 @@ pub trait Matrix: Sized {
 
     fn row(&self, row: usize) -> impl Vector;
     fn col(&self, col: usize) -> impl Vector;
+
+    fn transpose(&self) -> impl Matrix {
+        TransposedMatrix { underlying: self }
+    }
 }
 
 pub trait MatrixMut: Matrix {
@@ -84,6 +88,10 @@ impl<'a> Vector for MatrixDataRow<'a> {
         self.matrix.num_cols
     }
 
+    fn get(&self, idx: usize) -> f32 {
+        self.matrix.data[self.row * self.matrix.num_cols + idx]
+    }
+
     fn iter(&self) -> impl Iterator<Item = f32> {
         Self::row_iter(self.matrix, self.row)
     }
@@ -97,6 +105,10 @@ struct MatrixDataRowMut<'a> {
 impl<'a> Vector for MatrixDataRowMut<'a> {
     fn len(&self) -> usize {
         self.matrix.num_cols
+    }
+
+    fn get(&self, idx: usize) -> f32 {
+        self.matrix.data[self.row * self.matrix.num_cols + idx]
     }
 
     fn iter(&self) -> impl Iterator<Item = f32> {
@@ -132,6 +144,32 @@ impl<'a> VectorMut for MatrixDataRowMut<'a> {
     }
 }
 
+struct TransposedMatrix<'a, M> {
+    underlying: &'a M,
+}
+
+impl<'a, M: Matrix> Matrix for TransposedMatrix<'a, M> {
+    fn num_rows(&self) -> usize {
+        self.underlying.num_cols()
+    }
+
+    fn num_cols(&self) -> usize {
+        self.underlying.num_rows()
+    }
+
+    fn row(&self, row: usize) -> impl Vector {
+        self.underlying.col(row)
+    }
+
+    fn col(&self, col: usize) -> impl Vector {
+        self.underlying.row(col)
+    }
+
+    fn transpose(&self) -> impl Matrix {
+        self.underlying
+    }
+}
+
 struct MatrixDataCol<'a> {
     matrix: &'a MatrixData,
     col: usize,
@@ -142,31 +180,32 @@ impl<'a> Vector for MatrixDataCol<'a> {
         self.matrix.num_rows
     }
 
-    fn iter(&self) -> impl Iterator<Item = f32> {
-        MatrixDataColIter {
-            matrix: self.matrix,
-            col: self.col,
-            next_row: 0,
-        }
+    fn get(&self, idx: usize) -> f32 {
+        self.matrix.data[idx * self.matrix.num_cols + self.col]
     }
 }
 
-struct MatrixDataColIter<'a> {
-    matrix: &'a MatrixData,
-    col: usize,
-    next_row: usize,
-}
+/// Lets `&impl Matrix` be `Matrix`, so that [`TransposedMatrix::transpose`] can just return its underlying reference.
+mod transposing {
+    use crate::math::vector::Vector;
+    use crate::math::Matrix;
 
-impl Iterator for MatrixDataColIter<'_> {
-    type Item = f32;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.next_row >= self.matrix.num_rows {
-            return None;
+    impl<M: Matrix> Matrix for &M {
+        fn num_rows(&self) -> usize {
+            M::num_rows(self)
         }
-        let result = self.matrix.data[self.next_row * self.matrix.num_cols + self.col];
-        self.next_row += 1;
-        Some(result)
+
+        fn num_cols(&self) -> usize {
+            M::num_cols(self)
+        }
+
+        fn row(&self, row: usize) -> impl Vector {
+            M::row(self, row)
+        }
+
+        fn col(&self, col: usize) -> impl Vector {
+            M::col(self, col)
+        }
     }
 }
 
@@ -251,6 +290,33 @@ mod tests {
     fn row_mut_set_all_bounds() {
         let mut m = MatrixData::new(3, 4);
         m.row_mut(0).set_all(&[1., 2., 3., 4., 5., 6.]);
+    }
+
+    #[test]
+    fn transposition() {
+        let mut m = MatrixData::new(3, 4);
+
+        m.row_mut(0).set_all(&[1., 2., 3., 4.]);
+        m.row_mut(1).set_all(&[5., 6., 7., 8.]);
+        m.row_mut(2).set_all(&[9., 10., 11., 12.]);
+
+        let transposed = m.transpose();
+        assert_eq!(transposed.shape(), Shape::new(vec![4, 3]));
+
+        check_vector(transposed.col(0), &[1., 2., 3., 4.]);
+        check_vector(transposed.col(1), &[5., 6., 7., 8.]);
+        check_vector(transposed.col(2), &[9., 10., 11., 12.]);
+        expect_panic(|| transposed.col(3));
+
+        check_vector(transposed.row(0), &[1., 5., 9.]);
+        check_vector(transposed.row(1), &[2., 6., 10.]);
+        check_vector(transposed.row(2), &[3., 7., 11.]);
+        check_vector(transposed.row(3), &[4., 8., 12.]);
+        expect_panic(|| transposed.col(4));
+
+        // quick sanity check on double-transposition
+        let double_transposed = transposed.transpose();
+        check_vector(double_transposed.row(0), &[1., 2., 3., 4.]);
     }
 
     fn check_vector(v: impl Vector, expected: &[f32]) {
