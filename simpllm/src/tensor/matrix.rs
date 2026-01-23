@@ -2,18 +2,18 @@ use crate::tensor::shape::Shape;
 use crate::tensor::vector::{Vector, VectorMut};
 
 pub trait Matrix: Sized {
-    fn num_rows(&self) -> usize;
-    fn num_cols(&self) -> usize;
-
-    fn shape(&self) -> Shape<2> {
-        Shape::new([self.num_rows(), self.num_cols()])
-    }
-
+    fn shape(&self) -> Shape<2>;
     fn row(&self, row: usize) -> impl Vector;
-    fn col(&self, col: usize) -> impl Vector;
-
     fn transpose(&self) -> impl Matrix {
         TransposedMatrix { underlying: self }
+    }
+
+    fn num_rows(&self) -> usize {
+        self.shape().dim()[0]
+    }
+
+    fn num_cols(&self) -> usize {
+        self.shape().dim()[1]
     }
 }
 
@@ -23,48 +23,35 @@ pub trait MatrixMut: Matrix {
 
 // A simple implementation of a 2-d matrix.
 pub struct MatrixData {
-    num_rows: usize,
-    num_cols: usize,
+    shape: Shape<2>,
     data: Vec<f32>,
 }
 
 impl MatrixData {
     pub fn new(num_rows: usize, num_cols: usize) -> Self {
         Self {
-            num_rows,
-            num_cols,
+            shape: Shape::new([num_rows, num_cols]),
             data: vec![0.0; num_rows * num_cols],
         }
     }
 }
 
 impl Matrix for MatrixData {
-    fn num_rows(&self) -> usize {
-        self.num_rows
-    }
-
-    fn num_cols(&self) -> usize {
-        self.num_cols
+    fn shape(&self) -> Shape<2> {
+        self.shape
     }
 
     fn row(&self, row: usize) -> impl Vector {
-        if row >= self.num_rows {
+        if row >= self.num_rows() {
             panic!("can't get row {} from {} matrix", row, self.shape());
         }
         MatrixDataRow { matrix: self, row }
-    }
-
-    fn col(&self, col: usize) -> impl Vector {
-        if col >= self.num_cols {
-            panic!("can't get col {} from {} matrix", col, self.shape());
-        }
-        MatrixDataCol { matrix: self, col }
     }
 }
 
 impl MatrixMut for MatrixData {
     fn row_mut(&mut self, row: usize) -> impl VectorMut {
-        if row >= self.num_rows {
+        if row >= self.num_rows() {
             panic!("can't get row {} from {} matrix", row, self.shape());
         }
         MatrixDataRowMut { matrix: self, row }
@@ -78,18 +65,18 @@ struct MatrixDataRow<'a> {
 
 impl MatrixDataRow<'_> {
     fn row_iter(m: &MatrixData, row: usize) -> impl Iterator<Item = f32> {
-        let start = row * m.num_cols;
-        m.data[start..start + m.num_cols].iter().copied()
+        let start = row * m.num_cols();
+        m.data[start..start + m.num_cols()].iter().copied()
     }
 }
 
 impl<'a> Vector for MatrixDataRow<'a> {
     fn len(&self) -> usize {
-        self.matrix.num_cols
+        self.matrix.num_cols()
     }
 
     fn get(&self, idx: usize) -> f32 {
-        self.matrix.data[self.row * self.matrix.num_cols + idx]
+        self.matrix.data[self.row * self.matrix.num_cols() + idx]
     }
 
     fn iter(&self) -> impl Iterator<Item = f32> {
@@ -104,11 +91,11 @@ struct MatrixDataRowMut<'a> {
 
 impl<'a> Vector for MatrixDataRowMut<'a> {
     fn len(&self) -> usize {
-        self.matrix.num_cols
+        self.matrix.num_cols()
     }
 
     fn get(&self, idx: usize) -> f32 {
-        self.matrix.data[self.row * self.matrix.num_cols + idx]
+        self.matrix.data[self.row * self.matrix.num_cols() + idx]
     }
 
     fn iter(&self) -> impl Iterator<Item = f32> {
@@ -126,7 +113,8 @@ impl<'a> VectorMut for MatrixDataRowMut<'a> {
                 self.matrix.shape()
             );
         }
-        self.matrix.data[self.row * self.matrix.num_cols + col] = value;
+        let num_cols = self.matrix.num_cols();
+        self.matrix.data[self.row * num_cols + col] = value;
     }
 
     fn set_all(&mut self, values: &[f32]) {
@@ -139,7 +127,7 @@ impl<'a> VectorMut for MatrixDataRowMut<'a> {
                 self.matrix.shape()
             );
         }
-        let start = self.row * self.matrix.num_cols;
+        let start = self.row * self.matrix.num_cols();
         self.matrix.data[start..start + len].copy_from_slice(values);
     }
 }
@@ -149,20 +137,14 @@ struct TransposedMatrix<'a, M> {
 }
 
 impl<'a, M: Matrix> Matrix for TransposedMatrix<'a, M> {
-    fn num_rows(&self) -> usize {
-        self.underlying.num_cols()
-    }
-
-    fn num_cols(&self) -> usize {
-        self.underlying.num_rows()
+    fn shape(&self) -> Shape<2> {
+        let underlying_shape = self.underlying.shape();
+        let underlying_dim = underlying_shape.dim();
+        Shape::new([underlying_dim[1], underlying_dim[0]])
     }
 
     fn row(&self, row: usize) -> impl Vector {
-        self.underlying.col(row)
-    }
-
-    fn col(&self, col: usize) -> impl Vector {
-        self.underlying.row(col)
+        todo!() as MatrixDataRow
     }
 
     fn transpose(&self) -> impl Matrix {
@@ -177,34 +159,26 @@ struct MatrixDataCol<'a> {
 
 impl<'a> Vector for MatrixDataCol<'a> {
     fn len(&self) -> usize {
-        self.matrix.num_rows
+        self.matrix.num_rows()
     }
 
     fn get(&self, idx: usize) -> f32 {
-        self.matrix.data[idx * self.matrix.num_cols + self.col]
+        self.matrix.data[idx * self.matrix.num_cols() + self.col]
     }
 }
 
 /// Lets `&impl Matrix` be `Matrix`, so that [`TransposedMatrix::transpose`] can just return its underlying reference.
 mod transposing {
-    use crate::tensor::Matrix;
     use crate::tensor::vector::Vector;
+    use crate::tensor::{Matrix, Shape};
 
     impl<M: Matrix> Matrix for &M {
-        fn num_rows(&self) -> usize {
-            M::num_rows(self)
-        }
-
-        fn num_cols(&self) -> usize {
-            M::num_cols(self)
+        fn shape(&self) -> Shape<2> {
+            M::shape(self)
         }
 
         fn row(&self, row: usize) -> impl Vector {
             M::row(self, row)
-        }
-
-        fn col(&self, col: usize) -> impl Vector {
-            M::col(self, col)
         }
     }
 }
@@ -226,12 +200,6 @@ mod tests {
         check_vector(m.row(1), &[0., 0., 0., 0.]);
         check_vector(m.row(2), &[0., 0., 0., 0.]);
         expect_panic(|| m.row(3));
-
-        check_vector(m.col(0), &[0., 0., 0.]);
-        check_vector(m.col(1), &[0., 0., 0.]);
-        check_vector(m.col(2), &[0., 0., 0.]);
-        check_vector(m.col(3), &[0., 0., 0.]);
-        expect_panic(|| m.col(4));
     }
 
     #[test]
@@ -254,11 +222,6 @@ mod tests {
         m.row_mut(0).set_all(&[1., 2., 3., 4.]);
         m.row_mut(1).set_all(&[5., 6., 7., 8.]);
         m.row_mut(2).set_all(&[9., 10., 11., 12.]);
-
-        check_vector(m.col(0), &[1., 5., 9.]);
-        check_vector(m.col(1), &[2., 6., 10.]);
-        check_vector(m.col(2), &[3., 7., 11.]);
-        check_vector(m.col(3), &[4., 8., 12.]);
     }
 
     /// Checks that `row_mut()`'s implementation also performs well as a non-mut vector
@@ -303,16 +266,11 @@ mod tests {
         let transposed = m.transpose();
         assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
-        check_vector(transposed.col(0), &[1., 2., 3., 4.]);
-        check_vector(transposed.col(1), &[5., 6., 7., 8.]);
-        check_vector(transposed.col(2), &[9., 10., 11., 12.]);
-        expect_panic(|| transposed.col(3));
-
         check_vector(transposed.row(0), &[1., 5., 9.]);
         check_vector(transposed.row(1), &[2., 6., 10.]);
         check_vector(transposed.row(2), &[3., 7., 11.]);
         check_vector(transposed.row(3), &[4., 8., 12.]);
-        expect_panic(|| transposed.col(4));
+        expect_panic(|| transposed.row(4));
 
         // quick sanity check on double-transposition
         let double_transposed = transposed.transpose();

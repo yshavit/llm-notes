@@ -52,6 +52,7 @@ pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tensor::Shape;
 
     mod matrix {
         use super::*;
@@ -131,25 +132,13 @@ mod tests {
     }
 
     impl<const R: usize, const C: usize> Matrix for [[f32; C]; R] {
-        fn num_rows(&self) -> usize {
-            R
-        }
-
-        fn num_cols(&self) -> usize {
-            C
+        fn shape(&self) -> Shape<2> {
+            Shape::new([R, C])
         }
 
         fn row(&self, row: usize) -> impl Vector {
             let mut res = [0.0; C];
             res.copy_from_slice(&self[row]);
-            res
-        }
-
-        fn col(&self, col: usize) -> impl Vector {
-            let mut res = [0.0; R];
-            for row in 0..self.num_rows() {
-                res[row] = self[row][col];
-            }
             res
         }
     }

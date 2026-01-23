@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter};
 
 /// The shape of a tensor. For example, a matrix will have a shape like "5x4".
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Shape<const R: usize> {
     dimensions: [usize; R],
 }
@@ -9,6 +9,10 @@ pub struct Shape<const R: usize> {
 impl<const R: usize> Shape<R> {
     pub fn new(dimensions: [usize; R]) -> Self {
         Self { dimensions }
+    }
+
+    pub fn dim(&self) -> &[usize; R] {
+        &self.dimensions
     }
 }
 
