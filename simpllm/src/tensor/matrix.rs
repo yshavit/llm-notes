@@ -9,11 +9,11 @@ pub trait Matrix: Sized {
     }
 
     fn num_rows(&self) -> usize {
-        self.shape().dim()[0]
+        self.shape()[0]
     }
 
     fn num_cols(&self) -> usize {
-        self.shape().dim()[1]
+        self.shape()[1]
     }
 }
 
@@ -139,8 +139,7 @@ struct TransposedMatrix<'a, M> {
 impl<'a, M: Matrix> Matrix for TransposedMatrix<'a, M> {
     fn shape(&self) -> Shape<2> {
         let underlying_shape = self.underlying.shape();
-        let underlying_dim = underlying_shape.dim();
-        Shape::new([underlying_dim[1], underlying_dim[0]])
+        Shape::new([underlying_shape[1], underlying_shape[0]])
     }
 
     fn row(&self, row: usize) -> impl Vector {
