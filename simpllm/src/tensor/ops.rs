@@ -40,9 +40,10 @@ pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
         // loop (each row of a will have to iterate over b's row N times, where N is a's column count), a and b are
         // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
         // cache lines to predict our reads.
-        for (k, a_val) in a.row(row_idx).iter().enumerate() {
-            for (col_idx, b_val) in b.row(k).iter().enumerate() {
-                row_vals[col_idx] += a_val * b_val;
+        for k in 0..a.num_cols() {
+            let a_val = a.get(row_idx, k);
+            for col_idx in 0..b.num_cols() {
+                row_vals[col_idx] += a_val * b.get(k, col_idx);
             }
         }
         out.row_mut(row_idx).set_all(&row_vals);
@@ -126,8 +127,8 @@ mod tests {
     }
 
     impl<const N: usize> VectorMut for &mut [f32; N] {
-        fn set(&mut self, idx: usize, value: f32) {
-            self[idx] = value;
+        fn set_all(&mut self, value: &[f32]) {
+            self.copy_from_slice(value);
         }
     }
 
@@ -136,10 +137,8 @@ mod tests {
             Shape::new([R, C])
         }
 
-        fn row(&self, row: usize) -> impl Vector {
-            let mut res = [0.0; C];
-            res.copy_from_slice(&self[row]);
-            res
+        fn get(&self, row: usize, col: usize) -> f32 {
+            self[row][col]
         }
     }
 
