@@ -4,5 +4,5 @@ mod shape;
 mod vector;
 
 pub use matrix::{Matrix, MatrixData};
-pub use ops::{CpuOps, MatrixOps};
+pub use ops::matmul;
 pub use shape::Shape;
