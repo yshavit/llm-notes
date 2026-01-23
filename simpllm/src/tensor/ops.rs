@@ -1,5 +1,5 @@
-use crate::math::matrix::{Matrix, MatrixMut};
-use crate::math::vector::{Vector, VectorMut};
+use crate::tensor::matrix::{Matrix, MatrixMut};
+use crate::tensor::vector::{Vector, VectorMut};
 
 pub trait MatrixOps {
     fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut);

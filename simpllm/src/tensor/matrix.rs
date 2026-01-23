@@ -1,5 +1,5 @@
-use crate::math::shape::Shape;
-use crate::math::vector::{Vector, VectorMut};
+use crate::tensor::shape::Shape;
+use crate::tensor::vector::{Vector, VectorMut};
 
 pub trait Matrix: Sized {
     fn num_rows(&self) -> usize;
@@ -187,8 +187,8 @@ impl<'a> Vector for MatrixDataCol<'a> {
 
 /// Lets `&impl Matrix` be `Matrix`, so that [`TransposedMatrix::transpose`] can just return its underlying reference.
 mod transposing {
-    use crate::math::vector::Vector;
-    use crate::math::Matrix;
+    use crate::tensor::Matrix;
+    use crate::tensor::vector::Vector;
 
     impl<M: Matrix> Matrix for &M {
         fn num_rows(&self) -> usize {
