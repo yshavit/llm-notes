@@ -40,12 +40,9 @@ pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
         // loop (each row of a will have to iterate over b's row N times, where N is a's column count), a and b are
         // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
         // cache lines to predict our reads.
-        let a_row = a.row(row_idx);
-        for k in 0..a.num_cols() {
-            let a_val = a_row.get(k);
-            let b_row = b.row(k);
-            for col_idx in 0..b.num_cols() {
-                row_vals[col_idx] += a_val * b_row.get(col_idx);
+        for (k, a_val) in a.row(row_idx).iter().enumerate() {
+            for (col_idx, b_val) in b.row(k).iter().enumerate() {
+                row_vals[col_idx] += a_val * b_val;
             }
         }
         out.row_mut(row_idx).set_all(&row_vals);
