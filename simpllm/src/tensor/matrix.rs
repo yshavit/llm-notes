@@ -5,8 +5,8 @@ pub trait Matrix: Sized {
     fn num_rows(&self) -> usize;
     fn num_cols(&self) -> usize;
 
-    fn shape(&self) -> Shape {
-        Shape::new(vec![self.num_rows(), self.num_cols()])
+    fn shape(&self) -> Shape<2> {
+        Shape::new([self.num_rows(), self.num_cols()])
     }
 
     fn row(&self, row: usize) -> impl Vector;
@@ -220,7 +220,7 @@ mod tests {
         let m = MatrixData::new(3, 4);
         assert_eq!(m.num_rows(), 3);
         assert_eq!(m.num_cols(), 4);
-        assert_eq!(m.shape(), Shape::new(vec![3, 4]));
+        assert_eq!(m.shape(), Shape::new([3, 4]));
 
         check_vector(m.row(0), &[0., 0., 0., 0.]);
         check_vector(m.row(1), &[0., 0., 0., 0.]);
@@ -301,7 +301,7 @@ mod tests {
         m.row_mut(2).set_all(&[9., 10., 11., 12.]);
 
         let transposed = m.transpose();
-        assert_eq!(transposed.shape(), Shape::new(vec![4, 3]));
+        assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
         check_vector(transposed.col(0), &[1., 2., 3., 4.]);
         check_vector(transposed.col(1), &[5., 6., 7., 8.]);
