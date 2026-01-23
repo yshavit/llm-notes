@@ -1,10 +1,11 @@
 use crate::tensor::Shape;
 use crate::tensor::vector::Vector;
+use std::fmt::{Debug, Formatter};
 
-type TMatrix = Tensor<2>;
-type TVector = Tensor<1>;
+pub type TMatrix = Tensor<2>;
+pub type TVector = Tensor<1>;
 
-struct Tensor<const R: usize> {
+pub struct Tensor<const R: usize> {
     data: Vec<f32>,
     shape: Shape<R>,
     strides: Shape<R>,
@@ -90,6 +91,34 @@ impl Tensor<2> {
         }
         let start = row * row_len;
         self.data[start..start + row_len].copy_from_slice(values);
+    }
+}
+
+impl<const R: usize> PartialEq for Tensor<R> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.shape != other.shape {
+            return false;
+        }
+
+        // Fast path: same strides means same layout, so we can do just a simple == on the data
+        if self.strides == other.strides {
+            return self.data == other.data;
+        }
+
+        // Slow path: different strides, compare element by element
+        todo!();
+        // for indices in self.iter_indices() {
+        //     if self.get(indices) != other.get(indices) {
+        //         return false;
+        //     }
+        // }
+        true
+    }
+}
+
+impl<const R: usize> Debug for Tensor<R> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Tensor[{}]", self.shape)
     }
 }
 

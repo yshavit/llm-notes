@@ -54,24 +54,27 @@ pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
 mod tests {
     use super::*;
     use crate::tensor::Shape;
+    use crate::tensor::tensor::Tensor;
 
     mod matrix {
         use super::*;
 
         #[test]
         fn check_matmul() {
-            let a = [
+            let a: Tensor<2> = [
                 // comment, so that rustfmt doesn't collapse this to a single line
                 [1., 2.],
                 [3., 4.],
                 [5., 6.],
-            ];
-            let b = [
+            ]
+            .into();
+            let b: Tensor<2> = [
                 //
                 [7., 8.],
                 [9., 10.],
-            ];
-            let mut out = [[0.0; 2]; 3];
+            ]
+            .into();
+            let mut out: Tensor<2> = [[0.0; 2]; 3].into();
             matmul(a, b, &mut out);
             assert_eq!(
                 out,
@@ -80,6 +83,7 @@ mod tests {
                     [(3. * 7.) + (4. * 9.), (3. * 8.) + (4. * 10.)],
                     [(5. * 7.) + (6. * 9.), (5. * 8.) + (6. * 10.)],
                 ]
+                .into()
             );
         }
 
@@ -102,49 +106,44 @@ mod tests {
         }
     }
 
-    fn array_matrix<const R: usize, const C: usize>() -> [[f32; C]; R] {
-        [[0.; C]; R]
+    fn array_matrix<const R: usize, const C: usize>() -> Tensor<2> {
+        Tensor::new_matrix(R, C)
     }
 
-    impl<const N: usize> Vector for [f32; N] {
-        fn len(&self) -> usize {
-            N
-        }
-
-        fn get(&self, idx: usize) -> f32 {
-            self[idx]
-        }
-    }
-
-    impl<const N: usize> Vector for &mut [f32; N] {
-        fn len(&self) -> usize {
-            N
-        }
-
-        fn get(&self, idx: usize) -> f32 {
-            self[idx]
+    impl<const R: usize, const C: usize> Into<Tensor<2>> for [[f32; C]; R] {
+        fn into(self) -> Tensor<2> {
+            let mut m = Tensor::new_matrix(R, C);
+            for (row_idx, row_vals) in self.iter().enumerate() {
+                m.set_row(row_idx, row_vals);
+            }
+            m
         }
     }
 
-    impl<const N: usize> VectorMut for &mut [f32; N] {
-        fn set_all(&mut self, value: &[f32]) {
-            self.copy_from_slice(value);
-        }
-    }
-
-    impl<const R: usize, const C: usize> Matrix for [[f32; C]; R] {
+    impl Matrix for Tensor<2> {
         fn shape(&self) -> Shape<2> {
-            Shape::new([R, C])
+            Tensor::shape(self)
         }
 
         fn get(&self, row: usize, col: usize) -> f32 {
-            self[row][col]
+            Tensor::get(self, [row, col])
         }
     }
 
-    impl<const R: usize, const C: usize> MatrixMut for [[f32; C]; R] {
+    impl MatrixMut for Tensor<2> {
         fn row_mut(&mut self, row: usize) -> impl VectorMut {
-            &mut self[row]
+            Tensor2RowMut { row, tensor: self }
+        }
+    }
+
+    struct Tensor2RowMut<'a> {
+        row: usize,
+        tensor: &'a mut Tensor<2>,
+    }
+
+    impl VectorMut for Tensor2RowMut<'_> {
+        fn set_all(&mut self, value: &[f32]) {
+            self.tensor.set_row(self.row, value)
         }
     }
 }
