@@ -45,7 +45,7 @@ pub fn matmul(a: Tensor<2>, b: Tensor<2>, out: &mut Tensor<2>) {
                 row_vals[col_idx] += a_val * b.get([k, col_idx]);
             }
         }
-        out.set_row(row_idx, &row_vals);
+        out.set_row([row_idx, 0], &row_vals);
     }
 }
 
@@ -112,7 +112,7 @@ mod tests {
         fn into(self) -> Tensor<2> {
             let mut m = Tensor::new_matrix(R, C);
             for (row_idx, row_vals) in self.iter().enumerate() {
-                m.set_row(row_idx, row_vals);
+                m.set_row([row_idx, 0], row_vals);
             }
             m
         }
