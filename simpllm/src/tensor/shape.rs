@@ -28,9 +28,7 @@ impl<const R: usize> DerefMut for Shape<R> {
 impl<const R: usize> Shape<R> {
     pub fn new(dimensions: [usize; R]) -> Self {
         let result = Self(dimensions);
-        if R == 0 || result.iter().any(|i| *i == 0) {
-            panic!("illegal shape: {result}");
-        }
+        assert!(R != 0 && !result.iter().any(|i| *i == 0), "illegal shape: {result}");
         result
     }
 

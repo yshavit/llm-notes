@@ -1,22 +1,13 @@
 use crate::tensor::tensor::Tensor;
 
 pub fn matmul(a: Tensor<2>, b: Tensor<2>, out: &mut Tensor<2>) {
-    if a.num_cols() != b.num_rows() {
-        panic!(
-            "can't multiply ({}) and ({}) [into ({})]",
-            a.shape(),
-            b.shape(),
-            out.shape(),
-        );
-    }
-    if a.num_rows() != out.num_rows() || b.num_cols() != out.num_cols() {
-        panic!(
-            "can't multiply ({}) and ({}) into ({})",
-            a.shape(),
-            b.shape(),
-            out.shape(),
-        );
-    }
+    assert!(
+        a.num_cols() == b.num_rows() && a.num_rows() == out.num_rows() && b.num_cols() == b.num_cols(),
+        "can't multiply ({}) and ({}) into ({})",
+        a.shape(),
+        b.shape(),
+        out.shape(),
+    );
 
     let mut row_vals = vec![0.0; a.num_cols()];
     for row_idx in 0..a.num_rows() {
@@ -86,7 +77,7 @@ mod tests {
         }
 
         #[test]
-        #[should_panic = "can't multiply (2x3) and (2x3) [into (2x3)]"]
+        #[should_panic = "can't multiply (2x3) and (2x3) into (2x3)"]
         fn matmul_a_b_mismatch() {
             let a = array_matrix::<2, 3>();
             let b = array_matrix::<2, 3>();

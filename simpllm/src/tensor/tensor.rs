@@ -12,9 +12,7 @@ pub type Matrix = Tensor<2>;
 
 impl<const R: usize> Tensor<R> {
     pub fn new(shape: Shape<R>) -> Self {
-        if R == 0 {
-            panic!("0-tensors are not allowed");
-        }
+        assert_ne!(R, 0, "0-tensors are not allowed");
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
         // each dimension back needs to have a stride-size for all the dimensions before it.
@@ -64,14 +62,13 @@ impl<const R: usize> Tensor<R> {
     pub fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
         let write_start = self.data_offset(indices);
         let row_offset = indices[R - 1];
-        if values.len() > self.shape[R - 1] - row_offset {
-            panic!(
-                "can't write to index {:?} of {} matrix with slice length {}",
-                indices,
-                self.shape,
-                values.len()
-            );
-        }
+        assert!(
+            values.len() <= self.shape[R - 1] - row_offset,
+            "can't write to index {:?} of {} matrix with slice length {}",
+            indices,
+            self.shape,
+            values.len()
+        );
         if self.strides[R - 1] == 1 {
             // Row-major format; we can just memcpy
             self.data[write_start..write_start + self.shape[R - 1]].copy_from_slice(values);
