@@ -1,5 +1,5 @@
 use crate::tensor::Shape;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 pub struct Tensor<const R: usize> {
     data: Vec<f32>,
@@ -94,9 +94,15 @@ impl<const R: usize> Debug for Tensor<R> {
     }
 }
 
+impl Display for Tensor<2> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Pretty(self).fmt(f)
+    }
+}
+
 struct Pretty<'a, const R: usize>(&'a Tensor<R>);
 
-impl<'a> Debug for Pretty<'a, 2> {
+impl<'a> Display for Pretty<'a, 2> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let tensor = self.0;
         // Turn all the values into equal-length, padded strings
@@ -114,11 +120,16 @@ impl<'a> Debug for Pretty<'a, 2> {
             .for_each(|s| *s = format!("{:>width$}", s, width = max_cell_len));
 
         // Now write them all. The cell_strings is already in row-major order, so we can just keep track of newlines.
-        write!(f, ":")?;
         let mut line_tracker = tensor.num_cols(); // start a newline right away
+        let mut first_line = true;
         for s in cell_strings {
             if line_tracker >= tensor.num_cols() {
-                write!(f, "\n|")?;
+                if first_line {
+                    first_line = false;
+                    write!(f, "|")?;
+                } else {
+                    write!(f, "\n|")?;
+                }
                 line_tracker = 0;
             }
             write!(f, " {s} |")?;
@@ -194,12 +205,9 @@ mod tests {
         fn data_round_trip() {
             let mut m = Matrix::new_matrix(3, 4);
 
-            let values = &[1., 2., 3., 4.];
-            m.set_row([0, 0], values);
-            let values = &[5., 6., 7., 8.];
-            m.set_row([1, 0], values);
-            let values = &[9., 10., 11., 12.];
-            m.set_row([2, 0], values);
+            m.set_row([0, 0], &[1., 2., 3., 4.]);
+            m.set_row([1, 0], &[5., 6., 7., 8.]);
+            m.set_row([2, 0], &[9., 10., 11., 12.]);
 
             check_row(&m, 0, [1., 2., 3., 4.]);
             check_row(&m, 1, [5., 6., 7., 8.]);
@@ -210,20 +218,16 @@ mod tests {
         #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
         fn row_mut_set_all_bounds() {
             let mut m = Matrix::new_matrix(3, 4);
-            let values = &[1., 2., 3., 4., 5., 6.];
-            m.set_row([0, 0], values);
+            m.set_row([0, 0], &[1., 2., 3., 4., 5., 6.]);
         }
 
         #[test]
         fn transposition() {
             let mut m = Matrix::new_matrix(3, 4);
 
-            let values = &[1., 2., 3., 4.];
-            m.set_row([0, 0], values);
-            let values = &[5., 6., 7., 8.];
-            m.set_row([1, 0], values);
-            let values = &[9., 10., 11., 12.];
-            m.set_row([2, 0], values);
+            m.set_row([0, 0], &[1., 2., 3., 4.]);
+            m.set_row([1, 0], &[5., 6., 7., 8.]);
+            m.set_row([2, 0], &[9., 10., 11., 12.]);
 
             let transposed = m.t();
             assert_eq!(transposed.shape(), Shape::new([4, 3]));
@@ -259,6 +263,117 @@ mod tests {
             assert_eq!(actual, expected);
 
             expect_panic(|| m.get([row, N]))
+        }
+    }
+
+    mod tensor3 {
+        use super::*;
+
+        type Tensor3 = Tensor<3>;
+
+        #[test]
+        fn shape() {
+            let t = Tensor3::new(Shape::new([2, 3, 4]));
+            assert_eq!(t.shape(), Shape::new([2, 3, 4]));
+
+            // Spot-check that initial values are 0.0
+            assert_eq!(t.get([0, 0, 0]), 0.0);
+            assert_eq!(t.get([1, 2, 3]), 0.0);
+        }
+
+        #[test]
+        fn get_set_round_trip() {
+            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+
+            // Set values in different "slices"
+            t.set_row([0, 0, 0], &[1., 2., 3., 4.]);
+            t.set_row([0, 1, 0], &[5., 6., 7., 8.]);
+            t.set_row([1, 0, 0], &[9., 10., 11., 12.]);
+            t.set_row([1, 2, 0], &[13., 14., 15., 16.]);
+
+            // Verify they're in the right places
+            assert_eq!(t.get([0, 0, 0]), 1.);
+            assert_eq!(t.get([0, 0, 3]), 4.);
+            assert_eq!(t.get([0, 1, 1]), 6.);
+            assert_eq!(t.get([1, 0, 2]), 11.);
+            assert_eq!(t.get([1, 2, 3]), 16.);
+
+            // Values we didn't set should still be 0
+            assert_eq!(t.get([0, 2, 0]), 0.);
+        }
+
+        #[test]
+        fn set_row() {
+            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+
+            t.set_row([0, 1, 0], &[10., 20., 30., 40.]);
+
+            // Check the row we set
+            assert_eq!(t.get([0, 1, 0]), 10.);
+            assert_eq!(t.get([0, 1, 1]), 20.);
+            assert_eq!(t.get([0, 1, 2]), 30.);
+            assert_eq!(t.get([0, 1, 3]), 40.);
+
+            // Check that other rows weren't affected
+            assert_eq!(t.get([0, 0, 0]), 0.);
+            assert_eq!(t.get([0, 2, 0]), 0.);
+            assert_eq!(t.get([1, 1, 0]), 0.);
+        }
+
+        #[test]
+        fn transposition_dims_0_1() {
+            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+
+            // Fill with distinct values
+            t.set_row([0, 0, 0], &[1., 2., 3., 4.]);
+            t.set_row([0, 1, 0], &[5., 6., 7., 8.]);
+            t.set_row([0, 2, 0], &[9., 10., 11., 12.]);
+            t.set_row([1, 0, 0], &[13., 14., 15., 16.]);
+            t.set_row([1, 1, 0], &[17., 18., 19., 20.]);
+            t.set_row([1, 2, 0], &[21., 22., 23., 24.]);
+
+            let transposed = t.transposed(0, 1);
+            assert_eq!(transposed.shape(), Shape::new([3, 2, 4]));
+
+            // Original [0, 1, 2] should now be at [1, 0, 2]
+            assert_eq!(transposed.get([1, 0, 2]), 7.);
+            // Original [1, 0, 3] should now be at [0, 1, 3]
+            assert_eq!(transposed.get([0, 1, 3]), 16.);
+            // Original [1, 2, 1] should now be at [2, 1, 1]
+            assert_eq!(transposed.get([2, 1, 1]), 22.);
+        }
+
+        #[test]
+        #[should_panic = "index out of range: can't get [2, 3, 4] on 2x3x4 tensor"]
+        fn bounds_check() {
+            let t = Tensor3::new(Shape::new([2, 3, 4]));
+            t.get([2, 3, 4]);
+        }
+    }
+
+    mod pretty {
+        use super::*;
+
+        #[test]
+        fn pretty_matrix() {
+            let mut m = Matrix::new_matrix(3, 4);
+
+            m.set_row([0, 0], &[1., 2., 3., 4.]);
+            m.set_row([1, 0], &[5., 6., 7., 8.]);
+            m.set_row([2, 0], &[9., 10., 11., 12.]);
+
+            let pretty = format!("{m}");
+
+            assert_eq!(
+                pretty,
+                [
+                    //
+                    "|  1 |  2 |  3 |  4 |",
+                    "|  5 |  6 |  7 |  8 |",
+                    "|  9 | 10 | 11 | 12 |",
+                ]
+                .join("\n")
+            );
         }
     }
 
