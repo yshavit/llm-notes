@@ -1,7 +1,6 @@
-use crate::tensor::matrix::{Matrix, MatrixMut};
-use crate::tensor::vector::{Vector, VectorMut};
+use crate::tensor::tensor::Tensor;
 
-pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
+pub fn matmul(a: Tensor<2>, b: Tensor<2>, out: &mut Tensor<2>) {
     if a.num_cols() != b.num_rows() {
         panic!(
             "can't multiply ({}) and ({}) [into ({})]",
@@ -41,19 +40,18 @@ pub fn matmul(a: impl Matrix, b: impl Matrix, out: &mut impl MatrixMut) {
         // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
         // cache lines to predict our reads.
         for k in 0..a.num_cols() {
-            let a_val = a.get(row_idx, k);
+            let a_val = a.get([row_idx, k]);
             for col_idx in 0..b.num_cols() {
-                row_vals[col_idx] += a_val * b.get(k, col_idx);
+                row_vals[col_idx] += a_val * b.get([k, col_idx]);
             }
         }
-        out.row_mut(row_idx).set_all(&row_vals);
+        out.set_row(row_idx, &row_vals);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tensor::Shape;
     use crate::tensor::tensor::Tensor;
 
     mod matrix {
@@ -117,33 +115,6 @@ mod tests {
                 m.set_row(row_idx, row_vals);
             }
             m
-        }
-    }
-
-    impl Matrix for Tensor<2> {
-        fn shape(&self) -> Shape<2> {
-            Tensor::shape(self)
-        }
-
-        fn get(&self, row: usize, col: usize) -> f32 {
-            Tensor::get(self, [row, col])
-        }
-    }
-
-    impl MatrixMut for Tensor<2> {
-        fn row_mut(&mut self, row: usize) -> impl VectorMut {
-            Tensor2RowMut { row, tensor: self }
-        }
-    }
-
-    struct Tensor2RowMut<'a> {
-        row: usize,
-        tensor: &'a mut Tensor<2>,
-    }
-
-    impl VectorMut for Tensor2RowMut<'_> {
-        fn set_all(&mut self, value: &[f32]) {
-            self.tensor.set_row(self.row, value)
         }
     }
 }

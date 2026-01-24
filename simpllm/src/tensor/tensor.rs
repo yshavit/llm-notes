@@ -1,9 +1,5 @@
 use crate::tensor::Shape;
-use crate::tensor::vector::Vector;
 use std::fmt::{Debug, Formatter};
-
-pub type TMatrix = Tensor<2>;
-pub type TVector = Tensor<1>;
 
 pub struct Tensor<const R: usize> {
     data: Vec<f32>,
@@ -11,23 +7,24 @@ pub struct Tensor<const R: usize> {
     strides: Shape<R>,
 }
 
+pub type Vector = Tensor<1>;
+pub type Matrix = Tensor<2>;
+
 impl<const R: usize> Tensor<R> {
     pub fn new(shape: Shape<R>) -> Self {
         let mut strides = [0; R];
-        let mut stride = 1;
-
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
         // each dimension back needs to have a stride-size for all the dimensions before it.
+        let mut stride = 1;
         for i in (0..R).rev() {
             strides[i] = stride;
             stride *= shape[i];
         }
-        let strides = Shape::from(strides);
 
         Self {
             data: vec![0.0; shape.num_elements()],
             shape,
-            strides,
+            strides: strides.into(),
         }
     }
 
@@ -38,7 +35,7 @@ impl<const R: usize> Tensor<R> {
     pub fn get(&self, indices: [usize; R]) -> f32 {
         indices.iter().zip(self.shape.iter()).for_each(|(idx, dim)| {
             if idx >= dim {
-                panic!("index out of range: can't get {indices:?} on {} tensosr", self.shape);
+                panic!("index out of range: can't get {indices:?} on {} tensor", self.shape);
             }
         });
         let flat_index = indices
@@ -50,7 +47,7 @@ impl<const R: usize> Tensor<R> {
         self.data[flat_index]
     }
 
-    fn transposed(self, dim0: usize, dim1: usize) -> Self {
+    pub fn transposed(self, dim0: usize, dim1: usize) -> Self {
         Self {
             data: self.data,
             shape: self.shape.swapped(dim0, dim1),
@@ -89,8 +86,17 @@ impl Tensor<2> {
         if row >= self.num_rows() {
             panic!("can't write to row {} of {} matrix", row, self.shape)
         }
-        let start = row * row_len;
-        self.data[start..start + row_len].copy_from_slice(values);
+
+        if self.strides[1] == 1 {
+            // standard, row-major layout: we can just do a memcpy
+            let start = row * row_len;
+            self.data[start..start + row_len].copy_from_slice(values);
+        } else {
+            for col in 0..row_len {
+                let idx = row * self.strides[0] + col * self.strides[1];
+                self.data[idx] = values[col];
+            }
+        }
     }
 }
 
@@ -105,13 +111,12 @@ impl<const R: usize> PartialEq for Tensor<R> {
             return self.data == other.data;
         }
 
-        // Slow path: different strides, compare element by element
-        todo!();
-        // for indices in self.iter_indices() {
-        //     if self.get(indices) != other.get(indices) {
-        //         return false;
-        //     }
-        // }
+        // Slow path: different strides, so we have to compare element by element
+        for indices in self.shape.iter_indices() {
+            if self.get(indices) != other.get(indices) {
+                return false;
+            }
+        }
         true
     }
 }
@@ -130,7 +135,7 @@ mod tests {
     /// Smoke test of the various shapes of things.
     #[test]
     fn matrix_data_shape() {
-        let m = TMatrix::new_matrix(3, 4);
+        let m = Matrix::new_matrix(3, 4);
         assert_eq!(m.num_rows(), 3);
         assert_eq!(m.num_cols(), 4);
         assert_eq!(m.shape(), Shape::new([3, 4]));
@@ -143,7 +148,7 @@ mod tests {
 
     #[test]
     fn data_round_trip() {
-        let mut m = TMatrix::new_matrix(3, 4);
+        let mut m = Matrix::new_matrix(3, 4);
 
         m.set_row(0, &[1., 2., 3., 4.]);
         m.set_row(1, &[5., 6., 7., 8.]);
@@ -157,13 +162,13 @@ mod tests {
     #[test]
     #[should_panic = "can't write 6 values to row 0 of 3x4 matrix"]
     fn row_mut_set_all_bounds() {
-        let mut m = TMatrix::new_matrix(3, 4);
+        let mut m = Matrix::new_matrix(3, 4);
         m.set_row(0, &[1., 2., 3., 4., 5., 6.]);
     }
 
     #[test]
     fn transposition() {
-        let mut m = TMatrix::new_matrix(3, 4);
+        let mut m = Matrix::new_matrix(3, 4);
 
         m.set_row(0, &[1., 2., 3., 4.]);
         m.set_row(1, &[5., 6., 7., 8.]);
@@ -183,7 +188,20 @@ mod tests {
         check_row(&double_transposed, 0, [1., 2., 3., 4.]);
     }
 
-    fn check_row<const N: usize>(m: &TMatrix, row: usize, expected: [f32; N]) {
+    #[test]
+    fn transposed_set_row() {
+        let mut m = Matrix::new_matrix(3, 4);
+
+        let mut transposed = m.t();
+        transposed.set_row(1, &[1., 2., 3.]);
+
+        check_row(&transposed, 0, [0., 0., 0.]);
+        check_row(&transposed, 1, [1., 2., 3.]);
+        check_row(&transposed, 2, [0., 0., 0.]);
+        check_row(&transposed, 3, [0., 0., 0.]);
+    }
+
+    fn check_row<const N: usize>(m: &Matrix, row: usize, expected: [f32; N]) {
         let actual: Vec<_> = (0..N).map(|i| m.get([row, i])).collect();
         let expected = Vec::from(expected);
         assert_eq!(actual, expected);
