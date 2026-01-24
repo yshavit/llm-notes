@@ -173,89 +173,93 @@ mod tests {
     use super::*;
     use std::panic;
 
-    /// Smoke test of the various shapes of things.
-    #[test]
-    fn matrix_data_shape() {
-        let m = Matrix::new_matrix(3, 4);
-        assert_eq!(m.num_rows(), 3);
-        assert_eq!(m.num_cols(), 4);
-        assert_eq!(m.shape(), Shape::new([3, 4]));
+    mod matrix {
+        use super::*;
 
-        check_row(&m, 0, [0., 0., 0., 0.]);
-        check_row(&m, 1, [0., 0., 0., 0.]);
-        check_row(&m, 2, [0., 0., 0., 0.]);
-        expect_panic(|| m.get([3, 0]));
-    }
+        /// Smoke test of the various shapes of things.
+        #[test]
+        fn matrix_data_shape() {
+            let m = Matrix::new_matrix(3, 4);
+            assert_eq!(m.num_rows(), 3);
+            assert_eq!(m.num_cols(), 4);
+            assert_eq!(m.shape(), Shape::new([3, 4]));
 
-    #[test]
-    fn data_round_trip() {
-        let mut m = Matrix::new_matrix(3, 4);
+            check_row(&m, 0, [0., 0., 0., 0.]);
+            check_row(&m, 1, [0., 0., 0., 0.]);
+            check_row(&m, 2, [0., 0., 0., 0.]);
+            expect_panic(|| m.get([3, 0]));
+        }
 
-        let values = &[1., 2., 3., 4.];
-        m.set_row([0, 0], values);
-        let values = &[5., 6., 7., 8.];
-        m.set_row([1, 0], values);
-        let values = &[9., 10., 11., 12.];
-        m.set_row([2, 0], values);
+        #[test]
+        fn data_round_trip() {
+            let mut m = Matrix::new_matrix(3, 4);
 
-        check_row(&m, 0, [1., 2., 3., 4.]);
-        check_row(&m, 1, [5., 6., 7., 8.]);
-        check_row(&m, 2, [9., 10., 11., 12.]);
-    }
+            let values = &[1., 2., 3., 4.];
+            m.set_row([0, 0], values);
+            let values = &[5., 6., 7., 8.];
+            m.set_row([1, 0], values);
+            let values = &[9., 10., 11., 12.];
+            m.set_row([2, 0], values);
 
-    #[test]
-    #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
-    fn row_mut_set_all_bounds() {
-        let mut m = Matrix::new_matrix(3, 4);
-        let values = &[1., 2., 3., 4., 5., 6.];
-        m.set_row([0, 0], values);
-    }
+            check_row(&m, 0, [1., 2., 3., 4.]);
+            check_row(&m, 1, [5., 6., 7., 8.]);
+            check_row(&m, 2, [9., 10., 11., 12.]);
+        }
 
-    #[test]
-    fn transposition() {
-        let mut m = Matrix::new_matrix(3, 4);
+        #[test]
+        #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
+        fn row_mut_set_all_bounds() {
+            let mut m = Matrix::new_matrix(3, 4);
+            let values = &[1., 2., 3., 4., 5., 6.];
+            m.set_row([0, 0], values);
+        }
 
-        let values = &[1., 2., 3., 4.];
-        m.set_row([0, 0], values);
-        let values = &[5., 6., 7., 8.];
-        m.set_row([1, 0], values);
-        let values = &[9., 10., 11., 12.];
-        m.set_row([2, 0], values);
+        #[test]
+        fn transposition() {
+            let mut m = Matrix::new_matrix(3, 4);
 
-        let transposed = m.t();
-        assert_eq!(transposed.shape(), Shape::new([4, 3]));
+            let values = &[1., 2., 3., 4.];
+            m.set_row([0, 0], values);
+            let values = &[5., 6., 7., 8.];
+            m.set_row([1, 0], values);
+            let values = &[9., 10., 11., 12.];
+            m.set_row([2, 0], values);
 
-        check_row(&transposed, 0, [1., 5., 9.]);
-        check_row(&transposed, 1, [2., 6., 10.]);
-        check_row(&transposed, 2, [3., 7., 11.]);
-        check_row(&transposed, 3, [4., 8., 12.]);
-        expect_panic(|| transposed.get([4, 0]));
+            let transposed = m.t();
+            assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
-        // quick sanity check on double-transposition
-        let double_transposed = transposed.t();
-        check_row(&double_transposed, 0, [1., 2., 3., 4.]);
-    }
+            check_row(&transposed, 0, [1., 5., 9.]);
+            check_row(&transposed, 1, [2., 6., 10.]);
+            check_row(&transposed, 2, [3., 7., 11.]);
+            check_row(&transposed, 3, [4., 8., 12.]);
+            expect_panic(|| transposed.get([4, 0]));
 
-    #[test]
-    fn transposed_set_row() {
-        let mut m = Matrix::new_matrix(3, 4);
+            // quick sanity check on double-transposition
+            let double_transposed = transposed.t();
+            check_row(&double_transposed, 0, [1., 2., 3., 4.]);
+        }
 
-        let mut transposed = m.t();
-        let values = &[1., 2., 3.];
-        transposed.set_row([1, 0], values);
+        #[test]
+        fn transposed_set_row() {
+            let mut m = Matrix::new_matrix(3, 4);
 
-        check_row(&transposed, 0, [0., 0., 0.]);
-        check_row(&transposed, 1, [1., 2., 3.]);
-        check_row(&transposed, 2, [0., 0., 0.]);
-        check_row(&transposed, 3, [0., 0., 0.]);
-    }
+            let mut transposed = m.t();
+            let values = &[1., 2., 3.];
+            transposed.set_row([1, 0], values);
 
-    fn check_row<const N: usize>(m: &Matrix, row: usize, expected: [f32; N]) {
-        let actual: Vec<_> = (0..N).map(|i| m.get([row, i])).collect();
-        let expected = Vec::from(expected);
-        assert_eq!(actual, expected);
+            check_row(&transposed, 0, [0., 0., 0.]);
+            check_row(&transposed, 1, [1., 2., 3.]);
+            check_row(&transposed, 2, [0., 0., 0.]);
+            check_row(&transposed, 3, [0., 0., 0.]);
+        }
 
-        expect_panic(|| m.get([row, N]))
+        fn check_row<const N: usize>(m: &Matrix, row: usize, expected: [f32; N]) {
+            let actual: Vec<_> = (0..N).map(|i| m.get([row, i])).collect();
+            let expected = Vec::from(expected);
+            assert_eq!(actual, expected);
+
+            expect_panic(|| m.get([row, N]))
+        }
     }
 
     fn expect_panic<X>(f: impl FnOnce() -> X + panic::UnwindSafe) {
