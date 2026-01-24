@@ -12,6 +12,9 @@ pub type Matrix = Tensor<2>;
 
 impl<const R: usize> Tensor<R> {
     pub fn new(shape: Shape<R>) -> Self {
+        if R == 0 {
+            panic!("0-tensors are not allowed");
+        }
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
         // each dimension back needs to have a stride-size for all the dimensions before it.
@@ -24,7 +27,7 @@ impl<const R: usize> Tensor<R> {
         Self {
             data: vec![0.0; shape.num_elements()],
             shape,
-            strides: strides.into(),
+            strides: Shape::new(strides),
         }
     }
 
@@ -32,27 +35,25 @@ impl<const R: usize> Tensor<R> {
         self.shape
     }
 
-    pub fn get(&self, indices: [usize; R]) -> f32 {
-        indices.iter().zip(self.shape.iter()).for_each(|(idx, dim)| {
-            if idx >= dim {
-                panic!("index out of range: can't get {indices:?} on {} tensor", self.shape);
-            }
-        });
-        let flat_index = indices
-            .iter()
-            .zip(self.strides.iter())
-            .map(|(idx, stride)| idx * stride)
-            .sum::<usize>();
-
-        self.data[flat_index]
+    fn data_offset(&self, indices: [usize; R]) -> usize {
+        let mut offset = 0;
+        for i in 0..R {
+            offset += self.strides[i] * indices[i]
+        }
+        offset
     }
 
-    pub fn transposed(self, dim0: usize, dim1: usize) -> Self {
-        Self {
-            data: self.data,
-            shape: self.shape.swapped(dim0, dim1),
-            strides: self.strides.swapped(dim0, dim1),
+    pub fn get(&self, indices: [usize; R]) -> f32 {
+        if self.shape.iter().zip(indices).any(|(dim, idx)| idx >= *dim) {
+            panic!("index out of range: can't get {indices:?} on {} tensor", self.shape);
         }
+        self.data[self.data_offset(indices)]
+    }
+
+    pub fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
+        self.shape.swap(dim0, dim1);
+        self.strides.swap(dim0, dim1);
+        self
     }
 }
 
