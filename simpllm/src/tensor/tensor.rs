@@ -51,6 +51,34 @@ impl<const R: usize> Tensor<R> {
         self.data[self.data_offset(indices)]
     }
 
+    /// Performs an action on a row and returns the result.
+    ///
+    /// The row indices work similarly to [`Self::set_row`].
+    ///
+    /// The row is provided as a borrowed slice for efficiency: if it's possible to read it directly from the tensor's
+    /// underlying data, then this method will do that.
+    pub fn mut_row(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32])) {
+        let read_start = self.data_offset(indices);
+        let read_len = self.shape[R - 1] - indices[R - 1];
+
+        if self.strides[R - 1] == 1 {
+            // Row-major format; we can just memcpy
+            let data = &mut self.data[read_start..read_start + read_len];
+            f(data);
+        } else {
+            let stride: usize = (0..R - 1).map(|i| self.strides[i] * self.shape[i]).sum();
+            let mut data = vec![0.; read_len];
+            let mut offset = read_start;
+            for idx in 0..data.len() {
+                data[idx] = self.data[offset];
+                offset += stride;
+            }
+            f(&mut data);
+            // now, write it back
+            self.set_row(indices, &data);
+        }
+    }
+
     pub fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
         self.shape.swap(dim0, dim1);
         self.strides.swap(dim0, dim1);
@@ -95,9 +123,10 @@ impl<const R: usize> Tensor<R> {
             self.shape,
             values.len()
         );
+        let write_len = self.shape[R - 1] - row_offset;
         if self.strides[R - 1] == 1 {
             // Row-major format; we can just memcpy
-            self.data[write_start..write_start + self.shape[R - 1]].copy_from_slice(values);
+            self.data[write_start..write_start + write_len].copy_from_slice(values);
         } else {
             let stride: usize = (0..R - 1).map(|i| self.strides[i] * self.shape[i]).sum();
             let mut offset = write_start;
@@ -362,6 +391,12 @@ mod tests {
             check_row(&m, 0, [1., 2., 3., 4.]);
             check_row(&m, 1, [5., 6., 7., 8.]);
             check_row(&m, 2, [9., 10., 11., 12.]);
+
+            m.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            check_row(&m, 1, [50., 60., 70., 80.]);
+            // sub-row
+            m.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            check_row(&m, 1, [50., 600., 700., 800.]);
         }
 
         #[test]
@@ -379,7 +414,7 @@ mod tests {
             m.set_row([1, 0], &[5., 6., 7., 8.]);
             m.set_row([2, 0], &[9., 10., 11., 12.]);
 
-            let transposed = m.t();
+            let mut transposed = m.t();
             assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
             check_row(&transposed, 0, [1., 5., 9.]);
@@ -405,6 +440,12 @@ mod tests {
             check_row(&transposed, 1, [1., 2., 3.]);
             check_row(&transposed, 2, [0., 0., 0.]);
             check_row(&transposed, 3, [0., 0., 0.]);
+
+            transposed.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            check_row(&transposed, 1, [10., 20., 30.]);
+            // sub-row
+            transposed.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            check_row(&transposed, 1, [10., 200., 300.]);
         }
 
         fn check_row<const N: usize>(m: &Matrix, row: usize, expected: [f32; N]) {
