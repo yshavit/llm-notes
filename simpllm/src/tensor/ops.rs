@@ -95,6 +95,167 @@ mod tests {
         }
     }
 
+    mod tensor_3 {
+        use super::*;
+
+        #[test]
+        fn check_matmul_3x2() {
+            // Test batched matmul: [2, 3, 4] × [4, 5] -> [2, 3, 5]
+            // Two batches, each doing a (3x4) × (4x5) = (3x5) multiplication
+
+            let mut a: Tensor<3> = Tensor::new([2, 3, 4]);
+            // Batch 0
+            a.set_row([0, 0, 0], &[1., 2., 3., 4.]);
+            a.set_row([0, 1, 0], &[5., 6., 7., 8.]);
+            a.set_row([0, 2, 0], &[9., 10., 11., 12.]);
+            // Batch 1
+            a.set_row([1, 0, 0], &[13., 14., 15., 16.]);
+            a.set_row([1, 1, 0], &[17., 18., 19., 20.]);
+            a.set_row([1, 2, 0], &[21., 22., 23., 24.]);
+
+            let mut b: Tensor<2> = Tensor::new_matrix(4, 5);
+            b.set_row([0, 0], &[100., 200., 300., 400., 500.]);
+            b.set_row([1, 0], &[600., 700., 800., 900., 1000.]);
+            b.set_row([2, 0], &[1100., 1200., 1300., 1400., 1500.]);
+            b.set_row([3, 0], &[1600., 1700., 1800., 1900., 2000.]);
+
+            let mut out: Tensor<3> = Tensor::new([2, 3, 5]);
+
+            // matmul(a, b, &mut out);
+
+            let mut expected: Tensor<3> = Tensor::new([2, 3, 5]);
+            // Batch 0, row 0: [1., 2., 3., 4.] × b
+            expected.set_row(
+                [0, 0, 0],
+                &[
+                    1. * 100. + 2. * 600. + 3. * 1100. + 4. * 1600.,
+                    1. * 200. + 2. * 700. + 3. * 1200. + 4. * 1700.,
+                    1. * 300. + 2. * 800. + 3. * 1300. + 4. * 1800.,
+                    1. * 400. + 2. * 900. + 3. * 1400. + 4. * 1900.,
+                    1. * 500. + 2. * 1000. + 3. * 1500. + 4. * 2000.,
+                ],
+            );
+            // Batch 0, row 1: [5., 6., 7., 8.] × b
+            expected.set_row(
+                [0, 1, 0],
+                &[
+                    5. * 100. + 6. * 600. + 7. * 1100. + 8. * 1600.,
+                    5. * 200. + 6. * 700. + 7. * 1200. + 8. * 1700.,
+                    5. * 300. + 6. * 800. + 7. * 1300. + 8. * 1800.,
+                    5. * 400. + 6. * 900. + 7. * 1400. + 8. * 1900.,
+                    5. * 500. + 6. * 1000. + 7. * 1500. + 8. * 2000.,
+                ],
+            );
+            // Batch 0, row 2: [9., 10., 11., 12.] × b
+            expected.set_row(
+                [0, 2, 0],
+                &[
+                    9. * 100. + 10. * 600. + 11. * 1100. + 12. * 1600.,
+                    9. * 200. + 10. * 700. + 11. * 1200. + 12. * 1700.,
+                    9. * 300. + 10. * 800. + 11. * 1300. + 12. * 1800.,
+                    9. * 400. + 10. * 900. + 11. * 1400. + 12. * 1900.,
+                    9. * 500. + 10. * 1000. + 11. * 1500. + 12. * 2000.,
+                ],
+            );
+            // Batch 1, row 0: [13., 14., 15., 16.] × b
+            expected.set_row(
+                [1, 0, 0],
+                &[
+                    13. * 100. + 14. * 600. + 15. * 1100. + 16. * 1600.,
+                    13. * 200. + 14. * 700. + 15. * 1200. + 16. * 1700.,
+                    13. * 300. + 14. * 800. + 15. * 1300. + 16. * 1800.,
+                    13. * 400. + 14. * 900. + 15. * 1400. + 16. * 1900.,
+                    13. * 500. + 14. * 1000. + 15. * 1500. + 16. * 2000.,
+                ],
+            );
+            // Batch 1, row 1: [17., 18., 19., 20.] × b
+            expected.set_row(
+                [1, 1, 0],
+                &[
+                    17. * 100. + 18. * 600. + 19. * 1100. + 20. * 1600.,
+                    17. * 200. + 18. * 700. + 19. * 1200. + 20. * 1700.,
+                    17. * 300. + 18. * 800. + 19. * 1300. + 20. * 1800.,
+                    17. * 400. + 18. * 900. + 19. * 1400. + 20. * 1900.,
+                    17. * 500. + 18. * 1000. + 19. * 1500. + 20. * 2000.,
+                ],
+            );
+            // Batch 1, row 2: [21., 22., 23., 24.] × b
+            expected.set_row(
+                [1, 2, 0],
+                &[
+                    21. * 100. + 22. * 600. + 23. * 1100. + 24. * 1600.,
+                    21. * 200. + 22. * 700. + 23. * 1200. + 24. * 1700.,
+                    21. * 300. + 22. * 800. + 23. * 1300. + 24. * 1800.,
+                    21. * 400. + 22. * 900. + 23. * 1400. + 24. * 1900.,
+                    21. * 500. + 22. * 1000. + 23. * 1500. + 24. * 2000.,
+                ],
+            );
+
+            assert_eq!(out, expected);
+        }
+
+        #[test]
+        #[should_panic]
+        fn matmul_3x2_inner_dim_mismatch() {
+            let a: Tensor<3> = Tensor::new([2, 3, 4]);
+            let b: Tensor<2> = Tensor::new_matrix(5, 6); // Wrong: 4 != 5
+            let mut out: Tensor<3> = Tensor::new([2, 3, 6]);
+            // matmul(a, b, &mut out);
+            panic!("Placeholder panic until matmul is implemented");
+        }
+
+        #[test]
+        #[should_panic]
+        fn matmul_3x2_output_mismatch() {
+            let a: Tensor<3> = Tensor::new([2, 3, 4]);
+            let b: Tensor<2> = Tensor::new_matrix(4, 5);
+            let mut out: Tensor<3> = Tensor::new([2, 4, 5]); // Wrong: middle dim should be 3
+            // matmul(a, b, &mut out);
+            panic!("Placeholder panic until matmul is implemented");
+        }
+
+        #[test]
+        fn matmul_3x2_batch_size_one() {
+            // Edge case: batch size of 1 should still work
+            let mut a: Tensor<3> = Tensor::new([1, 2, 3]);
+            a.set_row([0, 0, 0], &[1., 2., 3.]);
+            a.set_row([0, 1, 0], &[4., 5., 6.]);
+
+            let mut b: Tensor<2> = Tensor::new_matrix(3, 4);
+            b.set_row([0, 0], &[1., 2., 3., 4.]);
+            b.set_row([1, 0], &[5., 6., 7., 8.]);
+            b.set_row([2, 0], &[9., 10., 11., 12.]);
+
+            let mut out: Tensor<3> = Tensor::new([1, 2, 4]);
+
+            // matmul(a, b, &mut out);
+
+            let mut expected: Tensor<3> = Tensor::new([1, 2, 4]);
+            // Batch 0, row 0: [1., 2., 3.] × b
+            expected.set_row(
+                [0, 0, 0],
+                &[
+                    1. * 1. + 2. * 5. + 3. * 9.,
+                    1. * 2. + 2. * 6. + 3. * 10.,
+                    1. * 3. + 2. * 7. + 3. * 11.,
+                    1. * 4. + 2. * 8. + 3. * 12.,
+                ],
+            );
+            // Batch 0, row 1: [4., 5., 6.] × b
+            expected.set_row(
+                [0, 1, 0],
+                &[
+                    4. * 1. + 5. * 5. + 6. * 9.,
+                    4. * 2. + 5. * 6. + 6. * 10.,
+                    4. * 3. + 5. * 7. + 6. * 11.,
+                    4. * 4. + 5. * 8. + 6. * 12.,
+                ],
+            );
+
+            assert_eq!(out, expected);
+        }
+    }
+
     fn array_matrix<const R: usize, const C: usize>() -> Tensor<2> {
         Tensor::new_matrix(R, C)
     }
