@@ -66,6 +66,27 @@ impl<const R: usize> Tensor<R> {
             let data = &mut self.data[read_start..read_start + read_len];
             f(data);
         } else {
+            let mut data = vec![0.; read_len];
+            self.with_row(indices, |row| data.copy_from_slice(row));
+            f(&mut data);
+            // now, write it back
+            self.set_row(indices, &data);
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.data.fill(0.);
+    }
+
+    pub fn with_row(&self, indices: [usize; R], f: impl FnOnce(&[f32])) {
+        let read_start = self.data_offset(indices);
+        let read_len = self.shape[R - 1] - indices[R - 1];
+
+        if self.strides[R - 1] == 1 {
+            // Row-major format; we can just memcpy
+            let data = &self.data[read_start..read_start + read_len];
+            f(data);
+        } else {
             let stride: usize = (0..R - 1).map(|i| self.strides[i] * self.shape[i]).sum();
             let mut data = vec![0.; read_len];
             let mut offset = read_start;
@@ -74,8 +95,6 @@ impl<const R: usize> Tensor<R> {
                 offset += stride;
             }
             f(&mut data);
-            // now, write it back
-            self.set_row(indices, &data);
         }
     }
 
@@ -334,6 +353,24 @@ impl Tensor<2> {
 
     pub fn num_cols(&self) -> usize {
         self.shape[1]
+    }
+}
+
+impl Tensor<1> {
+    pub fn new_vector(num_elems: usize) -> Self {
+        Self::new([num_elems])
+    }
+
+    pub fn set_all(&mut self, values: &[f32]) {
+        self.mut_row([0], |old| old.copy_from_slice(values))
+    }
+
+    pub fn as_row_matrix(&self) -> MatrixView<1> {
+        MatrixView::new(self, [0])
+    }
+
+    pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<1> {
+        MatrixViewMut::new(self, [0])
     }
 }
 

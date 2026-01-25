@@ -3,5 +3,7 @@ mod shape;
 mod tensor;
 mod vector;
 
-pub use matmul::matmul;
-pub use shape::Shape;
+pub use matmul::*;
+pub use shape::*;
+pub use tensor::*;
+pub use vector::*;
