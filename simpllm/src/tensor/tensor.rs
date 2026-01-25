@@ -340,7 +340,7 @@ mod tests {
         /// Smoke test of the various shapes of things.
         #[test]
         fn matrix_data_shape() {
-            let m = Matrix::new_matrix(3, 4);
+            let m = Tensor::new_matrix(3, 4);
             assert_eq!(m.num_rows(), 3);
             assert_eq!(m.num_cols(), 4);
             assert_eq!(m.shape(), Shape::new([3, 4]));
@@ -353,7 +353,7 @@ mod tests {
 
         #[test]
         fn data_round_trip() {
-            let mut m = Matrix::new_matrix(3, 4);
+            let mut m = Tensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -367,13 +367,13 @@ mod tests {
         #[test]
         #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
         fn row_mut_set_all_bounds() {
-            let mut m = Matrix::new_matrix(3, 4);
+            let mut m = Tensor::new_matrix(3, 4);
             m.set_row([0, 0], &[1., 2., 3., 4., 5., 6.]);
         }
 
         #[test]
         fn transposition() {
-            let mut m = Matrix::new_matrix(3, 4);
+            let mut m = Tensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -395,7 +395,7 @@ mod tests {
 
         #[test]
         fn transposed_set_row() {
-            let mut m = Matrix::new_matrix(3, 4);
+            let mut m = Tensor::new_matrix(3, 4);
 
             let mut transposed = m.t();
             let values = &[1., 2., 3.];
@@ -545,7 +545,7 @@ mod tests {
 
         #[test]
         fn pretty_matrix() {
-            let mut m = Matrix::new_matrix(3, 4);
+            let mut m = Tensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
