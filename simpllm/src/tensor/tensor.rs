@@ -501,6 +501,35 @@ mod tests {
         }
     }
 
+    mod matrix_view {
+        use super::*;
+
+        #[test]
+        fn matrix_view_round_trip() {
+            let mut t = Tensor::new([4, 2, 3]);
+
+            // Get the second batch (doesn't really matter which)
+            let slice_indices = [1, 0, 0];
+
+            let mut t_mut_matrix = t.matrix_slice_mut(slice_indices);
+
+            assert_eq!(t_mut_matrix.shape(), Shape::new([2, 3]));
+            assert_eq!(t_mut_matrix.num_rows(), 2);
+            assert_eq!(t_mut_matrix.num_cols(), 3);
+            t_mut_matrix.set_row(0, &[1., 2., 3.]);
+            t_mut_matrix.set_row(1, &[4., 5., 6.]);
+
+            // just some spot checks
+            assert_eq!(t_mut_matrix.get(0, 0), 1.);
+            assert_eq!(t_mut_matrix.get(1, 2), 6.);
+
+            // check the non-mut version too. again, just some spot checks
+            let t_matrix = t.matrix_slice(slice_indices);
+            assert_eq!(t_matrix.get(0, 1), 2.);
+            assert_eq!(t_matrix.get(1, 1), 5.);
+        }
+    }
+
     mod pretty {
         use super::*;
 
@@ -566,6 +595,26 @@ mod tests {
                     "|  7 |  8 |    |  9 | 10 |    | 11 | 12 |",
                     "| 13 | 14 |    | 15 | 16 |    | 17 | 18 |",
                     "| 19 | 20 |    | 21 | 22 |    | 23 | 24 |",
+                ]
+                .join("\n")
+            );
+        }
+
+        /// Check the fence post when there's just one batch
+        #[test]
+        fn pretty_tensor_3_batch_is_1() {
+            let mut m = Tensor::new([1, 2, 2]);
+
+            m.set_row([0, 0, 0], &[1., 2.]);
+            m.set_row([0, 1, 0], &[3., 4.]);
+            let pretty = format!("{m}");
+
+            assert_eq!(
+                pretty,
+                [
+                    //
+                    "| 1 | 2 |",
+                    "| 3 | 4 |",
                 ]
                 .join("\n")
             );
