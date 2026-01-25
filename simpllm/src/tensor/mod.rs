@@ -1,6 +1,6 @@
-mod ops;
+mod matmul;
 mod shape;
 mod tensor;
 
-pub use ops::matmul;
+pub use matmul::matmul;
 pub use shape::Shape;
