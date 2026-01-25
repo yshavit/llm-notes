@@ -1,6 +1,5 @@
 use crate::tensor::Shape;
 use std::fmt::{Debug, Display, Formatter};
-use std::ops::Deref;
 
 pub struct Tensor<const R: usize> {
     data: Vec<f32>,
@@ -58,6 +57,31 @@ impl<const R: usize> Tensor<R> {
         self
     }
 
+    /// Returns a matrix slice of this tensor.
+    ///
+    /// The tensor must be at least rank 2. The batch is actually `R-2`, with the last two indices of this tensor being
+    /// the ones that the [`MatrixView`] will represent. (Rust doesn't let us specify a type of `R-2`.) As such, the
+    /// last two elements of `batch` must be `0`.
+    pub fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<R> {
+        assert!(R >= 2, "cannot take matrix slice on vectors");
+        assert!(
+            batch[R - 1] == 0 && batch[R - 2] == 0,
+            "invalid batch {batch:?} into {} tensor",
+            self.shape
+        );
+        MatrixView::new(self, batch)
+    }
+
+    pub fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<R> {
+        assert!(R >= 2, "cannot take matrix slice on vectors");
+        assert!(
+            batch[R - 1] == 0 && batch[R - 2] == 0,
+            "invalid batch {batch:?} into {} tensor",
+            self.shape
+        );
+        MatrixViewMut::new(self, batch)
+    }
+
     /// Sets all or part of a row's values. The first `R-1` indices specify an offset into the tensor, and the last
     /// index specifies an offset into the row. That offset + `values.len()` must be less than the last index's
     /// dimensionality.
@@ -108,6 +132,64 @@ macro_rules! prettier {
 prettier! {1}
 prettier! {2}
 prettier! {3}
+
+macro_rules! matrix_view {
+    ($name:ident $($mut:ident)?) => {
+        pub struct $name<'a, const R: usize> {
+            tensor: &'a $($mut)? Tensor<R>,
+            batch_dimensions: [usize; R],
+        }
+
+        impl<'a, const R: usize> $name<'a, R> {
+            fn new(tensor: &'a $($mut)? Tensor<R>, batch_dimensions: [usize; R]) -> Self {
+                Self {
+                    tensor,
+                    batch_dimensions,
+                }
+            }
+
+            pub fn shape(&self) -> Shape<R> {
+                self.tensor.shape
+            }
+
+            pub fn num_rows(&self) -> usize {
+                self.tensor.shape[R - 1]
+            }
+
+            pub fn num_cols(&self) -> usize {
+                self.tensor.shape[R - 2]
+            }
+
+            pub fn get(&self, row: usize, col: usize) -> f32 {
+                let mut indices = self.batch_dimensions;
+                indices[R - 2] = row;
+                indices[R - 1] = col;
+                self.tensor.get(indices)
+            }
+        }
+
+        impl<'a> From<&'a $($mut)? Tensor<2>> for $name<'a, 2> {
+            fn from(tensor: &'a $($mut)? Tensor<2>) -> Self {
+                $name {
+                    tensor,
+                    batch_dimensions: [0; 2],
+                }
+            }
+        }
+
+    };
+}
+matrix_view! {MatrixView}
+matrix_view! {MatrixViewMut mut}
+
+impl<'a, const R: usize> MatrixViewMut<'a, R> {
+    pub fn set_row(&mut self, row: usize, values: &[f32]) {
+        let mut indices = self.batch_dimensions;
+        indices[R - 2] = row;
+        indices[R - 1] = 0;
+        self.tensor.set_row(indices, values);
+    }
+}
 
 struct Pretty<'a, const R: usize>(&'a Tensor<R>);
 

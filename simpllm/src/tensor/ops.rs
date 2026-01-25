@@ -1,6 +1,12 @@
-use crate::tensor::tensor::Tensor;
+use crate::tensor::tensor::{MatrixView, MatrixViewMut, Tensor};
 
-pub fn matmul(a: Tensor<2>, b: Tensor<2>, out: &mut Tensor<2>) {
+pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
+    a: impl Into<MatrixView<'a, A>>,
+    b: impl Into<MatrixView<'a, B>>,
+    out: impl Into<MatrixViewMut<'a, C>>,
+) {
+    let (a, b) = (a.into(), b.into());
+    let mut out = out.into();
     assert!(
         a.num_cols() == b.num_rows() && a.num_rows() == out.num_rows() && b.num_cols() == b.num_cols(),
         "can't multiply ({}) and ({}) into ({})",
@@ -31,12 +37,12 @@ pub fn matmul(a: Tensor<2>, b: Tensor<2>, out: &mut Tensor<2>) {
         // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
         // cache lines to predict our reads.
         for k in 0..a.num_cols() {
-            let a_val = a.get([row_idx, k]);
+            let a_val = a.get(row_idx, k);
             for col_idx in 0..b.num_cols() {
-                row_vals[col_idx] += a_val * b.get([k, col_idx]);
+                row_vals[col_idx] += a_val * b.get(k, col_idx);
             }
         }
-        out.set_row([row_idx, 0], &row_vals);
+        out.set_row(row_idx, &row_vals);
     }
 }
 
@@ -64,7 +70,7 @@ mod tests {
             ]
             .into();
             let mut out: Tensor<2> = [[0.0; 2]; 3].into();
-            matmul(a, b, &mut out);
+            matmul(&a, &b, &mut out);
             assert_eq!(
                 out,
                 [
@@ -82,7 +88,7 @@ mod tests {
             let a = array_matrix::<2, 3>();
             let b = array_matrix::<2, 3>();
             let mut out = array_matrix::<2, 3>();
-            matmul(a, b, &mut out);
+            matmul(&a, &b, &mut out);
         }
 
         #[test]
@@ -91,7 +97,7 @@ mod tests {
             let a = array_matrix::<2, 3>();
             let b = array_matrix::<3, 4>();
             let mut out = array_matrix::<4, 2>();
-            matmul(a, b, &mut out);
+            matmul(&a, &b, &mut out);
         }
     }
 
