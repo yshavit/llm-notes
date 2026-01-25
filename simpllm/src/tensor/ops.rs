@@ -1,5 +1,25 @@
 use crate::tensor::tensor::{MatrixView, MatrixViewMut, Tensor};
 
+pub fn matmul_batched(a: &Tensor<3>, b: &Tensor<2>, out: &mut Tensor<3>) {
+    assert_eq!(
+        a.shape()[0],
+        out.shape()[0],
+        "batch dimensions don't match: can't multiply ({}) and ({}) into ({})",
+        a.shape(),
+        b.shape(),
+        out.shape()
+    );
+    // We don't need to check the non-batch dimensions: matmul will do that for us
+
+    let num_batches = a.shape()[0];
+    for batch in 0..num_batches {
+        let batch_indices = [batch, 0, 0];
+        let a_matrix = a.matrix_slice(batch_indices);
+        let out_matrix = out.matrix_slice_mut(batch_indices);
+        matmul(a_matrix, b, out_matrix);
+    }
+}
+
 pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
     a: impl Into<MatrixView<'a, A>>,
     b: impl Into<MatrixView<'a, B>>,
@@ -15,7 +35,7 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
         out.shape(),
     );
 
-    let mut row_vals = vec![0.0; a.num_cols()];
+    let mut row_vals = vec![0.0; out.num_cols()];
     for row_idx in 0..a.num_rows() {
         row_vals.fill(0.0);
 
@@ -36,10 +56,11 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
         // loop (each row of a will have to iterate over b's row N times, where N is a's column count), a and b are
         // both always read in row-sequence order. This is very cache-friendly, and makes it easier for the L1/L2/L3
         // cache lines to predict our reads.
-        for k in 0..a.num_cols() {
-            let a_val = a.get(row_idx, k);
-            for col_idx in 0..b.num_cols() {
-                row_vals[col_idx] += a_val * b.get(k, col_idx);
+        for a_col in 0..a.num_cols() {
+            let a_val = a.get(row_idx, a_col);
+            for b_col in 0..b.num_cols() {
+                // also out-col
+                row_vals[b_col] += a_val * b.get(a_col, b_col);
             }
         }
         out.set_row(row_idx, &row_vals);
@@ -55,7 +76,7 @@ mod tests {
         use super::*;
 
         #[test]
-        fn check_matmul() {
+        fn check_matmul_more_rows_than_cols() {
             let a: Tensor<2> = [
                 // comment, so that rustfmt doesn't collapse this to a single line
                 [1., 2.],
@@ -77,6 +98,33 @@ mod tests {
                     [(1. * 7.) + (2. * 9.), (1. * 8.) + (2. * 10.)],
                     [(3. * 7.) + (4. * 9.), (3. * 8.) + (4. * 10.)],
                     [(5. * 7.) + (6. * 9.), (5. * 8.) + (6. * 10.)],
+                ]
+                .into()
+            );
+        }
+
+        #[test]
+        fn check_matmul_more_cols_than_rows() {
+            let a: Tensor<2> = [
+                // comment, so that rustfmt doesn't collapse this to a single line
+                [1., 2., 3.],
+                [4., 5., 6.],
+            ]
+            .into();
+            let b: Tensor<2> = [
+                //
+                [7., 8.],
+                [9., 10.],
+                [11., 12.],
+            ]
+            .into();
+            let mut out: Tensor<2> = Tensor::new_matrix(2, 2);
+            matmul(&a, &b, &mut out);
+            assert_eq!(
+                out,
+                [
+                    [(1. * 7.) + (2. * 9.) + (3. * 11.), (1. * 8.) + (2. * 10.) + (3. * 12.),],
+                    [(4. * 7.) + (5. * 9.) + (6. * 11.), (4. * 8.) + (5. * 10.) + (6. * 12.),],
                 ]
                 .into()
             );
@@ -106,9 +154,6 @@ mod tests {
 
         #[test]
         fn check_matmul_3x2() {
-            // Test batched matmul: [2, 3, 4] × [4, 5] -> [2, 3, 5]
-            // Two batches, each doing a (3x4) × (4x5) = (3x5) multiplication
-
             let mut a: Tensor<3> = Tensor::new([2, 3, 4]);
             // Batch 0
             a.set_row([0, 0, 0], &[1., 2., 3., 4.]);
@@ -127,7 +172,7 @@ mod tests {
 
             let mut out: Tensor<3> = Tensor::new([2, 3, 5]);
 
-            // matmul(a, b, &mut out);
+            matmul_batched(&a, &b, &mut out);
 
             let mut expected: Tensor<3> = Tensor::new([2, 3, 5]);
             // Batch 0, row 0: [1., 2., 3., 4.] × b
@@ -201,23 +246,21 @@ mod tests {
         }
 
         #[test]
-        #[should_panic]
+        #[should_panic = "can't multiply (3x4) and (9x6) into (3x6)"]
         fn matmul_3x2_inner_dim_mismatch() {
             let a: Tensor<3> = Tensor::new([2, 3, 4]);
-            let b: Tensor<2> = Tensor::new_matrix(5, 6); // Wrong: 4 != 5
+            let b: Tensor<2> = Tensor::new_matrix(9, 6);
             let mut out: Tensor<3> = Tensor::new([2, 3, 6]);
-            // matmul(a, b, &mut out);
-            panic!("Placeholder panic until matmul is implemented");
+            matmul_batched(&a, &b, &mut out);
         }
 
         #[test]
-        #[should_panic]
+        #[should_panic = "batch dimensions don't match: can't multiply (2x3x4) and (4x5) into (9x3x5)"]
         fn matmul_3x2_output_mismatch() {
             let a: Tensor<3> = Tensor::new([2, 3, 4]);
             let b: Tensor<2> = Tensor::new_matrix(4, 5);
-            let mut out: Tensor<3> = Tensor::new([2, 4, 5]); // Wrong: middle dim should be 3
-            // matmul(a, b, &mut out);
-            panic!("Placeholder panic until matmul is implemented");
+            let mut out: Tensor<3> = Tensor::new([9, 3, 5]);
+            matmul_batched(&a, &b, &mut out);
         }
 
         #[test]
@@ -234,7 +277,7 @@ mod tests {
 
             let mut out: Tensor<3> = Tensor::new([1, 2, 4]);
 
-            // matmul(a, b, &mut out);
+            matmul_batched(&a, &b, &mut out);
 
             let mut expected: Tensor<3> = Tensor::new([1, 2, 4]);
             // Batch 0, row 0: [1., 2., 3.] × b

@@ -148,16 +148,16 @@ macro_rules! matrix_view {
                 }
             }
 
-            pub fn shape(&self) -> Shape<R> {
-                self.tensor.shape
+            pub fn shape(&self) -> Shape<2> {
+                Shape::new([self.num_rows(), self.num_cols()])
             }
 
             pub fn num_rows(&self) -> usize {
-                self.tensor.shape[R - 1]
+                self.tensor.shape[R - 2]
             }
 
             pub fn num_cols(&self) -> usize {
-                self.tensor.shape[R - 2]
+                self.tensor.shape[R - 1]
             }
 
             pub fn get(&self, row: usize, col: usize) -> f32 {
