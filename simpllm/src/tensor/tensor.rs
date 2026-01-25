@@ -1,5 +1,6 @@
 use crate::tensor::Shape;
 use std::fmt::{Debug, Display, Formatter};
+use std::ops::Deref;
 
 pub struct Tensor<const R: usize> {
     data: Vec<f32>,
@@ -11,8 +12,9 @@ pub type Vector = Tensor<1>;
 pub type Matrix = Tensor<2>;
 
 impl<const R: usize> Tensor<R> {
-    pub fn new(shape: Shape<R>) -> Self {
+    pub fn new<S: Into<Shape<R>>>(shape: S) -> Self {
         assert_ne!(R, 0, "0-tensors are not allowed");
+        let shape: Shape<R> = shape.into();
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
         // each dimension back needs to have a stride-size for all the dimensions before it.
@@ -94,36 +96,93 @@ impl<const R: usize> Debug for Tensor<R> {
     }
 }
 
-impl Display for Tensor<2> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Pretty(self).fmt(f)
-    }
+macro_rules! prettier {
+    ($r:literal) => {
+        impl Display for Tensor<$r> {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                Pretty(self).fmt(f)
+            }
+        }
+    };
 }
+prettier! {1}
+prettier! {2}
+prettier! {3}
 
 struct Pretty<'a, const R: usize>(&'a Tensor<R>);
 
-impl<'a> Display for Pretty<'a, 2> {
+impl<'a, const R: usize> Display for Pretty<'a, R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let tensor = self.0;
+        if R >= 4 {
+            return write!(f, "({} tensor)", tensor.shape);
+        }
         // Turn all the values into equal-length, padded strings
-        let mut cell_strings = Vec::with_capacity(tensor.num_rows() * tensor.num_cols());
+        let mut cell_strings = Vec::with_capacity(tensor.shape.num_elements());
         let mut max_cell_len = 0;
-        for row in 0..tensor.num_rows() {
-            for col in 0..tensor.num_cols() {
-                let val_string = tensor.get([row, col]).to_string();
-                max_cell_len = max_cell_len.max(val_string.len());
-                cell_strings.push(val_string);
+
+        let indices: Box<dyn Iterator<Item = [usize; R]>> = match R {
+            1 | 2 => Box::new(tensor.shape.iter_indices()),
+            3 => {
+                // Different from the standard: each visual row is a batch and then a column.
+                //
+                // Conceptually:
+                // for row in rows:
+                //   for batch in batches:
+                //      for column in columns:
+                //          yield (batch, row, column)
+                let mut batch: usize = 0;
+                let mut col: usize = 0;
+                let mut row: usize = 0;
+                let (max_batch, max_row, max_col) = (tensor.shape[0], tensor.shape[1], tensor.shape[2]);
+                Box::new(std::iter::from_fn(move || {
+                    if col >= max_col {
+                        col = 0;
+                        batch += 1;
+                    }
+                    if batch >= max_batch {
+                        batch = 0;
+                        row += 1;
+                    }
+                    if row >= max_row {
+                        None
+                    } else {
+                        let mut idx = [0; R];
+                        idx.copy_from_slice(&[batch, row, col]);
+                        col += 1;
+                        Some(idx)
+                    }
+                }))
             }
+
+            _ => Box::new(std::iter::empty()),
+        };
+        for idx in indices {
+            let val_string = tensor.get(idx).to_string();
+            max_cell_len = max_cell_len.max(val_string.len());
+            cell_strings.push(val_string);
         }
         cell_strings
             .iter_mut()
             .for_each(|s| *s = format!("{:>width$}", s, width = max_cell_len));
 
         // Now write them all. The cell_strings is already in row-major order, so we can just keep track of newlines.
-        let mut line_tracker = tensor.num_cols(); // start a newline right away
+        let line_length = match R {
+            1 => tensor.shape[0],
+            2 => tensor.shape[1],
+            3 => tensor.shape[0] * tensor.shape[2], // each visual row is a batch and a row
+            _ => {
+                return Ok(()); // shouldn't ever get here!
+            }
+        };
+        let mut batch_length = match R {
+            3 => Some((tensor.shape[2], tensor.shape[2])), // column lengths
+            _ => None,
+        };
+        let mut line_tracker = line_length; // start a newline right away
         let mut first_line = true;
         for s in cell_strings {
-            if line_tracker >= tensor.num_cols() {
+            if line_tracker >= line_length {
                 if first_line {
                     first_line = false;
                     write!(f, "|")?;
@@ -131,6 +190,15 @@ impl<'a> Display for Pretty<'a, 2> {
                     write!(f, "\n|")?;
                 }
                 line_tracker = 0;
+            }
+            if let Some((batch_tracker, batch_length)) = &mut batch_length {
+                if batch_tracker >= batch_length {
+                    if line_tracker > 0 {
+                        write!(f, "    |")?;
+                    }
+                    *batch_tracker = 0;
+                }
+                *batch_tracker += 1;
             }
             write!(f, " {s} |")?;
             line_tracker += 1;
@@ -355,6 +423,16 @@ mod tests {
         use super::*;
 
         #[test]
+        fn pretty_vector() {
+            let mut m = Tensor::new([4]);
+
+            m.set_row([0], &[1., 2., 3., 4.]);
+
+            let pretty = format!("{m}");
+            assert_eq!(pretty, "| 1 | 2 | 3 | 4 |");
+        }
+
+        #[test]
         fn pretty_matrix() {
             let mut m = Matrix::new_matrix(3, 4);
 
@@ -374,6 +452,52 @@ mod tests {
                 ]
                 .join("\n")
             );
+        }
+
+        #[test]
+        fn pretty_tensor_3() {
+            let mut m = Tensor::new([3, 4, 2]);
+
+            m.set_row([0, 0, 0], &[1., 2.]);
+            m.set_row([1, 0, 0], &[3., 4.]);
+            m.set_row([2, 0, 0], &[5., 6.]);
+
+            m.set_row([0, 1, 0], &[7., 8.]);
+            m.set_row([1, 1, 0], &[9., 10.]);
+            m.set_row([2, 1, 0], &[11., 12.]);
+
+            m.set_row([0, 2, 0], &[13., 14.]);
+            m.set_row([1, 2, 0], &[15., 16.]);
+            m.set_row([2, 2, 0], &[17., 18.]);
+
+            m.set_row([0, 3, 0], &[19., 20.]);
+            m.set_row([1, 3, 0], &[21., 22.]);
+            m.set_row([2, 3, 0], &[23., 24.]);
+
+            let pretty = format!("{m}");
+
+            assert_eq!(
+                pretty,
+                [
+                    //
+                    "|  1 |  2 |    |  3 |  4 |    |  5 |  6 |",
+                    "|  7 |  8 |    |  9 | 10 |    | 11 | 12 |",
+                    "| 13 | 14 |    | 15 | 16 |    | 17 | 18 |",
+                    "| 19 | 20 |    | 21 | 22 |    | 23 | 24 |",
+                ]
+                .join("\n")
+            );
+        }
+
+        #[test]
+        fn pretty_tensor_4() {
+            let m = Tensor::new([1, 2, 3, 4]);
+
+            // can't pretty it via a tensor method; use prettier directly
+            let pretty = format!("{}", Pretty(&m));
+
+            // no pretty text for it (which is why we don't expose it)
+            assert_eq!(pretty, "(1x2x3x4 tensor)");
         }
     }
 

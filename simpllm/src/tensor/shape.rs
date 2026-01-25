@@ -25,6 +25,12 @@ impl<const R: usize> DerefMut for Shape<R> {
     }
 }
 
+impl<const R: usize> From<[usize; R]> for Shape<R> {
+    fn from(value: [usize; R]) -> Self {
+        Shape::new(value)
+    }
+}
+
 impl<const R: usize> Shape<R> {
     pub fn new(dimensions: [usize; R]) -> Self {
         let result = Self(dimensions);
