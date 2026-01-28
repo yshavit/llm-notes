@@ -14,7 +14,11 @@ impl LayerTransform {
         }
     }
 
-    pub fn apply(&mut self, inputs: &Vector, activations: &mut Vector) {
+    pub fn out_dims(&self) -> usize {
+        self.biases.len()
+    }
+
+    pub fn apply(&self, inputs: &Vector, activations: &mut Vector) {
         // matmul will overwrite the activations, so we don't need to zero them out first
         matmul(inputs.as_row_matrix(), &self.weights, activations.as_row_matrix_mut());
         activations.mut_row([0], |row| {
