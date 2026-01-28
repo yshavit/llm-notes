@@ -1,6 +1,6 @@
 # Algebraic reformulations
 
-:::{status} 2
+:::{status} 1
 :::
 
 I mentioned way back [in the introduction](#conceptual-layers) that I find it useful to think about LLMs first in terms of the fundamental concepts, and then in terms of the algebraic reformulations of those concepts. Until now, I've been focusing exclusively on the conceptual layers. In this chapter, I'll describe how those get bundled into mathematical objects that are more efficient to compute.
@@ -344,6 +344,7 @@ This may look familiar: it's just the matrix multiplication $AV$.
 
 So, attention is $AV$. If we substitute $A$ with the expression from @scale-and-softmax-matrix above, we get:
 
+(attention-formula)=
 $$
 \text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)V
 $$
@@ -364,55 +365,186 @@ A GPU is going to eat this for breakfast!
 
 #### Multi-head attention
 
-Back in the chapter on attention, I talked about how [LLMs use multiple heads](#multi-head) within a single attention layer, each (hopefully!) learning a different relationship. The attention layer concatenates these heads, and then uses a final projection $W_o$ to combine them.
+Back in the chapter on attention, I talked about how [LLMs use multiple heads](#multi-head) within a single attention layer, each learning a different relationship. The attention layer concatenates these heads, and then uses a final projection $W_o$ to combine them.
 
 Described as such, this would require looping over each of the heads to perform the attention function we just saw. It may not surprise you that this can be done without looping, using tensor math.
 
-- Instead of the weights being $d \times d$, they're $d \times dh$; in other words, each weight matrix contains the full, multi-head parameters.
-- When we multiply the input $T$ (an $n \times d$ matrix) against the multi-head weights, we get matrices of size $n \times dh$. These are the new, multi-head $Q$, $K$, and $V$ matrices.
-- We "reshape" these into rank-3 tensors $(n, h, d)$. This basically just means conceptually splitting along the columns:
-
-  $$
-  \begin{bmatrix}
-  a & b & c & d \\
-  e & f & g & h \\
-  i & j & k & l
-  \end{bmatrix}
-  \rightarrow
-  \underbrace{
-    \begin{bmatrix}
-    a & b \\
-    e & f \\
-    i & j
-    \end{bmatrix}
-  }_{\text{head 1}}
-  \underbrace{
-    \begin{bmatrix}
-    c & d \\
-    g & h \\
-    k & l
-    \end{bmatrix}
-  }_{\text{head 2}}
-  $$
-
-  For example, $(3, 2, 1)$ corresponds to row 3, head 2, embedding dimension 1: element $k$ above.
-
-  At this point, each head is an $n \times d$ matrix.
-
-- We then transpose those to $(h, n, d)$. This doesn't change the shape or contents of the heads, it just changes how we index them. For example, $k$ would now be $(2, 3, 1)$.
-- Now we calculate the attention weights $A$ as we did before.
-  - The tensor libraries conceptually treat the first dimension ($h$, in our case) as a batching dimension. This means they do the matrix multiplication on each $h$ of the $(n, d)$ sub-matrices. The actual implementation is highly optimized.
-  - Each $n \times d$ matrix becomes an $n \times n$ matrix, so the result is an $h \times n \times n$ tensor.
-- We then multiply this by the multi-head value matrix $V_{h,n,d}$ to get an attention output $(h, n, d)$
-- And finally, we transpose this back to $(n, h, d)$, reshape it back to $(n, d)$ and apply the $W_o$ projection.
-
-These operations are highly optimized in the software that runs them, and down to the hardware level. In particular, the transposition operations don't move any actual data: they just change how the data gets indexed. This means they take essentially no time.
-
-:::{note} Terminology note
-In this section, I've been using $d$ for the per-head dimensionality, and $dh$ for the attention's overall dimensionality. This keeps things consistent with the terminology I've used throughout the book, which treats $d$ as the attention's conceptual dimensionality, and the multi-head configuration as an optimization.
-
-Most LLM literature inverts this: it treats the multi-head dimensionality as the "real" one, labeled $d$ or $d_{model}$, and the per-head dimensionality as $\frac{d_{model}}{h}$.
+:::{note} Notation
+For this section, within matrices I'll be using Latin letters (i.e., "normal" letters) for to represent weight parameters, and Greek letters to represent activations. I'll also use Latin letters for dimensions, as I've been doing throughout this chapter.
 :::
+
+First, let's refresh the multi-head ideas:
+
+- $n$ is the input length, in tokens
+- overall dimensionality is still $d$ (for both input and output)
+- $h$ heads
+- each head is $d \times \frac{d}{h}$
+
+To illustrate everything, I'll pick $n = 3$, $d = 4$, and $h = 2$.
+
+First, for each of $W_q$, $W_k$, and $W_v$, we'll concatenate the heads' weights to create a single, $d \times d$ matrix. For example:
+
+$$
+W_q =
+\underbrace{
+  \begin{bmatrix}
+  a & b \\
+  e & f \\
+  i & j \\
+  m & n
+  \end{bmatrix}
+}_{\text{head 1}}
+\underbrace{
+  \begin{bmatrix}
+  c & d \\
+  g & h \\
+  k & l \\
+  o & p
+  \end{bmatrix}
+}_{\text{head 2}}
+\rightarrow
+\begin{bmatrix}
+a & b & c & d \\
+e & f & g & h \\
+i & j & k & l
+\end{bmatrix}
+$$
+
+(Remember, each head is $d \times \frac{d}{h}$ --- so in our example, $4 \times \frac{4}{2}$, a.k.a $4 \times 2$.) Note that this doesn't happen at runtime, during inference: these are learned parameters, so we can lay them out this way as we build the model.
+
+At inference, we'll multiply the input by these matrices, just as we did in the single-head description above. So for example:
+
+$$
+Q = \underbrace{TW_q}_{(n \times d)\,(d \times d)}
+= \underbrace{
+  \begin{bmatrix}
+  \alpha   & \beta  & \gamma  & \delta \\
+  \epsilon & \zeta  & \eta    &\theta \\
+  \iota    & \kappa & \lambda & \mu
+  \end{bmatrix}
+}_{n \times d}
+$$
+
+Remember that in matrix multiplication, the each cell in the result combines the corresponding row from the left matrix (the input, for us) and the column from the right matrix (the weights). Since our weights were split up column-wise by heads, the corresponding matrix products are, too:
+
+(split-q-by-head)=
+
+$$
+Q =
+\left[\begin{array}{cc|cc}
+  \alpha   & \beta  & \gamma  & \delta \\
+  \epsilon & \zeta  & \eta    &\theta \\
+  \iota    & \kappa & \lambda & \mu
+\end{array}\right]
+$$
+
+At this point, we need to do actual looping --- not just clever matrix math. For each of the heads, we'll compute attention just as we did above:
+
+$$
+\text{Head Attention}(Q_h, K_h, V_h) = \text{softmax}\left( \frac{Q_h{K_h}^T}{\sqrt{d}} \right)V_h
+$$
+
+Let's look at the shape of this head attention. We can disregard softmax and $\sqrt{d}$ (they don't change the shape of vectors or matrices), in which case we get:
+
+$$
+\begin{align}
+\text{Head Attention}(Q_h, K_h, V_h) & = \sout{\text{softmax}}\left( \frac{Q_h{K_h}^T}{\sout{\sqrt{d}}} \right)V_h \\
+& = ( Q_h{K_h}^T )V_h \\
+& = \left[ \left(n \times \frac{d}{h}\right) \left(n \times \frac{d}{h} \right)^T \right] \left(n \times \frac{d}{h} \right) \\
+& = \left[ \left(n \times \frac{d}{h} \right) \left(\frac{d}{h} \times n \right) \right] \left(n \times \frac{d}{h} \right) \\
+& = \left(n \times n \right) \left(n \times \frac{d}{h} \right) \\
+& = n \times \frac{d}{h}
+\end{align}
+$$
+
+So with all that, we now have $h$ head attentions, each sized $n \times \frac{n}{h}$. Now we reverse the process that we took with the weights: we take these head attentions, concatenate them by columns, and treat them as a single attention output:
+
+$$
+\text{Attention} =
+\left[\begin{array}{cc|cc}
+\nu & \xi & \omicron & \pi \\
+\rho & \sigma & \tau & \upsilon \\
+\phi & \chi & \psi & \omega \\
+\end{array}\right]
+$$
+
+In this figure, each "side" of the attention represents the output from one head, sized $n \times \frac{d}{h}$. The concatenated heads form a single, $n \times d$ matrix.
+
+If you recall, the last step in the multi-head process was to [multiply the output by a $W_o$ matrix](#w-o-projection). This is just a $d \times d$ matrix, so there's nothing special to do here: we just apply the matrix multiplication.
+
+#### Implementation details
+
+:::{note}
+If you're not interested in how to translate this to actual code, you can skip this section and move straight to the [discussion of FFNs below](#algebraic-reformulations-ffn).
+:::
+
+To do all of the matrix concatenations efficiently, we need to get into the nitty-gritty of standard matrix libraries in software. This book doesn't cover any particular library, but they'll all work pretty similarly.
+
+We'll pick up where we split the $Q$ matrix by head:
+
+:::{embed} #split-q-by-head
+:::
+
+Tensor libraries will let you reinterpret one tensor as another, differently-shaped one. In our case, we're going to reinterpret the $n \times d$ matrix (a rank 2 tensor) into an $n \times h \times \frac{d}{h}$ tensor (rank 3), which splits it up just as we've just visualized.
+
+:::{seealso} Why does the reinterpretation work like that?
+:class: dropdown
+
+Internally, tensor libraries typically store the matrix as a single, contiguous array of values:
+
+$$
+\alpha \ \delta \ \eta \ \kappa \ \beta \ \epsilon \ \theta \ \lambda \ \gamma \ \zeta \ \iota \ \mu
+$$
+
+The first dimension splits this evenly among the dimension size (in this case, $n = 3$, so three groups):
+
+$$
+\alpha \ \delta \ \eta \ \kappa
+\qquad \beta \ \epsilon \ \theta \ \lambda
+\qquad \gamma \ \zeta \ \iota \ \mu
+$$
+
+The next dimension splits each of these groups, again evenly depending on size (in this case, $h = 2$, so two sub-groups):
+
+$$
+\alpha \ \delta \quad \eta \ \kappa
+\qquad \beta \ \epsilon \quad \theta \ \lambda
+\qquad \gamma \ \zeta \quad \iota \ \mu
+$$
+
+If we had even higher dimensions (4-rank tensors and above), we would keep going.
+
+The last dimension is always just "the rest of the elements at this level" --- or more colloquially, we can think of it as the column dimension.
+
+This is all a bit of a simplification: things like transposition and optimization details can complicate the picture. But at a high level, it's a good way of understanding what's going on.
+:::
+
+When tensor libraries perform matrix operations on higher-order tensors (rank 3 or above), they treat the leftmost dimensions as "batching dimensions" --- basically, dimensions to loop over. They can load this batching to GPUs, where it happens very efficiently.
+
+Unfortunately, this approach doesn't quite work for our $n \times h \times \frac{d}{h}$ tensor: we want to loop over each of the $h$ heads, not each of the $n$ rows. To solve this, we'll first transpose the tensor to $h \times n \times \frac{d}{h}$. This doesn't change its layout at all: it just changes how the library indexes into the tensor, and thus how it batches.
+
+To summarize, we've done three things:
+
+- multiplied $TQ$ to get an $n \times d$ matrix
+- reinterpreted that as an $n \times h \times \frac{d}{h}$ tensor
+- transposed that to a $h \times n \times \frac{d}{h}$ tensor
+
+Now we just apply the attention formula:
+
+:::{embed} #attention-formula
+:::
+
+This time, $Q$, $K$, and $V$ are each those 3-rank tensors, with $h$ as the batch dimension. When they're multiplied together, the libraries will match each batch up. For example, to multiply $QK^T$:
+
+- $Q$ is $h \times n \times \frac{d}{h}$
+- $K^T$ is $h \times \frac{d}{h} \times n$ (you may have to do this transposition explicitly)
+- When the library multiplies the two, it'll first multiply batch 0 from $Q$ with batch 0 from $K^T$ to produce batch 0 of the result. Then it multiplies $Q$ batch 1 with $K^T$ batch 1 to produce result batch 1, and so on.
+
+When you apply the $\text{softmax}$ function, you'll explicitly tell the library which dimension to apply it against (in our case, the columns --- that is, the last dimension). $\sqrt{d}$ only applies to scalars, so it doesn't need any dimension or batch handling; it just applies independently to each of the values.
+
+The result of all that is an attention tensor, which is $h \times n \times \frac{d}{h}$. Now we just reverse the reshaping: we transpose this to $n \times h \times \frac{d}{h}$ and then reinterpret it as a rank-2, $n \times d$ matrix.
+
+(algebraic-reformulations-ffn)=
 
 ### FFNs
 

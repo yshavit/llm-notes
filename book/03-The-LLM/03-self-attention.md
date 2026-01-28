@@ -469,6 +469,8 @@ Each head's output is $n$ rows of size $\frac{\delta}{h}$, and we can think thes
 
 You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them and combine them into a single, coherent input?
 
+(w-o-projection)=
+
 To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
 
 $$
