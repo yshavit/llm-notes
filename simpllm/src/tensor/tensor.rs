@@ -372,6 +372,10 @@ impl Tensor<1> {
     pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<1> {
         MatrixViewMut::new(self, [0])
     }
+
+    pub fn as_f32(&self) -> &[f32] {
+        &self.data // this works regardless of whether the vector is rows or columns
+    }
 }
 
 impl<const R: usize> PartialEq for Tensor<R> {

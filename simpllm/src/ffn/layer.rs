@@ -14,6 +14,10 @@ impl LayerTransform {
         }
     }
 
+    pub fn in_dims(&self) -> usize {
+        self.weights.num_rows()
+    }
+
     pub fn out_dims(&self) -> usize {
         self.biases.len()
     }
@@ -26,5 +30,27 @@ impl LayerTransform {
                 row[i] = gelu(row[i] + self.biases[i])
             }
         })
+    }
+
+    #[cfg(test)]
+    pub fn set_weights(&mut self, values: &[f32], biases: &[f32]) {
+        assert_eq!(
+            values.len(),
+            self.weights.shape().num_elements(),
+            "can't set {} values to {} weights",
+            values.len(),
+            self.weights.shape()
+        );
+        assert_eq!(
+            biases.len(),
+            self.biases.len(),
+            "can't set {} biases to {} weights",
+            biases.len(),
+            self.biases.len()
+        );
+        for (row_idx, row_values) in values.chunks(self.weights.num_cols()).enumerate() {
+            self.weights.set_row([row_idx, 0], row_values);
+        }
+        self.biases.copy_from_slice(biases);
     }
 }
