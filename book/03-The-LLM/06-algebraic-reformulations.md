@@ -344,7 +344,6 @@ This may look familiar: it's just the matrix multiplication $AV$.
 
 So, attention is $AV$. If we substitute $A$ with the expression from @scale-and-softmax-matrix above, we get:
 
-(attention-formula)=
 $$
 \text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)V
 $$
@@ -531,8 +530,9 @@ To summarize, we've done three things:
 
 Now we just apply the attention formula:
 
-:::{embed} #attention-formula
-:::
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d/h}} \right)V
+$$
 
 This time, $Q$, $K$, and $V$ are each those 3-rank tensors, with $h$ as the batch dimension. When they're multiplied together, the libraries will match each batch up. For example, to multiply $QK^T$:
 
@@ -540,7 +540,7 @@ This time, $Q$, $K$, and $V$ are each those 3-rank tensors, with $h$ as the batc
 - $K^T$ is $h \times \frac{d}{h} \times n$ (you may have to do this transposition explicitly)
 - When the library multiplies the two, it'll first multiply batch 0 from $Q$ with batch 0 from $K^T$ to produce batch 0 of the result. Then it multiplies $Q$ batch 1 with $K^T$ batch 1 to produce result batch 1, and so on.
 
-When you apply the $\text{softmax}$ function, you'll explicitly tell the library which dimension to apply it against (in our case, the columns --- that is, the last dimension). $\sqrt{d}$ only applies to scalars, so it doesn't need any dimension or batch handling; it just applies independently to each of the values.
+When you apply the $\text{softmax}$ function, you'll explicitly tell the library which dimension to apply it against (in our case, the columns --- that is, the last dimension). $\sqrt{d/h}$ only applies to scalars, so it doesn't need any dimension or batch handling; it just applies independently to each of the values.
 
 The result of all that is an attention tensor, which is $h \times n \times \frac{d}{h}$. Now we just reverse the reshaping: we transpose this to $n \times h \times \frac{d}{h}$ and then reinterpret it as a rank-2, $n \times d$ matrix.
 
