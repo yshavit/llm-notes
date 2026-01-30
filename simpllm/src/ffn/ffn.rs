@@ -1,7 +1,7 @@
 use crate::ffn::layer::LayerTransform;
 use crate::tensor::{Tensor, Vector};
 
-pub struct Ffn {
+pub struct Ffn<const InDim: usize, const OutDim: usize> {
     layers: Vec<Layer>,
 }
 
@@ -10,18 +10,18 @@ struct Layer {
     transform: LayerTransform,
 }
 
-impl Ffn {
-    pub fn new(transforms: Vec<LayerTransform>) -> Self {
-        assert_ne!(transforms.len(), 0, "transforms can't be empty");
-        Self {
-            layers: transforms
-                .into_iter()
-                .map(|t| Layer {
-                    neurons: Tensor::new_vector(t.out_dims()),
-                    transform: t,
-                })
-                .collect(),
+impl<const IN: usize, const OUT: usize> Ffn<IN, OUT> {
+    pub fn new(hidden_layer_dims: &[usize]) -> Self {
+        let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
+        let mut in_dim = IN;
+        for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&OUT)) {
+            layers.push(Layer {
+                neurons: Tensor::new_vector(out_dim),
+                transform: LayerTransform::new(in_dim, out_dim),
+            });
+            in_dim = out_dim;
         }
+        Self { layers }
     }
 
     pub fn apply(&mut self, inputs: &Vector) {
@@ -106,7 +106,7 @@ pub mod tests {
     ///
     #[test]
     fn compare_against_pytorch() {
-        let mut ffn = Ffn::new(vec![LayerTransform::new(5, 7), LayerTransform::new(7, 6)]);
+        let mut ffn: Ffn<5, 6> = Ffn::new(&[7]);
         for Layer { transform, .. } in &mut ffn.layers {
             let weight_size = transform.in_dims() * transform.out_dims();
             let bias_size = transform.out_dims();
