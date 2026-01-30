@@ -467,6 +467,9 @@ In this {dfn}`multi-head` arrangement, each head's output has $\frac{\delta}{h}$
 
 Each head's output is $n$ rows of size $\frac{\delta}{h}$, and we can think these as $n \times \frac{\delta}{h}$ matrices. We then concatenate them to get our desired shape, an $n \times \delta$ matrix.
 
+(multi-head-scaling)=
+The only gotcha in this process is that when we scale down the attention scores, we now have to scale them down by $\sqrt{d/h}$ instead of $\sqrt{d}$. Remember that the reason we did that scaling was to account for the dot products growing as the embedding dimension grows; but within each head, that embedding dimension is now $\frac{d}{h}$.
+
 You may be thinking that it seems odd to just concatenate matrices that don't necessarily have much to do with each other, and the borders of which are essentially "jumps" between differently-learned relationships. How would the layers that consume this matrix know how to make sense of them and combine them into a single, coherent input?
 
 (w-o-projection)=

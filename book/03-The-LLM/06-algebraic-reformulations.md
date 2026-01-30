@@ -441,14 +441,14 @@ $$
 At this point, we need to do actual looping --- not just clever matrix math. For each of the heads, we'll compute attention just as we did above:
 
 $$
-\text{Head Attention}(Q_h, K_h, V_h) = \text{softmax}\left( \frac{Q_h{K_h}^T}{\sqrt{d}} \right)V_h
+\text{Head Attention}(Q_h, K_h, V_h) = \text{softmax}\left( \frac{Q_h{K_h}^T}{\sqrt{d/h}} \right)V_h
 $$
 
-Let's look at the shape of this head attention. We can disregard softmax and $\sqrt{d}$ (they don't change the shape of vectors or matrices), in which case we get:
+(Remember to [divide the scaling factor by $h$](#multi-head-scaling) to account for each head's smaller embedding dimension!) Let's look at the shape of this head attention. We can disregard softmax and $\sqrt{d/h}$ (they don't change the shape of vectors or matrices), in which case we get:
 
 $$
 \begin{align}
-\text{Head Attention}(Q_h, K_h, V_h) & = \sout{\text{softmax}}\left( \frac{Q_h{K_h}^T}{\sout{\sqrt{d}}} \right)V_h \\
+\text{Head Attention}(Q_h, K_h, V_h) & = \sout{\text{softmax}}\left( \frac{Q_h{K_h}^T}{\sout{\sqrt{d/h}}} \right)V_h \\
 & = ( Q_h{K_h}^T )V_h \\
 & = \left[ \left(n \times \frac{d}{h}\right) \left(n \times \frac{d}{h} \right)^T \right] \left(n \times \frac{d}{h} \right) \\
 & = \left[ \left(n \times \frac{d}{h} \right) \left(\frac{d}{h} \times n \right) \right] \left(n \times \frac{d}{h} \right) \\
