@@ -14,6 +14,14 @@ impl<const R: usize> Tensor<R> {
     pub fn new<S: Into<Shape<R>>>(shape: S) -> Self {
         assert_ne!(R, 0, "0-tensors are not allowed");
         let shape: Shape<R> = shape.into();
+        Self {
+            data: vec![0.0; shape.num_elements()],
+            shape,
+            strides: Self::contiguous_strides(shape),
+        }
+    }
+
+    fn contiguous_strides(shape: Shape<R>) -> Shape<R> {
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
         // each dimension back needs to have a stride-size for all the dimensions before it.
@@ -22,12 +30,7 @@ impl<const R: usize> Tensor<R> {
             strides[i] = stride;
             stride *= shape[i];
         }
-
-        Self {
-            data: vec![0.0; shape.num_elements()],
-            shape,
-            strides: Shape::new(strides),
-        }
+        strides.into()
     }
 
     pub fn shape(&self) -> Shape<R> {
@@ -80,8 +83,26 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
-    pub fn reshape<const R2: usize>(self, new_shape: [usize; R2]) -> Tensor<R2> {
-        todo!()
+    pub fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> Tensor<R2> {
+        assert_eq!(
+            self.strides,
+            Self::contiguous_strides(self.shape),
+            "can only shape contiguous tensors"
+        );
+        let new_shape = new_shape.into();
+        assert_eq!(
+            self.shape.num_elements(),
+            new_shape.num_elements(),
+            "can't reshape {} into {}",
+            self.shape,
+            new_shape
+        );
+
+        Tensor {
+            data: self.data,
+            shape: new_shape,
+            strides: Tensor::contiguous_strides(new_shape),
+        }
     }
 
     pub fn clear(&mut self) {
@@ -644,6 +665,41 @@ mod tests {
             let t_matrix = t.matrix_slice(slice_indices);
             assert_eq!(t_matrix.get(0, 1), 2.);
             assert_eq!(t_matrix.get(1, 1), 5.);
+        }
+    }
+
+    mod reshape {
+        use super::*;
+
+        #[test]
+        fn simple() {
+            let mut original = Tensor::new_matrix(2, 6);
+            original.set_row([0, 0], &[01., 02., 03., 04., 05., 06.]);
+            original.set_row([1, 0], &[07., 08., 09., 10., 11., 12.]);
+
+            let reshaped = original.reshape([2, 2, 3]);
+            // just a spot check
+            assert_eq!(reshaped.get([0, 0, 0]), 01.);
+            assert_eq!(reshaped.get([0, 0, 1]), 02.);
+            assert_eq!(reshaped.get([0, 0, 2]), 03.);
+            assert_eq!(reshaped.get([0, 1, 0]), 04.);
+
+            let as_vector = reshaped.reshape([12]);
+            assert_eq!(as_vector.get([11]), 12.);
+        }
+
+        #[test]
+        #[should_panic]
+        fn shape_mismatch() {
+            let original = Tensor::new_matrix(2, 6);
+            let _ = original.reshape([2, 7]);
+        }
+
+        #[test]
+        #[should_panic]
+        fn transposed() {
+            let original = Tensor::new_matrix(2, 6).transposed(0, 1);
+            let _ = original.reshape([6, 2]);
         }
     }
 
