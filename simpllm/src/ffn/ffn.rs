@@ -17,7 +17,7 @@ impl Ffn {
         }
     }
 
-    pub fn apply(&mut self, mut input: Vector) -> Vector {
+    pub fn apply(&self, mut input: Vector) -> Vector {
         assert_eq!(
             input.len(),
             self.layers_transforms[0].in_dims(),
