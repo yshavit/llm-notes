@@ -74,6 +74,16 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
+    pub fn multiply_scalar(&mut self, factor: f32) {
+        for v in &mut self.data {
+            *v = *v * factor;
+        }
+    }
+
+    pub fn reshape<const R2: usize>(self, new_shape: [usize; R2]) -> Tensor<R2> {
+        todo!()
+    }
+
     pub fn clear(&mut self) {
         self.data.fill(0.);
     }
@@ -246,6 +256,17 @@ impl<'a, const R: usize> MatrixViewMut<'a, R> {
             indices[R - 1] = 0;
         }
         self.tensor.set_row(indices, values);
+    }
+
+    pub fn mut_row(&mut self, row: usize, f: impl Fn(&mut [f32])) {
+        let mut indices = self.batch_dimensions;
+        if R == 1 {
+            assert_eq!(row, 0, "vector's row parameter must be 0")
+        } else {
+            indices[R - 2] = row;
+            indices[R - 1] = 0;
+        }
+        self.tensor.mut_row(indices, f);
     }
 }
 

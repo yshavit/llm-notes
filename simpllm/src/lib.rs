@@ -1,3 +1,4 @@
+mod attention;
 mod ffn;
 mod tensor;
 
