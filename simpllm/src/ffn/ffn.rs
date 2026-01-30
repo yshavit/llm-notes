@@ -2,47 +2,35 @@ use crate::ffn::layer::LayerTransform;
 use crate::tensor::{Tensor, Vector};
 
 pub struct Ffn {
-    layers: Vec<Layer>,
-}
-
-struct Layer {
-    neurons: Vector,
-    transform: LayerTransform,
+    layers_transforms: Vec<LayerTransform>,
 }
 
 impl Ffn {
     pub fn new(mut in_dim: usize, hidden_layer_dims: &[usize], out_dim: usize) -> Self {
         let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
         for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&out_dim)) {
-            layers.push(Layer {
-                neurons: Tensor::new_vector(out_dim),
-                transform: LayerTransform::new(in_dim, out_dim),
-            });
+            layers.push(LayerTransform::new(in_dim, out_dim));
             in_dim = out_dim;
         }
-        Self { layers }
-    }
-
-    pub fn apply(&mut self, inputs: &Vector) {
-        // Apply the first layer manually. Then, every next layer will apply the transform from the layer before it. We
-        // have to use indexing to make the lifetimes work.
-        let Layer { neurons, transform } = &mut self.layers[0];
-        transform.apply(inputs, neurons);
-        for i in 1..self.layers.len() {
-            let (prev, curr) = self.layers.split_at_mut(i);
-            let Layer {
-                neurons: prev_neurons, ..
-            } = &prev[i - 1];
-            let Layer {
-                neurons: curr_neurons,
-                transform: curr_transform,
-            } = &mut curr[0];
-            curr_transform.apply(prev_neurons, curr_neurons);
+        Self {
+            layers_transforms: layers,
         }
     }
 
-    pub fn get(&self) -> &Vector {
-        &self.layers[self.layers.len() - 1].neurons
+    pub fn apply(&mut self, mut input: Vector) -> Vector {
+        assert_eq!(
+            input.len(),
+            self.layers_transforms[0].in_dims(),
+            "expected input with dimension {}, got {}",
+            input.len(),
+            self.layers_transforms[0].in_dims()
+        );
+        for transform in &self.layers_transforms {
+            let mut output = Tensor::new_vector(transform.out_dims());
+            transform.apply(&input, &mut output);
+            input = output;
+        }
+        input
     }
 }
 
@@ -106,7 +94,7 @@ pub mod tests {
     #[test]
     fn compare_against_pytorch() {
         let mut ffn = Ffn::new(5, &[7], 6);
-        for Layer { transform, .. } in &mut ffn.layers {
+        for transform in &mut ffn.layers_transforms {
             let weight_size = transform.in_dims() * transform.out_dims();
             let bias_size = transform.out_dims();
             transform.set_weights(&count_up(weight_size), &count_up(bias_size));
@@ -115,12 +103,12 @@ pub mod tests {
         let mut input = Tensor::new_vector(5);
         input.set_all(&count_up(5));
 
-        ffn.apply(&input);
+        let actual = ffn.apply(input);
 
         let mut expect = Tensor::new_vector(6);
         expect.set_all(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
 
-        assert_f32_slice!(ffn.get().as_f32(), expect.as_f32());
+        assert_f32_slice!(actual.as_f32(), expect.as_f32());
     }
 
     fn count_up(num_elems: usize) -> Vec<f32> {
