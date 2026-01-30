@@ -75,8 +75,8 @@ impl Attention {
 #[cfg(test)]
 mod tests {
     use crate::assert_f32_slice;
-    use crate::attention::attention::Attention;
     use crate::tensor::Tensor;
+    use crate::transformer::attention::Attention;
 
     /// Compares against a reference pytorch implementation.
     ///

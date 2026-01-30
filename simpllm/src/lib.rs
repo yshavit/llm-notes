@@ -1,6 +1,5 @@
-mod attention;
-mod ffn;
 mod tensor;
+mod transformer;
 
 #[cfg(test)]
 mod testutil;

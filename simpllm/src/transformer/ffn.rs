@@ -1,5 +1,5 @@
-use crate::ffn::activation::gelu;
 use crate::tensor::{Matrix, Tensor, Vector, matmul};
+use crate::transformer::activation::gelu;
 
 pub struct Ffn {
     layers_transforms: Vec<LayerTransform>,
