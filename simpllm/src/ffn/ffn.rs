@@ -1,7 +1,7 @@
 use crate::ffn::layer::LayerTransform;
 use crate::tensor::{Tensor, Vector};
 
-pub struct Ffn<const InDim: usize, const OutDim: usize> {
+pub struct Ffn {
     layers: Vec<Layer>,
 }
 
@@ -10,11 +10,10 @@ struct Layer {
     transform: LayerTransform,
 }
 
-impl<const IN: usize, const OUT: usize> Ffn<IN, OUT> {
-    pub fn new(hidden_layer_dims: &[usize]) -> Self {
+impl Ffn {
+    pub fn new(mut in_dim: usize, hidden_layer_dims: &[usize], out_dim: usize) -> Self {
         let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
-        let mut in_dim = IN;
-        for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&OUT)) {
+        for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&out_dim)) {
             layers.push(Layer {
                 neurons: Tensor::new_vector(out_dim),
                 transform: LayerTransform::new(in_dim, out_dim),
@@ -106,7 +105,7 @@ pub mod tests {
     ///
     #[test]
     fn compare_against_pytorch() {
-        let mut ffn: Ffn<5, 6> = Ffn::new(&[7]);
+        let mut ffn = Ffn::new(5, &[7], 6);
         for Layer { transform, .. } in &mut ffn.layers {
             let weight_size = transform.in_dims() * transform.out_dims();
             let bias_size = transform.out_dims();
