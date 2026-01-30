@@ -67,30 +67,32 @@ pub mod tests {
     /// import torch.nn as nn
     ///
     /// class FFN(nn.Module):
-    /// def __init__(self):
-    /// super(FFN, self).__init__()
-    /// self.fc1 = nn.Linear(5, 7)
-    /// self.gelu = nn.GELU(approximate='tanh')
-    /// self.fc2 = nn.Linear(7, 6)
+    ///     def __init__(self):
+    ///         super(FFN, self).__init__()
+    ///         self.fc1 = nn.Linear(5, 7)
+    ///         self.gelu = nn.GELU(approximate='tanh')
+    ///         self.fc2 = nn.Linear(7, 6)
     ///
-    /// def forward(self, x):
-    /// x = self.fc1(x)
-    /// x = self.gelu(x)
-    /// x = self.fc2(x)
-    /// return x
+    ///     def forward(self, x):
+    ///         x = self.fc1(x)
+    ///         x = self.gelu(x)
+    ///         x = self.fc2(x)
+    ///         return x
     ///
     /// model = FFN()
     ///
     /// # Set fc1 weights and biases. Each set of parameters will have values 1-N
     /// with torch.no_grad():
-    /// model.fc1.weight = nn.Parameter(torch.arange(1, 36).float().reshape(7, 5))
-    /// model.fc1.bias = nn.Parameter(torch.arange(1, 8).float())
+    ///     # Pytorch defines layer parameters as transposed from the matrix multiplication.
+    ///     # So, I'll create them as they'd look in the matrix multiplication, and then use the transposition.
+    ///     model.fc1.weight = nn.Parameter(torch.arange(1, 36).float().reshape(5, 7).T)
+    ///     model.fc1.bias = nn.Parameter(torch.arange(1, 8).float())
     ///
-    /// model.fc2.weight = nn.Parameter(torch.arange(1, 43).float().reshape(6, 7))
-    /// model.fc2.bias = nn.Parameter(torch.arange(1, 7).float())
+    ///     model.fc2.weight = nn.Parameter(torch.arange(1, 43).float().reshape(7, 6).T)
+    ///     model.fc2.bias = nn.Parameter(torch.arange(1, 7).float())
     ///
     /// # Fixed input, also 1-N
-    /// input_tensor = torch.arange(1, 6).float().unsqueeze(0)  # Shape: [1, 5]; unsqueeze to add batch dimension
+    /// input_tensor = torch.arange(1, 6).float().unsqueeze(0)  # Shape: [1, 5]
     ///
     /// output = model(input_tensor)
     /// print("Output:", output.tolist())
@@ -99,7 +101,7 @@ pub mod tests {
     /// Output is:
     ///
     /// ```text
-    /// Output: [[10081.0, 23998.0, 37915.0, 51832.0, 65749.0, 79666.0]]
+    /// Output: [[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]]
     /// ```
     ///
     #[test]
@@ -117,7 +119,7 @@ pub mod tests {
         ffn.apply(&input);
 
         let mut expect = Tensor::new_vector(6);
-        expect.set_all(&[10081.0, 23998.0, 37915.0, 51832.0, 65749.0, 79666.0]);
+        expect.set_all(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
 
         assert_f32_slice!(ffn.get().as_f32(), expect.as_f32());
     }

@@ -201,7 +201,11 @@ macro_rules! matrix_view {
             }
 
             pub fn num_rows(&self) -> usize {
-                self.tensor.shape[R - 2]
+                if R == 1 {
+                    1
+                } else {
+                    self.tensor.shape[R - 2]
+                }
             }
 
             pub fn num_cols(&self) -> usize {
@@ -210,7 +214,9 @@ macro_rules! matrix_view {
 
             pub fn get(&self, row: usize, col: usize) -> f32 {
                 let mut indices = self.batch_dimensions;
-                indices[R - 2] = row;
+                if R > 1 {
+                    indices[R - 2] = row;
+                }
                 indices[R - 1] = col;
                 self.tensor.get(indices)
             }
@@ -233,8 +239,12 @@ matrix_view! {MatrixViewMut mut}
 impl<'a, const R: usize> MatrixViewMut<'a, R> {
     pub fn set_row(&mut self, row: usize, values: &[f32]) {
         let mut indices = self.batch_dimensions;
-        indices[R - 2] = row;
-        indices[R - 1] = 0;
+        if R == 1 {
+            assert_eq!(row, 0, "vector's row parameter must be 0")
+        } else {
+            indices[R - 2] = row;
+            indices[R - 1] = 0;
+        }
         self.tensor.set_row(indices, values);
     }
 }
