@@ -37,6 +37,13 @@ impl<const R: usize> Tensor<R> {
         self.shape
     }
 
+    pub fn reset_values(&mut self, values: &[f32]) {
+        assert_eq!(self.shape.num_elements(), values.len());
+        // reset to be contiguous
+        self.strides = Self::contiguous_strides(self.shape);
+        self.data.copy_from_slice(values);
+    }
+
     fn data_offset(&self, indices: [usize; R]) -> usize {
         let mut offset = 0;
         for i in 0..R {
@@ -81,6 +88,16 @@ impl<const R: usize> Tensor<R> {
         for v in &mut self.data {
             *v = *v * factor;
         }
+    }
+
+    pub fn contiguous(mut self) -> Self {
+        let mut new_data = vec![0.0; self.shape.num_elements()];
+        for (data_idx, tensor_idx) in self.shape.iter_indices().enumerate() {
+            new_data[data_idx] = self.get(tensor_idx);
+        }
+        self.data = new_data;
+        self.strides = Self::contiguous_strides(self.shape);
+        self
     }
 
     pub fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> Tensor<R2> {
@@ -405,6 +422,15 @@ impl Tensor<2> {
 
     pub fn num_cols(&self) -> usize {
         self.shape[1]
+    }
+
+    pub fn to_f32(&self) -> Vec<Vec<f32>> {
+        let mut result = Vec::with_capacity(self.num_rows());
+        for row in 0..self.num_rows() {
+            let cols: Vec<_> = (0..self.num_cols()).map(|col| self.get([row, col])).collect();
+            result.push(cols);
+        }
+        result
     }
 }
 
