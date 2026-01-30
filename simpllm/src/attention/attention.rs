@@ -39,9 +39,8 @@ impl Attention {
         let qkv = |weight: &Matrix| -> Tensor<3> {
             let mut result = Tensor::new_matrix(n, d);
             matmul(&input, weight, &mut result);
-            let mut result = result.reshape([n, h, d / h]);
-            result = result.transposed(0, 1);
-            result
+            let result = result.reshape([n, h, d / h]);
+            result.transposed(0, 1)
         };
 
         // each are (h, n, d/h)
@@ -50,8 +49,9 @@ impl Attention {
         let values = qkv(&self.w_v);
 
         let mut a = matmul_batched_3(&queries, &keys.transposed(1, 2));
-        // divide by sqrt(d), and do softmax on the last dimension (d/h)
-        a.multiply_scalar(1.0 / (d as f32).sqrt());
+        // divide by sqrt(d/h), and do softmax on the last dimension (d/h)
+        let dim_per_head = d / h;
+        a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
         for batch in 0..h {
             let mut batch_slice = a.matrix_slice_mut([batch, 0, 0]);
             for row in 0..batch_slice.num_rows() {
@@ -61,7 +61,7 @@ impl Attention {
 
         let mut attn = matmul_batched_3(&a, &values);
         // transpose from (h, n, d/h) to (n, h, d/h)
-        attn = attn.transposed(1, 2);
+        attn = attn.transposed(0, 1);
         // reshape
         let attn = attn.contiguous().reshape([n, d]);
 
@@ -74,6 +74,7 @@ impl Attention {
 
 #[cfg(test)]
 mod tests {
+    use crate::assert_f32_slice;
     use crate::attention::attention::Attention;
     use crate::tensor::Tensor;
 
@@ -157,9 +158,17 @@ mod tests {
         let mut counter_data = (1..).map(|i| 1.0 / (i as f32));
         let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(weights_size).collect::<Vec<_>>() };
 
+        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
+        // here instead.
         attention.w_q.reset_values(&counter(weights_size));
+        attention.w_q = attention.w_q.t().contiguous();
+
         attention.w_k.reset_values(&counter(weights_size));
+        attention.w_k = attention.w_k.t().contiguous();
+
         attention.w_v.reset_values(&counter(weights_size));
+        attention.w_v = attention.w_v.t().contiguous();
+
         attention.w_o.reset_values(&counter(weights_size));
 
         let mut tokens = Tensor::new([embedding_dim * n_tokens]);
@@ -173,7 +182,7 @@ mod tests {
         let output = attention.apply(tokens);
 
         let expected = vec![
-            vec![
+            [
                 0.027653157711029053,
                 0.027424853295087814,
                 0.02720031887292862,
@@ -181,7 +190,7 @@ mod tests {
                 0.026762165129184723,
                 0.026548368856310844,
             ],
-            vec![
+            [
                 0.029986323788762093,
                 0.02973994053900242,
                 0.029497595503926277,
@@ -190,37 +199,11 @@ mod tests {
                 0.02879383973777294,
             ],
         ];
-        let mut error_percents: Vec<f32> = Vec::new();
-        for row in 0..n_tokens {
-            for col in 0..embedding_dim {
-                let actual_cell = output.get([row, col]);
-                let expect_cell = expected[row][col];
-                let error_percent = ((actual_cell - expect_cell) / actual_cell).abs() * 100.;
-                error_percents.push(error_percent);
-            }
-        }
-        assert_eq!(error_percents, vec![0.0; n_tokens * embedding_dim]);
 
-        assert_eq!(
-            output.to_f32(),
-            vec![
-                vec![
-                    0.027653157711029053,
-                    0.027424853295087814,
-                    0.02720031887292862,
-                    0.02697945199906826,
-                    0.026762165129184723,
-                    0.026548368856310844
-                ],
-                vec![
-                    0.029986323788762093,
-                    0.02973994053900242,
-                    0.029497595503926277,
-                    0.029259195551276207,
-                    0.02902464009821415,
-                    0.02879383973777294
-                ]
-            ]
-        );
+        assert_eq!(output.num_rows(), expected.len());
+        let actual_as_vec = output.to_f32();
+        for row in 0..expected.len() {
+            assert_f32_slice!(&actual_as_vec[row], &expected[row]);
+        }
     }
 }

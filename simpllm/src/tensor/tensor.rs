@@ -1,6 +1,7 @@
 use crate::tensor::Shape;
 use std::fmt::{Debug, Display, Formatter};
 
+#[derive(Clone)]
 pub struct Tensor<const R: usize> {
     data: Vec<f32>,
     shape: Shape<R>,
@@ -98,6 +99,10 @@ impl<const R: usize> Tensor<R> {
         self.data = new_data;
         self.strides = Self::contiguous_strides(self.shape);
         self
+    }
+
+    pub fn flat_f32(&self) -> Vec<f32> {
+        self.clone().contiguous().data
     }
 
     pub fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> Tensor<R2> {
@@ -698,19 +703,49 @@ mod tests {
         use super::*;
 
         #[test]
-        fn simple() {
+        fn reshape_2_to_3() {
+            // use pretty-print to check values
+
             let mut original = Tensor::new_matrix(2, 6);
             original.set_row([0, 0], &[01., 02., 03., 04., 05., 06.]);
             original.set_row([1, 0], &[07., 08., 09., 10., 11., 12.]);
+            assert_eq!(
+                format!("{original}"),
+                [
+                    //
+                    "|  1 |  2 |  3 |  4 |  5 |  6 |",
+                    "|  7 |  8 |  9 | 10 | 11 | 12 |",
+                ]
+                .join("\n")
+            );
 
             let reshaped = original.reshape([2, 2, 3]);
-            // just a spot check
+            assert_eq!(
+                format!("{reshaped}"),
+                [
+                    //
+                    "|  1 |  2 |  3 |    |  7 |  8 |  9 |",
+                    "|  4 |  5 |  6 |    | 10 | 11 | 12 |",
+                ]
+                .join("\n")
+            );
             assert_eq!(reshaped.get([0, 0, 0]), 01.);
             assert_eq!(reshaped.get([0, 0, 1]), 02.);
             assert_eq!(reshaped.get([0, 0, 2]), 03.);
             assert_eq!(reshaped.get([0, 1, 0]), 04.);
 
-            let as_vector = reshaped.reshape([12]);
+            let back_to_orig = reshaped.reshape([2, 6]);
+            assert_eq!(
+                format!("{back_to_orig}"),
+                [
+                    //
+                    "|  1 |  2 |  3 |  4 |  5 |  6 |",
+                    "|  7 |  8 |  9 | 10 | 11 | 12 |",
+                ]
+                .join("\n")
+            );
+
+            let as_vector = back_to_orig.reshape([12]);
             assert_eq!(as_vector.get([11]), 12.);
         }
 
