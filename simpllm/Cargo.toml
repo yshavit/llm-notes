@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tiktoken-rs = "0.9.1"
 
 [dev-dependencies]
 approx = "0.5" # Use the latest version
