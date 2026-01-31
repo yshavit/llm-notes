@@ -17,8 +17,27 @@ impl Ffn {
         }
     }
 
-    pub fn apply_matrix(&self, input: Matrix) -> Matrix {
-        todo!()
+    fn in_dims(&self) -> usize {
+        self.layers_transforms[0].in_dims()
+    }
+
+    fn out_dims(&self) -> usize {
+        self.layers_transforms[self.layers_transforms.len() - 1].out_dims()
+    }
+
+    pub fn apply_matrix(&self, mut input: Matrix) -> Matrix {
+        assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
+        assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
+
+        for row_idx in (0..input.num_rows()) {
+            let mut input_row = Tensor::new_vector(input.num_cols());
+            input.with_row([row_idx, 0], |row| input_row.set_row([row_idx], row));
+            let ffn_result = self.apply(input_row);
+            ffn_result.with_row([row_idx], |in_row| {
+                input.mut_row([row_idx, 0], |out| out.copy_from_slice(in_row));
+            });
+        }
+        input
     }
 
     pub fn apply(&self, mut input: Vector) -> Vector {
