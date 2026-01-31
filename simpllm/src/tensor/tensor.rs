@@ -91,6 +91,21 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
+    pub fn add_tensor(mut self, other: &Tensor<R>) -> Self {
+        assert_eq!(self.shape, other.shape, "shapes didn't match");
+        if self.strides == other.strides {
+            // easy peasy, just add them element-wise!
+            other.data.iter().enumerate().for_each(|(i, v)| self.data[i] += v);
+        } else {
+            // do it the hard way
+            for idx in self.shape.iter_indices() {
+                let my_index = self.data_offset(idx);
+                self.data[my_index] += other.get(idx);
+            }
+        }
+        self
+    }
+
     pub fn contiguous(mut self) -> Self {
         let mut new_data = vec![0.0; self.shape.num_elements()];
         for (data_idx, tensor_idx) in self.shape.iter_indices().enumerate() {

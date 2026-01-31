@@ -17,6 +17,10 @@ impl Ffn {
         }
     }
 
+    pub fn apply_matrix(&self, input: Matrix) -> Matrix {
+        todo!()
+    }
+
     pub fn apply(&self, mut input: Vector) -> Vector {
         assert_eq!(
             input.len(),

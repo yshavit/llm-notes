@@ -27,7 +27,7 @@ impl Attention {
         }
     }
 
-    pub fn apply(&self, input: Matrix) -> Matrix {
+    pub fn apply(&self, input: &Matrix) -> Matrix {
         assert_eq!(
             input.num_cols(),
             self.embedding_dim,
@@ -38,7 +38,7 @@ impl Attention {
         let (n, d, h) = (input.num_rows(), self.embedding_dim, self.num_heads);
         let qkv = |weight: &Matrix| -> Tensor<3> {
             let mut result = Tensor::new_matrix(n, d);
-            matmul(&input, weight, &mut result);
+            matmul(input, weight, &mut result);
             let result = result.reshape([n, h, d / h]);
             result.transposed(0, 1)
         };
@@ -179,7 +179,7 @@ mod tests {
         );
         let tokens = tokens.reshape([n_tokens, embedding_dim]);
 
-        let output = attention.apply(tokens);
+        let output = attention.apply(&tokens);
 
         let expected = vec![
             [
