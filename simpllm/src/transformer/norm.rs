@@ -1,14 +1,18 @@
-use crate::tensor::Matrix;
+use crate::tensor::{Matrix, Tensor, Vector};
 
 pub struct Norm {
-    scale: f32,
-    shift: f32,
+    scale: Vector,
+    shift: Vector,
     epsilon: f32,
 }
 
 impl Norm {
-    pub fn new(scale: f32, shift: f32, epsilon: f32) -> Self {
-        Self { scale, shift, epsilon }
+    pub fn new(dimension: usize, epsilon: f32) -> Self {
+        Self {
+            scale: Tensor::new_vector(dimension),
+            shift: Tensor::new_vector(dimension),
+            epsilon,
+        }
     }
 
     pub fn apply(&self, input: &Matrix) -> Matrix {
@@ -16,9 +20,9 @@ impl Norm {
         for row_idx in 0..result.num_rows() {
             result.mut_row([row_idx, 0], |row| {
                 let Stats { mean, variance } = row.iter().copied().into();
-                for val in row {
-                    let normalized = (*val - mean) / (variance + self.epsilon).sqrt();
-                    *val = (normalized * self.scale) + self.shift;
+                for col_idx in 0..row.len() {
+                    let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
+                    row[col_idx] = (normalized * self.scale.get([col_idx])) + self.shift.get([col_idx]);
                 }
             });
         }
