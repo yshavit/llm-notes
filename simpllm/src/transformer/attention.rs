@@ -77,7 +77,11 @@ impl Attention {
         for batch in 0..h {
             let mut batch_slice = a.matrix_slice_mut([batch, 0, 0]);
             for row in 0..batch_slice.num_rows() {
-                batch_slice.mut_row(row, softmax)
+                // apply causal attention TODO need to update the book for this!
+                batch_slice.mut_row(row, |cols| {
+                    cols[row + 1..].fill(f32::NEG_INFINITY);
+                    softmax(cols);
+                });
             }
         }
 

@@ -35,6 +35,7 @@ impl Norm {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 struct Stats {
     mean: f32,
     variance: f32,

@@ -25,7 +25,7 @@ pub fn load_model(path: &ModelPath) -> super::Result<ModelLoader> {
         layers.push(transformer);
     }
 
-    eprint!(" ] ... final normalization...");
+    eprint!("] ... final normalization...");
     let final_norm = load_norm(&path, "final_norm", &shape.final_norm)?;
     eprintln!("Model loaded!");
 
@@ -40,7 +40,7 @@ pub fn load_model(path: &ModelPath) -> super::Result<ModelLoader> {
 fn load_norm(path: &ModelPath, prefix: &str, metadata: &NormShape) -> super::Result<Norm> {
     assert_eq!(metadata.scale, metadata.bias);
     let scale = load_tensor([metadata.scale], &path.path([prefix, ".scale.bin"]))?;
-    let bias = load_tensor([metadata.bias], &path.path([prefix, ".scale.bin"]))?;
+    let bias = load_tensor([metadata.bias], &path.path([prefix, ".bias.bin"]))?;
     let mut norm = Norm::new(metadata.scale);
     norm.set(&scale, &bias);
     Ok(norm)
@@ -62,7 +62,6 @@ fn load_norm(path: &ModelPath, prefix: &str, metadata: &NormShape) -> super::Res
 /// - transformer.00.ffn.output.weights.bin
 /// - transformer.00.ffn_norm.bias.bin
 /// - transformer.00.ffn_norm.scale.bin
-
 fn load_transformer(
     path: &ModelPath,
     layer_idx: usize,
@@ -83,11 +82,19 @@ fn load_transformer(
     let mut attn = Attention::new(d, n_heads);
 
     let qkv_floats = load_floats([1, d, qkv_3d], &t_path("attn.qkv.weights"))?;
-    let mut qkv_chunks = qkv_floats.chunks_exact(d * d);
-    let attn_wq = populate_tensor([d, d], &qkv_chunks.next().unwrap());
-    let attn_wk = populate_tensor([d, d], &qkv_chunks.next().unwrap());
-    let attn_wv = populate_tensor([d, d], &qkv_chunks.next().unwrap());
-    assert_eq!(qkv_chunks.count(), 0);
+    let mut wq = Vec::with_capacity(d * d);
+    let mut wk = Vec::with_capacity(d * d);
+    let mut wv = Vec::with_capacity(d * d);
+
+    for row in 0..d {
+        let row_start = row * qkv_3d; // qkv_3d = 3*d
+        wq.extend_from_slice(&qkv_floats[row_start..row_start + d]);
+        wk.extend_from_slice(&qkv_floats[row_start + d..row_start + 2 * d]);
+        wv.extend_from_slice(&qkv_floats[row_start + 2 * d..row_start + 3 * d]);
+    }
+    let attn_wq = populate_tensor([d, d], &wq);
+    let attn_wk = populate_tensor([d, d], &wk);
+    let attn_wv = populate_tensor([d, d], &wv);
 
     let qkv_bias_floats = load_floats([metadata.attn.qkv.bias], &t_path("attn.qkv.bias"))?;
     let mut qkv_bias_chunks = qkv_bias_floats.chunks_exact(d);
@@ -121,12 +128,12 @@ fn load_transformer(
     let ffn_hidden_bias = load_tensor([ffn_m.hidden.bias], &t_path("ffn.hidden.bias"))?;
     let ffn_output_weights = load_tensor(
         [ffn_m.output.weights.0, ffn_m.output.weights.1],
-        &t_path("ffn.hidden.weights"),
+        &t_path("ffn.output.weights"),
     )?;
     let ffn_output_bias = load_tensor([ffn_m.output.bias], &t_path("ffn.output.bias"))?;
     let ffn_norm = load_norm(
         path,
-        &format!("transformer.{layer_idx_string}.attn_norm"),
+        &format!("transformer.{layer_idx_string}.ffn_norm"),
         &metadata.attn_norm,
     )?;
 

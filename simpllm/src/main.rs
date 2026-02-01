@@ -8,12 +8,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model_path = ModelPath::from(model_name);
     let model = load_model(&model_path)?.initialize();
 
+    eprint!("Loading tokenizer...");
     let tokenizer = tiktoken_rs::r50k_base_singleton();
+    eprintln!("Ready!");
+    eprint!("> ");
 
     for line in stdin().lines() {
         let line = line.expect("error reading line. invalid utf-8?");
         let mut tok_indexes = tokenizer.encode_with_special_tokens(&line);
 
+        // infer 10 times, hard-coded for now
         for _ in 0..10 {
             let result = model.apply(&tok_indexes)?;
             let last_row = result.num_rows() - 1;

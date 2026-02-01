@@ -54,21 +54,20 @@ impl Model {
         if seq.len() > self.max_seq_len() {
             return Err(InferenceError::MaxSeq);
         }
-        let mut input = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
+        let mut tok_embeddings = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
+        let mut pos_embeddings = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
         for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
+            // copy the right token embedding to tok_embeddings
             let seq_tok_usize: usize = seq_tok.try_into().map_err(|_| InferenceError::TokOutOfRange(seq_tok))?;
             self.fwd.tok_embed.with_row([seq_tok_usize, 0], |tok_embed| {
-                input.set_row([seq_idx, 0], tok_embed);
+                tok_embeddings.set_row([seq_idx, 0], tok_embed);
             });
+            // and the right pos embedding to pos_embeddings
             self.fwd.pos_embed.with_row([seq_idx, 0], |pos_embed| {
-                input.mut_row([seq_idx, 0], |input_embed| {
-                    assert_eq!(pos_embed.len(), input_embed.len());
-                    for i in 0..pos_embed.len() {
-                        input_embed[i] += pos_embed[i];
-                    }
-                })
-            })
+                pos_embeddings.set_row([seq_idx, 0], pos_embed);
+            });
         }
+        let input = tok_embeddings.add_tensor(&pos_embeddings);
         Ok(input)
     }
 }

@@ -53,9 +53,13 @@ impl Ffn {
             input.len(),
             self.layers_transforms[0].mab.in_dims()
         );
-        for transform in &self.layers_transforms {
+        let mut transforms = self.layers_transforms.iter().peekable();
+        while let Some(transform) = transforms.next() {
             let mut output = Tensor::new_vector(transform.mab.out_dims());
             transform.apply(&input, &mut output);
+            if transforms.peek().is_some() {
+                input.mut_row([0], |cols| cols.iter_mut().for_each(|v| *v = gelu(*v)))
+            }
             input = output;
         }
         input
@@ -82,7 +86,7 @@ impl LayerTransform {
         );
         activations.mut_row([0], |row| {
             for i in 0..row.len() {
-                row[i] = gelu(row[i] + self.mab.bias().get([i]))
+                row[i] = row[i] + self.mab.bias().get([i]);
             }
         })
     }
