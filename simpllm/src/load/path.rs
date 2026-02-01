@@ -20,11 +20,6 @@ impl ModelPath {
         let segments = ["data", &self.model, "unpacked", &file_name.get()];
         segments.iter().collect()
     }
-
-    pub fn read(&self, file_name: &str) -> Result<BufReader<File>, Box<dyn std::error::Error>> {
-        let file = File::open(self.path(file_name))?;
-        Ok(BufReader::new(file))
-    }
 }
 
 pub trait Filename {
@@ -41,4 +36,11 @@ impl<const R: usize> Filename for [&str; R] {
     fn get(&self) -> String {
         (*self).join("")
     }
+}
+
+pub fn read_nicely(path: &PathBuf) -> super::Result<BufReader<File>> {
+    let raw = File::open(path).map_err(|e| -> Box<dyn std::error::Error> {
+        format!("failed to open {}: {e}", path.as_path().display()).into()
+    })?;
+    Ok(BufReader::new(raw))
 }

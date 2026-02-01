@@ -7,11 +7,11 @@ pub struct Norm {
 }
 
 impl Norm {
-    pub fn new(dimension: usize, epsilon: f32) -> Self {
+    pub fn new(dimension: usize) -> Self {
         Self {
             scale: Tensor::new_vector(dimension),
             shift: Tensor::new_vector(dimension),
-            epsilon,
+            epsilon: 1e-5,
         }
     }
 

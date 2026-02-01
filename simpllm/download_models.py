@@ -7,6 +7,7 @@ import numpy as np
 import os
 import re
 import requests
+import shutil
 import sys
 import tensorflow as tf
 
@@ -65,6 +66,8 @@ def main(size, check_download):
 
         with open(f"{unpack_dir}/{file_name}.bin", "wb") as f:
             f.write(tensor.tobytes())
+
+    shutil.copy(f"data/{size}/download/hparams.json", f"{unpack_dir}/hparams.json")
 
 
 def nice_key_segments(k, join_as=None):
