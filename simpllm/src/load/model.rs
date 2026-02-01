@@ -3,7 +3,7 @@ use crate::load::load_metadata;
 use crate::load::metadata::{NormShape, TransformerShape};
 use crate::load::path::{ModelPath, read_nicely};
 use crate::tensor::{Shape, Tensor};
-use crate::transformer::{Attention, Ffn, Norm, TransformerBlock};
+use crate::transformer::{Attention, Ffn, Norm, QkvWeights, TransformerBlock};
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
@@ -82,19 +82,7 @@ fn load_transformer(
     let mut attn = Attention::new(d, n_heads);
 
     let qkv_floats = load_floats([1, d, qkv_3d], &t_path("attn.qkv.weights"))?;
-    let mut wq = Vec::with_capacity(d * d);
-    let mut wk = Vec::with_capacity(d * d);
-    let mut wv = Vec::with_capacity(d * d);
-
-    for row in 0..d {
-        let row_start = row * qkv_3d; // qkv_3d = 3*d
-        wq.extend_from_slice(&qkv_floats[row_start..row_start + d]);
-        wk.extend_from_slice(&qkv_floats[row_start + d..row_start + 2 * d]);
-        wv.extend_from_slice(&qkv_floats[row_start + 2 * d..row_start + 3 * d]);
-    }
-    let attn_wq = populate_tensor([d, d], &wq);
-    let attn_wk = populate_tensor([d, d], &wk);
-    let attn_wv = populate_tensor([d, d], &wv);
+    let qkv_weights = QkvWeights::from_flat_pytorch(&qkv_floats)?;
 
     let qkv_bias_floats = load_floats([metadata.attn.qkv.bias], &t_path("attn.qkv.bias"))?;
     let mut qkv_bias_chunks = qkv_bias_floats.chunks_exact(d);
@@ -106,9 +94,9 @@ fn load_transformer(
     let attn_wo = load_tensor([d, d], &t_path("attn.output.weights"))?;
     let attn_o_bias = load_tensor([d], &t_path("attn.output.bias"))?;
 
-    attn.q_mut().set(&attn_wq, &attn_q_bias);
-    attn.k_mut().set(&attn_wk, &attn_k_bias);
-    attn.v_mut().set(&attn_wv, &attn_v_bias);
+    attn.q_mut().set(&qkv_weights.q, &attn_q_bias);
+    attn.k_mut().set(&qkv_weights.k, &attn_k_bias);
+    attn.v_mut().set(&qkv_weights.v, &attn_v_bias);
     attn.o_mut().set(&attn_wo, &attn_o_bias);
 
     let attn_norm = load_norm(

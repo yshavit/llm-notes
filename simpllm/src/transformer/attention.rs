@@ -1,5 +1,6 @@
 use crate::tensor::{Matrix, Tensor, matmul, matmul_batched_3, softmax};
 use crate::transformer::weights::MatrixAndBias;
+use std::fmt::{Display, Formatter};
 
 pub struct Attention {
     embedding_dim: usize,
@@ -99,12 +100,67 @@ impl Attention {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct QkvWeights {
+    pub q: Matrix,
+    pub k: Matrix,
+    pub v: Matrix,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum QkvWeightError {
+    LenNotMultipleOf3(usize),
+    LenEachNotSquare(usize),
+}
+
+impl Display for QkvWeightError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QkvWeightError::LenNotMultipleOf3(was) => write!(f, "flat length must be a multiple of 3; was {was}"),
+            QkvWeightError::LenEachNotSquare(d) => write!(f, "each-chunk length is not square: {d}"),
+        }
+    }
+}
+
+impl std::error::Error for QkvWeightError {}
+
+impl QkvWeights {
+    pub fn from_flat_pytorch(flat: &[f32]) -> Result<Self, QkvWeightError> {
+        let len_each = flat.len() / 3;
+        if flat.len() != len_each * 3 {
+            return Err(QkvWeightError::LenNotMultipleOf3(flat.len()));
+        }
+        let d = len_each.isqrt();
+        if d * d != len_each {
+            return Err(QkvWeightError::LenEachNotSquare(len_each));
+        }
+
+        let mut chunks = flat.chunks(len_each);
+
+        let mut q = Tensor::new_matrix(d, d);
+        let mut k = Tensor::new_matrix(d, d);
+        let mut v = Tensor::new_matrix(d, d);
+
+        q.reset_values(chunks.next().unwrap());
+        k.reset_values(chunks.next().unwrap());
+        v.reset_values(chunks.next().unwrap());
+
+        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
+        // here instead.
+        q = q.t().contiguous();
+        k = k.t().contiguous();
+        v = v.t().contiguous();
+
+        Ok(Self { q, k, v })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::assert_f32_slice;
     use crate::tensor::Tensor;
+    use crate::transformer::QkvWeights;
     use crate::transformer::attention::Attention;
-    use crate::transformer::weights::MatrixAndBias;
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -149,7 +205,8 @@ mod tests {
     /// # (Pytorch expects a batch dimension, so we'll give it a batch size of 1)
     /// input_tensor = torch.arange(1, n_tokens * d_model + 1).float().reshape(1, n_tokens, d_model)
     ///
-    /// output, attn_weights = model(input_tensor, input_tensor, input_tensor)
+    /// causal_mask = torch.triu(torch.ones(n_tokens, n_tokens), diagonal=1).bool()
+    /// output, attn_weights = model(input_tensor, input_tensor, input_tensor, attn_mask=causal_mask, need_weights=True)
     ///
     /// print("Input:  ", input_tensor.tolist())
     /// print("Output: ")
@@ -161,12 +218,13 @@ mod tests {
     /// ```text
     /// Input:   [[[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], [7.0, 8.0, 9.0, 10.0, 11.0, 12.0]]]
     /// Output:
-    /// [[0.027653157711029053,
-    ///   0.027424853295087814,
-    ///   0.02720031887292862,
-    ///   0.02697945199906826,
-    ///   0.026762165129184723,
-    ///   0.026548368856310844],
+    ///
+    /// [[0.011457345448434353,
+    ///   0.011363562196493149,
+    ///   0.011271310970187187,
+    ///   0.011180554516613483,
+    ///   0.011091256514191628,
+    ///   0.011003383435308933],
     ///  [0.029986323788762093,
     ///   0.02973994053900242,
     ///   0.029497595503926277,
@@ -184,21 +242,14 @@ mod tests {
         let mut attention = Attention::new(embedding_dim, n_heads);
         let weights_size = embedding_dim.pow(2);
         let mut counter_data = (1..).map(|i| 1.0 / (i as f32));
-        let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(weights_size).collect::<Vec<_>>() };
+        let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(n).collect::<Vec<_>>() };
 
-        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
-        // here instead.
+        let QkvWeights { q, k, v } = QkvWeights::from_flat_pytorch(&counter(weights_size * 3)).unwrap();
+
         let zero_bias = Tensor::new_vector(embedding_dim);
-        let mut set_weights_transposed = |mab: &mut MatrixAndBias| {
-            let mut weights = Tensor::new_matrix(embedding_dim, embedding_dim);
-            weights.reset_values(&counter(weights_size));
-            weights = weights.t();
-            mab.set(&weights, &zero_bias);
-        };
-
-        set_weights_transposed(attention.q_mut());
-        set_weights_transposed(attention.k_mut());
-        set_weights_transposed(attention.v_mut());
+        attention.q_mut().set(&q, &zero_bias);
+        attention.k_mut().set(&k, &zero_bias);
+        attention.v_mut().set(&v, &zero_bias);
 
         let mut o_weights = Tensor::new_matrix(embedding_dim, embedding_dim);
         o_weights.reset_values(&counter(weights_size));
@@ -216,12 +267,12 @@ mod tests {
 
         let expected = vec![
             [
-                0.027653157711029053,
-                0.027424853295087814,
-                0.02720031887292862,
-                0.02697945199906826,
-                0.026762165129184723,
-                0.026548368856310844,
+                0.011457345448434353,
+                0.011363562196493149,
+                0.011271310970187187,
+                0.011180554516613483,
+                0.011091256514191628,
+                0.011003383435308933,
             ],
             [
                 0.029986323788762093,

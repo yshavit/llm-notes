@@ -22,6 +22,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let result = model.apply(&tok_indexes)?;
             let last_row = result.num_rows() - 1;
             let result_rank = result.with_row([last_row, 0], |logits| {
+                let mut all = Vec::from(logits);
+                all.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+                eprintln!("logits: {:?} ... {:?}", &all[..5], &all[all.len() - 5..]);
+
                 let mut max_idx = 0;
                 let mut max_val = logits[0];
                 for i in 1..logits.len() {
