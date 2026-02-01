@@ -182,7 +182,7 @@ impl<const R: usize> Tensor<R> {
     /// The tensor must be at least rank 2. The batch is actually `R-2`, with the last two indices of this tensor being
     /// the ones that the [`MatrixView`] will represent. (Rust doesn't let us specify a type of `R-2`.) As such, the
     /// last two elements of `batch` must be `0`.
-    pub fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<R> {
+    pub fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<'_, R> {
         assert!(R >= 2, "cannot take matrix slice on vectors");
         assert!(
             batch[R - 1] == 0 && batch[R - 2] == 0,
@@ -192,7 +192,7 @@ impl<const R: usize> Tensor<R> {
         MatrixView::new(self, batch)
     }
 
-    pub fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<R> {
+    pub fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<'_, R> {
         assert!(R >= 2, "cannot take matrix slice on vectors");
         assert!(
             batch[R - 1] == 0 && batch[R - 2] == 0,
@@ -477,11 +477,11 @@ impl Tensor<1> {
         Self::new([num_elems])
     }
 
-    pub fn as_row_matrix(&self) -> MatrixView<1> {
+    pub fn as_row_matrix(&self) -> MatrixView<'_, 1> {
         MatrixView::new(self, [0])
     }
 
-    pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<1> {
+    pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<'_, 1> {
         MatrixViewMut::new(self, [0])
     }
 

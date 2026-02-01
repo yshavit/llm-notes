@@ -2,7 +2,7 @@ use crate::llm::ModelLoader;
 use crate::load::load_metadata;
 use crate::load::metadata::{NormShape, TransformerShape};
 use crate::load::path::{ModelPath, read_nicely};
-use crate::tensor::{Matrix, Shape, Tensor, Vector};
+use crate::tensor::{Shape, Tensor};
 use crate::transformer::{Attention, Ffn, Norm, TransformerBlock};
 use std::fs;
 use std::io::Read;
@@ -46,11 +46,6 @@ fn load_norm(path: &ModelPath, prefix: &str, metadata: &NormShape) -> super::Res
     Ok(norm)
 }
 
-pub struct WeightData {
-    pub weight: Matrix,
-    pub bias: Vector,
-}
-
 /// Loads the files for one transformer block.
 ///
 /// The files are something like:
@@ -76,7 +71,6 @@ fn load_transformer(
 ) -> super::Result<TransformerBlock> {
     let layer_idx_string = find_transformer_prefix(path, layer_idx)?;
 
-    let qkv_weights = &metadata.attn.qkv.weights;
     // QKV should ba a tensor of [d x 3d]
     let (d, qkv_3d) = metadata.attn.qkv.weights;
     assert_eq!(qkv_3d, d * 3);
