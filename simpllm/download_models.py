@@ -54,7 +54,9 @@ def main(size, check_download):
         padding = layers_len - len(n)
         return ("0" * padding) + n
 
-    for key in reader.get_variable_to_shape_map():
+    var_to_shape_map = reader.get_variable_to_shape_map()
+    stats_per_key = {}
+    for key in sorted(var_to_shape_map.keys()):
         nice_key = nice_key_segments(key)
         for i, e in enumerate(nice_key):
             if re.fullmatch("h\\d+", e):
@@ -62,10 +64,20 @@ def main(size, check_download):
         file_name = ".".join(nice_key)
 
         tensor = reader.get_tensor(key)
+        stats_per_key[key] = {
+            "shape": var_to_shape_map[key],
+            "min": float(tensor.min()),
+            "max": float(tensor.max()),
+            "mean": float(tensor.mean()),
+            "std": float(tensor.std()),
+        }
         tensor = np.ascontiguousarray(tensor, dtype=np.float32)
 
         with open(f"{unpack_dir}/{file_name}.bin", "wb") as f:
             f.write(tensor.tobytes())
+
+    with open(f"{unpack_dir}/stats.json", "w") as f:
+        json.dump(stats_per_key, f, sort_keys=True, indent=4)
 
     shutil.copy(f"data/{size}/download/hparams.json", f"{unpack_dir}/hparams.json")
 
