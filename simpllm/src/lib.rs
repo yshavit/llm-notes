@@ -1,3 +1,4 @@
+pub mod model;
 mod tensor;
 mod transformer;
 

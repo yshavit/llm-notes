@@ -147,8 +147,16 @@ def model_metadata(size):
             if subkey not in target_dict:
                 target_dict[subkey] = {}
             target_dict = target_dict[subkey]
+        # Some cleanup. First, unwrap single-element lists
         if type(val) is list and len(val) == 1:
             val = val[0]
+        # Secondly, remove the first element of the weights
+        if key_segments[-1] == "weights" and (type(val) is list) and len(val) == 3:
+            if val[0] != 1:
+                print(f"unexpected value for {key_segments[-1]}: {val}")
+                exit(1)
+            val = val[1:]
+
         target_dict[key_segments[-1]] = val
 
     metadata["layer"] = []
