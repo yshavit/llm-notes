@@ -3,39 +3,51 @@ use crate::transformer::{Norm, TransformerBlock};
 use std::fmt::{Display, Formatter};
 use tiktoken_rs::Rank;
 
-pub struct Model {
+pub struct ModelLoader {
     pub tok_embed: Matrix,
     pub pos_embed: Matrix,
     pub layers: Vec<TransformerBlock>,
     pub final_norm: Norm,
 }
 
+pub struct Model {
+    fwd: ModelLoader,
+    tok_unembed: Matrix,
+}
+
+impl ModelLoader {
+    pub fn initialize(self) -> Model {
+        let tok_unembed = self.tok_embed.clone().t().contiguous();
+        Model { fwd: self, tok_unembed }
+    }
+}
+
 impl Model {
     pub fn apply(&self, seq: &Vec<Rank>) -> Result<Matrix, InferenceError> {
         let mut x = self.embed_inputs(seq)?;
 
-        for transformer in &self.layers {
+        for transformer in &self.fwd.layers {
             x = transformer.apply(x);
         }
 
-        x = self.final_norm.apply(&x);
+        x = self.fwd.final_norm.apply(&x);
 
         let mut unembedding = Tensor::new_matrix(x.num_rows(), self.vocab_size());
-        matmul(&x, &self.tok_embed.clone().t(), &mut unembedding);
+        matmul(&x, &self.tok_unembed, &mut unembedding);
 
         Ok(unembedding)
     }
 
     pub fn vocab_size(&self) -> usize {
-        self.tok_embed.num_rows()
+        self.fwd.tok_embed.num_rows()
     }
 
     pub fn token_embedding_dim(&self) -> usize {
-        self.tok_embed.num_cols()
+        self.fwd.tok_embed.num_cols()
     }
 
     pub fn max_seq_len(&self) -> usize {
-        self.pos_embed.num_rows()
+        self.fwd.pos_embed.num_rows()
     }
 
     fn embed_inputs(&self, seq: &Vec<Rank>) -> Result<Matrix, InferenceError> {
@@ -45,10 +57,10 @@ impl Model {
         let mut input = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
         for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
             let seq_tok_usize: usize = seq_tok.try_into().map_err(|_| InferenceError::TokOutOfRange(seq_tok))?;
-            self.tok_embed.with_row([seq_tok_usize, 0], |tok_embed| {
+            self.fwd.tok_embed.with_row([seq_tok_usize, 0], |tok_embed| {
                 input.set_row([seq_idx, 0], tok_embed);
             });
-            self.pos_embed.with_row([seq_idx, 0], |pos_embed| {
+            self.fwd.pos_embed.with_row([seq_idx, 0], |pos_embed| {
                 input.mut_row([seq_idx, 0], |input_embed| {
                     assert_eq!(pos_embed.len(), input_embed.len());
                     for i in 0..pos_embed.len() {

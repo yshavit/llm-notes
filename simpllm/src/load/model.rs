@@ -1,4 +1,4 @@
-use crate::llm::Model;
+use crate::llm::ModelLoader;
 use crate::load::load_metadata;
 use crate::load::metadata::{NormShape, TransformerShape};
 use crate::load::path::{ModelPath, read_nicely};
@@ -8,7 +8,7 @@ use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 
-pub fn load_model(path: &ModelPath) -> super::Result<Model> {
+pub fn load_model(path: &ModelPath) -> super::Result<ModelLoader> {
     let (shape, h_params) = load_metadata(path)?;
 
     // metadata.tok_embed is [n_vocab, dim]. Pos is [n_seq, dim]
@@ -29,7 +29,7 @@ pub fn load_model(path: &ModelPath) -> super::Result<Model> {
     let final_norm = load_norm(&path, "final_norm", &shape.final_norm)?;
     eprintln!("Model loaded!");
 
-    Ok(Model {
+    Ok(ModelLoader {
         tok_embed,
         pos_embed,
         layers,

@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model_name = "124M";
 
     let model_path = ModelPath::from(model_name);
-    let model = load_model(&model_path)?;
+    let model = load_model(&model_path)?.initialize();
 
     let tokenizer = tiktoken_rs::r50k_base_singleton();
 
