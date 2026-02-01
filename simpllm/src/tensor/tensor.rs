@@ -1,4 +1,5 @@
 use crate::tensor::Shape;
+use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone)]
@@ -116,8 +117,12 @@ impl<const R: usize> Tensor<R> {
         self
     }
 
-    pub fn flat_f32(&self) -> Vec<f32> {
-        self.clone().contiguous().data
+    pub fn flat_f32(&self) -> Cow<'_, [f32]> {
+        if self.strides == Self::contiguous_strides(self.shape) {
+            Cow::from(&self.data)
+        } else {
+            Cow::from(self.clone().contiguous().data)
+        }
     }
 
     pub fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> Tensor<R2> {

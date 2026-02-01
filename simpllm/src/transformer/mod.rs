@@ -4,3 +4,4 @@ mod block;
 mod ffn;
 mod norm;
 pub mod softmax;
+mod weights;

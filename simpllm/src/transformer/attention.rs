@@ -1,18 +1,15 @@
-use crate::tensor::{Matrix, Tensor, Vector, matmul, matmul_batched_3, softmax};
+use crate::tensor::{Matrix, Tensor, matmul, matmul_batched_3, softmax};
+use crate::transformer::weights::MatrixAndBias;
 
 pub struct Attention {
     embedding_dim: usize,
     num_heads: usize,
+
+    // TODO need to update the book to include that these all have bias!
     w_q: MatrixAndBias,
     w_k: MatrixAndBias,
     w_v: MatrixAndBias,
     w_o: MatrixAndBias,
-}
-
-struct MatrixAndBias {
-    weights: Matrix,
-    // TODO need to update the book to include this!
-    bias: Vector,
 }
 
 impl Attention {
@@ -26,23 +23,27 @@ impl Attention {
             embedding_dim,
             num_heads,
 
-            w_q: MatrixAndBias {
-                weights: Tensor::new_matrix(embedding_dim, embedding_dim),
-                bias: Tensor::new_vector(embedding_dim),
-            },
-            w_k: MatrixAndBias {
-                weights: Tensor::new_matrix(embedding_dim, embedding_dim),
-                bias: Tensor::new_vector(embedding_dim),
-            },
-            w_v: MatrixAndBias {
-                weights: Tensor::new_matrix(embedding_dim, embedding_dim),
-                bias: Tensor::new_vector(embedding_dim),
-            },
-            w_o: MatrixAndBias {
-                weights: Tensor::new_matrix(embedding_dim, embedding_dim),
-                bias: Tensor::new_vector(embedding_dim),
-            },
+            w_q: MatrixAndBias::new(embedding_dim, embedding_dim),
+            w_k: MatrixAndBias::new(embedding_dim, embedding_dim),
+            w_v: MatrixAndBias::new(embedding_dim, embedding_dim),
+            w_o: MatrixAndBias::new(embedding_dim, embedding_dim),
         }
+    }
+
+    pub fn q_mut(&mut self) -> &mut MatrixAndBias {
+        &mut self.w_q
+    }
+
+    pub fn k_mut(&mut self) -> &mut MatrixAndBias {
+        &mut self.w_k
+    }
+
+    pub fn v_mut(&mut self) -> &mut MatrixAndBias {
+        &mut self.w_v
+    }
+
+    pub fn o_mut(&mut self) -> &mut MatrixAndBias {
+        &mut self.w_o
     }
 
     pub fn apply(&self, input: &Matrix) -> Matrix {
@@ -56,9 +57,9 @@ impl Attention {
         let (n, d, h) = (input.num_rows(), self.embedding_dim, self.num_heads);
         let qkv = |weight: &MatrixAndBias| -> Tensor<3> {
             let mut result = Tensor::new_matrix(n, d);
-            matmul(input, &weight.weights, &mut result);
+            matmul(input, weight.weights(), &mut result);
             // result is (N x d). Add the biases before reshaping.
-            result.add_broadcasted_vector(&weight.bias);
+            result.add_broadcasted_vector(weight.bias());
 
             let result = result.reshape([n, h, d / h]);
             result.transposed(0, 1)
@@ -87,8 +88,8 @@ impl Attention {
         let attn = attn.contiguous().reshape([n, d]);
 
         let mut output = Tensor::new_matrix(n, d);
-        matmul(&attn, &self.w_o.weights, &mut output);
-        output.add_broadcasted_vector(&self.w_o.bias);
+        matmul(&attn, self.w_o.weights(), &mut output);
+        output.add_broadcasted_vector(self.w_o.bias());
 
         output
     }
@@ -99,6 +100,7 @@ mod tests {
     use crate::assert_f32_slice;
     use crate::tensor::Tensor;
     use crate::transformer::attention::Attention;
+    use crate::transformer::weights::MatrixAndBias;
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -182,16 +184,21 @@ mod tests {
 
         // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
         // here instead.
-        attention.w_q.weights.reset_values(&counter(weights_size));
-        attention.w_q.weights = attention.w_q.weights.t().contiguous();
+        let zero_bias = Tensor::new_vector(embedding_dim);
+        let mut set_weights_transposed = |mab: &mut MatrixAndBias| {
+            let mut weights = Tensor::new_matrix(embedding_dim, embedding_dim);
+            weights.reset_values(&counter(weights_size));
+            weights = weights.t();
+            mab.set(&weights, &zero_bias);
+        };
 
-        attention.w_k.weights.reset_values(&counter(weights_size));
-        attention.w_k.weights = attention.w_k.weights.t().contiguous();
+        set_weights_transposed(attention.q_mut());
+        set_weights_transposed(attention.k_mut());
+        set_weights_transposed(attention.v_mut());
 
-        attention.w_v.weights.reset_values(&counter(weights_size));
-        attention.w_v.weights = attention.w_v.weights.t().contiguous();
-
-        attention.w_o.weights.reset_values(&counter(weights_size));
+        let mut o_weights = Tensor::new_matrix(embedding_dim, embedding_dim);
+        o_weights.reset_values(&counter(weights_size));
+        attention.o_mut().set(&o_weights, &zero_bias);
 
         let mut tokens = Tensor::new([embedding_dim * n_tokens]);
         tokens.reset_values(

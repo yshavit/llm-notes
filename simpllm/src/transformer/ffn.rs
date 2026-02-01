@@ -1,5 +1,6 @@
 use crate::tensor::{Matrix, Tensor, Vector, matmul};
 use crate::transformer::activation::gelu;
+use crate::transformer::weights::MatrixAndBias;
 
 pub struct Ffn {
     layers_transforms: Vec<LayerTransform>,
@@ -18,11 +19,15 @@ impl Ffn {
     }
 
     fn in_dims(&self) -> usize {
-        self.layers_transforms[0].in_dims()
+        self.layers_transforms[0].mab.in_dims()
     }
 
     fn out_dims(&self) -> usize {
-        self.layers_transforms[self.layers_transforms.len() - 1].out_dims()
+        self.layers_transforms[self.layers_transforms.len() - 1].mab.out_dims()
+    }
+
+    pub fn layer_mut(&mut self, layer: usize) -> &'_ mut MatrixAndBias {
+        &mut self.layers_transforms[layer].mab
     }
 
     pub fn apply_matrix(&self, mut input: Matrix) -> Matrix {
@@ -43,13 +48,13 @@ impl Ffn {
     pub fn apply(&self, mut input: Vector) -> Vector {
         assert_eq!(
             input.len(),
-            self.layers_transforms[0].in_dims(),
+            self.layers_transforms[0].mab.in_dims(),
             "expected input with dimension {}, got {}",
             input.len(),
-            self.layers_transforms[0].in_dims()
+            self.layers_transforms[0].mab.in_dims()
         );
         for transform in &self.layers_transforms {
-            let mut output = Tensor::new_vector(transform.out_dims());
+            let mut output = Tensor::new_vector(transform.mab.out_dims());
             transform.apply(&input, &mut output);
             input = output;
         }
@@ -58,32 +63,26 @@ impl Ffn {
 }
 
 struct LayerTransform {
-    weights: Matrix,
-    biases: Vec<f32>,
+    mab: MatrixAndBias,
 }
 
 impl LayerTransform {
     fn new(in_dims: usize, out_dims: usize) -> Self {
         Self {
-            weights: Tensor::new_matrix(in_dims, out_dims),
-            biases: vec![0.; out_dims],
+            mab: MatrixAndBias::new(in_dims, out_dims),
         }
-    }
-
-    fn in_dims(&self) -> usize {
-        self.weights.num_rows()
-    }
-
-    fn out_dims(&self) -> usize {
-        self.weights.num_cols()
     }
 
     fn apply(&self, inputs: &Vector, activations: &mut Vector) {
         // matmul will overwrite the activations, so we don't need to zero them out first
-        matmul(inputs.as_row_matrix(), &self.weights, activations.as_row_matrix_mut());
+        matmul(
+            inputs.as_row_matrix(),
+            self.mab.weights(),
+            activations.as_row_matrix_mut(),
+        );
         activations.mut_row([0], |row| {
             for i in 0..row.len() {
-                row[i] = gelu(row[i] + self.biases[i])
+                row[i] = gelu(row[i] + self.mab.bias().get([i]))
             }
         })
     }
@@ -93,6 +92,7 @@ impl LayerTransform {
 pub mod tests {
     use super::*;
     use crate::assert_f32_slice;
+    use crate::tensor::Shape;
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -150,13 +150,13 @@ pub mod tests {
     fn compare_against_pytorch() {
         let mut ffn = Ffn::new(5, &[7], 6);
         for transform in &mut ffn.layers_transforms {
-            let weight_size = transform.in_dims() * transform.out_dims();
-            let bias_size = transform.out_dims();
-            transform.set_weights(&count_up(weight_size), &count_up(bias_size));
+            transform.mab.set(
+                &count_up([transform.mab.in_dims(), transform.mab.out_dims()]),
+                &count_up([transform.mab.out_dims()]),
+            );
         }
 
-        let mut input = Tensor::new_vector(5);
-        input.set_all(&count_up(5));
+        let input = count_up([5]);
 
         let actual = ffn.apply(input);
 
@@ -166,30 +166,11 @@ pub mod tests {
         assert_f32_slice!(actual.as_f32(), expect.as_f32());
     }
 
-    fn count_up(num_elems: usize) -> Vec<f32> {
-        (0..num_elems).map(|i| (i + 1) as f32).collect()
-    }
-
-    impl LayerTransform {
-        pub fn set_weights(&mut self, values: &[f32], biases: &[f32]) {
-            assert_eq!(
-                values.len(),
-                self.weights.shape().num_elements(),
-                "can't set {} values to {} weights",
-                values.len(),
-                self.weights.shape()
-            );
-            assert_eq!(
-                biases.len(),
-                self.biases.len(),
-                "can't set {} biases to {} weights",
-                biases.len(),
-                self.biases.len()
-            );
-            for (row_idx, row_values) in values.chunks(self.weights.num_cols()).enumerate() {
-                self.weights.set_row([row_idx, 0], row_values);
-            }
-            self.biases.copy_from_slice(biases);
-        }
+    fn count_up<const R: usize>(shape: [usize; R]) -> Tensor<R> {
+        let shape = Shape::from(shape);
+        let vals: Vec<_> = (0..shape.num_elements()).map(|i| (i + 1) as f32).collect();
+        let mut t = Tensor::new(shape);
+        t.reset_values(&vals);
+        t
     }
 }
