@@ -444,6 +444,19 @@ impl Tensor<2> {
         self.shape[1]
     }
 
+    pub fn add_broadcasted_vector(&mut self, v: &Vector) {
+        let num_cols = self.num_cols();
+        v.with_row([0], |v_row| {
+            for i in 0..self.num_rows() {
+                self.mut_row([i, 0], |my_row| {
+                    for j in 0..num_cols {
+                        my_row[j] += v_row[j]
+                    }
+                });
+            }
+        });
+    }
+
     pub fn to_f32(&self) -> Vec<Vec<f32>> {
         let mut result = Vec::with_capacity(self.num_rows());
         for row in 0..self.num_rows() {
