@@ -161,7 +161,7 @@ pub mod tests {
         let actual = ffn.apply(input);
 
         let mut expect = Tensor::new_vector(6);
-        expect.set_all(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
+        expect.reset_values(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
 
         assert_f32_slice!(actual.as_f32(), expect.as_f32());
     }

@@ -15,6 +15,11 @@ impl Norm {
         }
     }
 
+    pub fn set(&mut self, scale: &Vector, shift: &Vector) {
+        self.scale.reset_values(&scale.flat_f32());
+        self.shift.reset_values(&shift.flat_f32());
+    }
+
     pub fn apply(&self, input: &Matrix) -> Matrix {
         let mut result = input.clone();
         for row_idx in 0..result.num_rows() {

@@ -477,10 +477,6 @@ impl Tensor<1> {
         Self::new([num_elems])
     }
 
-    pub fn set_all(&mut self, values: &[f32]) {
-        self.mut_row([0], |old| old.copy_from_slice(values))
-    }
-
     pub fn as_row_matrix(&self) -> MatrixView<1> {
         MatrixView::new(self, [0])
     }

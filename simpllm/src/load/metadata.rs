@@ -1,4 +1,4 @@
-use crate::model::path::ModelPath;
+use crate::load::path::ModelPath;
 use serde::Deserialize;
 
 pub type Num = usize;

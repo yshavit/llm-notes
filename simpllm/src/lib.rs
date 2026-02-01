@@ -1,4 +1,4 @@
-pub mod model;
+pub mod load;
 mod tensor;
 mod transformer;
 

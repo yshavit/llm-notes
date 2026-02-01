@@ -1,6 +1,6 @@
-use crate::model::load_metadata;
-use crate::model::metadata::{Norm, Transformer};
-use crate::model::path::ModelPath;
+use crate::load::load_metadata;
+use crate::load::metadata::{Norm, Transformer};
+use crate::load::path::ModelPath;
 use crate::tensor::{Matrix, Shape, Tensor, Vector};
 use std::fs;
 use std::fs::File;

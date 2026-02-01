@@ -20,6 +20,22 @@ impl TransformerBlock {
         }
     }
 
+    pub fn mut_attn(&mut self) -> &'_ mut Attention {
+        &mut self.attention
+    }
+
+    pub fn mut_attn_norm(&mut self) -> &'_ mut Norm {
+        &mut self.attention_norm
+    }
+
+    pub fn mut_ffn(&mut self) -> &'_ mut Ffn {
+        &mut self.ffn
+    }
+
+    pub fn mut_ffn_norm(&mut self) -> &'_ mut Norm {
+        &mut self.ffn_norm
+    }
+
     pub fn apply(&self, input: &Matrix) {
         let pre_attn_norm = self.attention_norm.apply(input);
         let attn = self.attention.apply(&pre_attn_norm);

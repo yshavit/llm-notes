@@ -1,4 +1,4 @@
-use simpllm::model::{Model, ModelPath};
+use simpllm::load::{Model, ModelPath};
 use std::io::stdin;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
