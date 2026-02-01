@@ -36,13 +36,13 @@ impl TransformerBlock {
         &mut self.ffn_norm
     }
 
-    pub fn apply(&self, input: &Matrix) {
-        let pre_attn_norm = self.attention_norm.apply(input);
+    pub fn apply(&self, input: Matrix) -> Matrix {
+        let pre_attn_norm = self.attention_norm.apply(&input);
         let attn = self.attention.apply(&pre_attn_norm);
-        let attn_and_residual = attn.add_tensor(input);
+        let attn_and_residual = attn.add_tensor(&input);
 
         let pre_ffn_norm = self.ffn_norm.apply(&attn_and_residual);
         let ffn = self.ffn.apply_matrix(pre_ffn_norm);
-        ffn.add_tensor(&attn_and_residual);
+        ffn.add_tensor(&attn_and_residual)
     }
 }

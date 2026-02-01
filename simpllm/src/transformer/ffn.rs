@@ -36,9 +36,9 @@ impl Ffn {
 
         for row_idx in (0..input.num_rows()) {
             let mut input_row = Tensor::new_vector(input.num_cols());
-            input.with_row([row_idx, 0], |row| input_row.set_row([row_idx], row));
+            input.with_row([row_idx, 0], |row| input_row.set_row([0], row));
             let ffn_result = self.apply(input_row);
-            ffn_result.with_row([row_idx], |in_row| {
+            ffn_result.with_row([0], |in_row| {
                 input.mut_row([row_idx, 0], |out| out.copy_from_slice(in_row));
             });
         }

@@ -151,14 +151,14 @@ impl<const R: usize> Tensor<R> {
         self.data.fill(0.);
     }
 
-    pub fn with_row(&self, indices: [usize; R], f: impl FnOnce(&[f32])) {
+    pub fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
         let read_start = self.data_offset(indices);
         let read_len = self.shape[R - 1] - indices[R - 1];
 
         if self.strides[R - 1] == 1 {
             // Row-major format; we can just memcpy
             let data = &self.data[read_start..read_start + read_len];
-            f(data);
+            f(data)
         } else {
             let stride: usize = (0..R - 1).map(|i| self.strides[i] * self.shape[i]).sum();
             let mut data = vec![0.; read_len];
@@ -167,7 +167,7 @@ impl<const R: usize> Tensor<R> {
                 data[idx] = self.data[offset];
                 offset += stride;
             }
-            f(&mut data);
+            f(&mut data)
         }
     }
 

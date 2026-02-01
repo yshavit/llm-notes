@@ -18,7 +18,7 @@ pub fn load_model(path: &ModelPath) -> super::Result<Model> {
     let pos_embed = load_tensor([shape.pos_embed[0], shape.pos_embed[1]], &path.path("pos_embed.bin"))?;
 
     let mut layers = Vec::with_capacity(shape.layer.len());
-    eprint!("{} layers [", shape.layer.len());
+    eprint!("{} layers [ ", shape.layer.len());
     for (layer_idx, layer_meta) in shape.layer.iter().enumerate() {
         eprint!("{} ", layer_idx + 1);
         let transformer = load_transformer(path, layer_idx, layer_meta, h_params.n_head)?;
