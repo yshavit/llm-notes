@@ -66,6 +66,7 @@ impl Attention {
             result.transposed(0, 1)
         };
 
+        // TODO in practice, these are brought in as a single matrix that's the three of these concatenated.
         // each are (h, n, d/h)
         let queries = qkv(&self.w_q);
         let keys = qkv(&self.w_k);

@@ -1,4 +1,3 @@
-mod err;
 mod metadata;
 mod model;
 mod path;
