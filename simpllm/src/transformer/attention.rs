@@ -125,7 +125,7 @@ impl Display for QkvWeightError {
 impl std::error::Error for QkvWeightError {}
 
 impl QkvWeights {
-    pub fn from_flat_pytorch(flat: &[f32]) -> Result<Self, QkvWeightError> {
+    pub fn from_flat_tensorflow(flat: &[f32]) -> Result<Self, QkvWeightError> {
         let len_each = flat.len() / 3;
         if flat.len() != len_each * 3 {
             return Err(QkvWeightError::LenNotMultipleOf3(flat.len()));
@@ -135,21 +135,18 @@ impl QkvWeights {
             return Err(QkvWeightError::LenEachNotSquare(len_each));
         }
 
-        let mut chunks = flat.chunks(len_each);
+        let mut combined = Tensor::new([d, 3, d]);
+        combined.reset_values(flat);
 
         let mut q = Tensor::new_matrix(d, d);
         let mut k = Tensor::new_matrix(d, d);
         let mut v = Tensor::new_matrix(d, d);
 
-        q.reset_values(chunks.next().unwrap());
-        k.reset_values(chunks.next().unwrap());
-        v.reset_values(chunks.next().unwrap());
-
-        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
-        // here instead.
-        q = q.t().contiguous();
-        k = k.t().contiguous();
-        v = v.t().contiguous();
+        for i in 0..d {
+            combined.with_row([i, 0, 0], |q_row| q.set_row([i, 0], q_row));
+            combined.with_row([i, 1, 0], |k_row| k.set_row([i, 0], k_row));
+            combined.with_row([i, 2, 0], |v_row| v.set_row([i, 0], v_row));
+        }
 
         Ok(Self { q, k, v })
     }
@@ -244,7 +241,13 @@ mod tests {
         let mut counter_data = (1..).map(|i| 1.0 / (i as f32));
         let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(n).collect::<Vec<_>>() };
 
-        let QkvWeights { q, k, v } = QkvWeights::from_flat_pytorch(&counter(weights_size * 3)).unwrap();
+        let QkvWeights { mut q, mut k, mut v } = QkvWeights::from_flat_tensorflow(&counter(weights_size * 3)).unwrap();
+
+        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
+        // here instead.
+        q = q.t().contiguous();
+        k = k.t().contiguous();
+        v = v.t().contiguous();
 
         let zero_bias = Tensor::new_vector(embedding_dim);
         attention.q_mut().set(&q, &zero_bias);

@@ -82,7 +82,7 @@ fn load_transformer(
     let mut attn = Attention::new(d, n_heads);
 
     let qkv_floats = load_floats([1, d, qkv_3d], &t_path("attn.qkv.weights"))?;
-    let qkv_weights = QkvWeights::from_flat_pytorch(&qkv_floats)?;
+    let qkv_weights = QkvWeights::from_flat_tensorflow(&qkv_floats)?;
 
     let qkv_bias_floats = load_floats([metadata.attn.qkv.bias], &t_path("attn.qkv.bias"))?;
     let mut qkv_bias_chunks = qkv_bias_floats.chunks_exact(d);
