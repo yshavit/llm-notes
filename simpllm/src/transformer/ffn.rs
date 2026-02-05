@@ -58,7 +58,7 @@ impl Ffn {
             let mut output = Tensor::new_vector(transform.mab.out_dims());
             transform.apply(&input, &mut output);
             if transforms.peek().is_some() {
-                input.mut_row([0], |cols| cols.iter_mut().for_each(|v| *v = gelu(*v)))
+                output.mut_row([0], |cols| cols.iter_mut().for_each(|v| *v = gelu(*v)))
             }
             input = output;
         }
