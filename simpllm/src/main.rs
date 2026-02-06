@@ -1,6 +1,7 @@
 use simpllm::load::{ModelPath, load_model};
 use std::env;
 use std::io::{Write, stdin, stdout};
+use std::time::Instant;
 use tiktoken_rs::Rank;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -49,8 +50,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut tok_indexes = tokenizer.encode_with_special_tokens(&line);
 
         // infer 10 times, hard-coded for now
-        for _ in 0..50 {
+        let mut durations = Vec::new();
+        for _ in 0..10 {
+            let start_time = Instant::now();
             let result = model.apply(&tok_indexes)?;
+            durations.push(start_time.elapsed());
+
             let last_row = result.num_rows() - 1;
             let result_rank = result.with_row([last_row, 0], |logits| {
                 let mut all = Vec::from(logits);
@@ -78,7 +83,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             print!("{result_str}");
             let _ = stdout().flush();
         }
+
         println!("...");
+        eprintln!("{durations:?}");
     }
 
     Ok(())
