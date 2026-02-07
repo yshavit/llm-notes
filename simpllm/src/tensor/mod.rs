@@ -1,8 +1,9 @@
 mod matmul;
 mod shape;
+pub mod softmax;
 mod tensor;
 
-pub use crate::transformer::softmax::*;
 pub use matmul::*;
 pub use shape::*;
+pub use softmax::*;
 pub use tensor::*;
