@@ -7,7 +7,11 @@ pub struct Shape<const R: usize>([usize; R]);
 
 impl<const R: usize> Shape<R> {
     pub fn iter_indices(self) -> impl Iterator<Item = [usize; R]> {
-        IndicesIter::new(self)
+        self.iter_indices_starting_at([0; R])
+    }
+
+    pub fn iter_indices_starting_at(self, start: [usize; R]) -> impl Iterator<Item = [usize; R]> {
+        IndicesIter::new(self, start)
     }
 }
 
@@ -72,10 +76,10 @@ struct IndicesIter<const R: usize> {
 }
 
 impl<const R: usize> IndicesIter<R> {
-    fn new(shape: Shape<R>) -> Self {
+    fn new(shape: Shape<R>, start_at: [usize; R]) -> Self {
         Self {
             shape,
-            next_index: Some([0; R]),
+            next_index: Some(start_at),
         }
     }
 }

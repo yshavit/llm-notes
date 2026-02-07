@@ -1,4 +1,5 @@
 use crate::tensor::Shape;
+use rayon::prelude::*;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
 
@@ -86,6 +87,57 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
+    fn mut_rows_at_batch(&mut self, base_indexes: [usize; R], f: impl Fn(usize, &mut [f32]) + Sync) {
+        assert_eq!(base_indexes[R - 1], 0);
+        if R == 1 {
+            f(0, &mut self.data);
+            return;
+        }
+        if self.strides == Self::contiguous_strides(self.shape) {
+            assert_eq!(base_indexes[R - 2], 0);
+            let start_idx = self.data_offset(base_indexes);
+            let chunk_num_rows = self.shape[R - 2];
+            let chunk_num_cols = self.shape[R - 1];
+            let slice_len = chunk_num_cols * chunk_num_rows;
+            let data_slice = &mut self.data[start_idx..(start_idx + slice_len)];
+            data_slice
+                .par_chunks_exact_mut(chunk_num_cols)
+                .enumerate()
+                .for_each(|(idx, chunk)| {
+                    assert_eq!(chunk.len(), chunk_num_cols, "internal error in mut_rows");
+                    f(idx, chunk);
+                })
+        } else {
+            todo!("transposed mut_rows not supported");
+        }
+        // if self.strides[R - 1] == 1 {
+        //     // Row-major format; we can just get slices
+        //     assert!(
+        //         base_indexes[R - 1] == 0 && base_indexes[R - 2] == 0,
+        //         "base_indexes must end in [..0, 0]. was: {base_indexes:?}"
+        //     );
+        //     let n_rows = self.shape[R - 2];
+        //     let n_cols = self.shape[R - 1];
+        //
+        //     self.data.get_disjoint_unchecked_mut()
+        //
+        //
+        //     let offset_within_first_batching = self.data_offset(base_indexes);
+        //     let first_batching_len = self.data.len() / self.shape[0];
+        //     let chunks = self.data.chunks_exact_mut(first_batching_len).enumerate().map(|(| ())
+        //     (0..n_rows).for_each(|row_idx| {
+        //         let mut index = base_indexes;
+        //         index[R - 2] = row_idx;
+        //         let data_start = self.data_offset(index);
+        //         let slice = &mut self.data[data_start..(data_start + n_cols)];
+        //         slice.fill(0.0);
+        //         f(row_idx, slice);
+        //     });
+        // } else {
+        //     todo!("transposed mut_rows not supported");
+        // }
+    }
+
     pub fn multiply_scalar(&mut self, factor: f32) {
         for v in &mut self.data {
             *v = *v * factor;
@@ -109,9 +161,24 @@ impl<const R: usize> Tensor<R> {
 
     pub fn contiguous(mut self) -> Self {
         let mut new_data = vec![0.0; self.shape.num_elements()];
-        for (data_idx, tensor_idx) in self.shape.iter_indices().enumerate() {
-            new_data[data_idx] = self.get(tensor_idx);
-        }
+        let chunk_sizes = self.data.len() / self.shape[0];
+
+        let self_shape = self.shape;
+        new_data
+            .par_chunks_exact_mut(chunk_sizes)
+            .enumerate()
+            .for_each(|(row_idx, row)| {
+                let mut start_at = [0; R];
+                start_at[0] = row_idx;
+                let mut index_iter = self_shape.iter_indices_starting_at(start_at).enumerate();
+                while let Some((data_idx, tensor_idx)) = index_iter.next() {
+                    if tensor_idx[0] > row_idx {
+                        break;
+                    }
+                    row[data_idx] = self.get(tensor_idx);
+                }
+            });
+
         self.data = new_data;
         self.strides = Self::contiguous_strides(self.shape);
         self
@@ -331,6 +398,10 @@ impl<'a, const R: usize> MatrixViewMut<'a, R> {
         }
         self.tensor.mut_row(indices, f);
     }
+
+    pub fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
+        self.tensor.mut_rows_at_batch(self.batch_dimensions, f);
+    }
 }
 
 struct Pretty<'a, const R: usize>(&'a Tensor<R>);
@@ -447,6 +518,10 @@ impl Tensor<2> {
 
     pub fn num_cols(&self) -> usize {
         self.shape[1]
+    }
+
+    pub fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
+        self.mut_rows_at_batch([0, 0], f);
     }
 
     pub fn add_broadcasted_vector(&mut self, v: &Vector) {

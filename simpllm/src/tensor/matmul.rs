@@ -36,10 +36,7 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
         out.shape(),
     );
 
-    let mut row_vals = vec![0.0; out.num_cols()];
-    for row_idx in 0..a.num_rows() {
-        row_vals.fill(0.0);
-
+    out.mut_rows(|row_idx, row_vals| {
         // Conceptually, what we want is just a bunch of dot products:
         //
         //     for col_idx in 0..b.num_cols() {
@@ -64,8 +61,7 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
                 row_vals[b_col] += a_val * b.get(a_col, b_col);
             }
         }
-        out.set_row(row_idx, &row_vals);
-    }
+    });
 }
 
 #[cfg(test)]

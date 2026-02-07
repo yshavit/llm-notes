@@ -34,14 +34,15 @@ impl Ffn {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
 
-        for row_idx in 0..input.num_rows() {
-            let mut input_row = Tensor::new_vector(input.num_cols());
-            input.with_row([row_idx, 0], |row| input_row.set_row([0], row));
+        let num_cols = input.num_cols();
+        input.mut_rows(|_, row| {
+            let mut input_row = Tensor::new_vector(num_cols);
+            input_row.set_row([0], row);
             let ffn_result = self.apply(input_row);
             ffn_result.with_row([0], |in_row| {
-                input.mut_row([row_idx, 0], |out| out.copy_from_slice(in_row));
+                row.copy_from_slice(in_row);
             });
-        }
+        });
         input
     }
 

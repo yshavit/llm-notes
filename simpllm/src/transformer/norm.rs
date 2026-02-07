@@ -22,15 +22,13 @@ impl Norm {
 
     pub fn apply(&self, input: &Matrix) -> Matrix {
         let mut result = input.clone();
-        for row_idx in 0..result.num_rows() {
-            result.mut_row([row_idx, 0], |row| {
-                let Stats { mean, variance } = row.iter().copied().into();
-                for col_idx in 0..row.len() {
-                    let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
-                    row[col_idx] = (normalized * self.scale.get([col_idx])) + self.shift.get([col_idx]);
-                }
-            });
-        }
+        result.mut_rows(|_, row| {
+            let Stats { mean, variance } = row.iter().copied().into();
+            for col_idx in 0..row.len() {
+                let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
+                row[col_idx] = (normalized * self.scale.get([col_idx])) + self.shift.get([col_idx]);
+            }
+        });
         result
     }
 }
