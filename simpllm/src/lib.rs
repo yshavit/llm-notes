@@ -1,7 +1,7 @@
 pub mod bpe;
 pub mod llm;
 pub mod load;
-mod tensor;
+pub mod tensor;
 mod transformer;
 
 #[cfg(test)]

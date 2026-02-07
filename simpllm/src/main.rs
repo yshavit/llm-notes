@@ -1,5 +1,6 @@
 use simpllm::bpe::Rank;
 use simpllm::load::{ModelPath, load_model, load_tokenizer};
+use simpllm::tensor::LogitSampler;
 use std::env;
 use std::io::{Write, stdin, stdout};
 use std::time::Instant;
@@ -40,28 +41,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // infer 10 times, hard-coded for now
         let mut durations = Vec::new();
-        for _ in 0..10 {
+        let mut found_eos = false;
+        for _ in 0..100 {
             let start_time = Instant::now();
             let result = model.apply(&tok_indexes)?;
+            let result_rank: Rank = LogitSampler::new(result)
+                .top_k(50)
+                .top_prob(0.95)
+                .temperature(0.9)
+                .get()
+                .into();
+
             durations.push(start_time.elapsed());
 
-            let last_row = result.num_rows() - 1;
-            let result_rank = result.with_row([last_row, 0], |logits| {
-                let mut all = Vec::from(logits);
-                all.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-
-                let mut max_idx = 0;
-                let mut max_val = logits[0];
-                for i in 1..logits.len() {
-                    if logits[i] > max_val {
-                        max_val = logits[i];
-                        max_idx = i;
-                    }
-                }
-                max_idx
-            });
-            let result_rank: Rank = result_rank.into();
             if tokenizer.is_eos(result_rank) {
+                found_eos = true;
                 break;
             }
 
@@ -71,7 +65,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let _ = stdout().flush();
         }
 
-        println!("...");
+        if found_eos {
+            println!(" <EOS>");
+        } else {
+            println!("...");
+        }
         eprintln!("{durations:?}");
     }
 

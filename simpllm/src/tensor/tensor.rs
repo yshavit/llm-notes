@@ -70,20 +70,21 @@ impl<const R: usize> Tensor<R> {
     ///
     /// The row is provided as a borrowed slice for efficiency: if it's possible to read it directly from the tensor's
     /// underlying data, then this method will do that.
-    pub fn mut_row(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32])) {
+    pub fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
         let read_start = self.data_offset(indices);
         let read_len = self.shape[R - 1] - indices[R - 1];
 
         if self.strides[R - 1] == 1 {
             // Row-major format; we can just memcpy
             let data = &mut self.data[read_start..read_start + read_len];
-            f(data);
+            f(data)
         } else {
             let mut data = vec![0.; read_len];
             self.with_row(indices, |row| data.copy_from_slice(row));
-            f(&mut data);
+            let result = f(&mut data);
             // now, write it back
             self.set_row(indices, &data);
+            result
         }
     }
 
