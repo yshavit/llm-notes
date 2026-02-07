@@ -1,3 +1,4 @@
+pub mod bpe;
 pub mod llm;
 pub mod load;
 mod tensor;

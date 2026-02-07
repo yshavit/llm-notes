@@ -1,7 +1,7 @@
+use crate::bpe::Rank;
 use crate::tensor::{Matrix, Tensor, matmul};
 use crate::transformer::{Norm, TransformerBlock};
 use std::fmt::{Display, Formatter};
-use tiktoken_rs::Rank;
 
 pub struct ModelLoader {
     pub tok_embed: Matrix,
@@ -58,8 +58,7 @@ impl Model {
         let mut pos_embeddings = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
         for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
             // copy the right token embedding to tok_embeddings
-            let seq_tok_usize: usize = seq_tok.try_into().map_err(|_| InferenceError::TokOutOfRange(seq_tok))?;
-            self.fwd.tok_embed.with_row([seq_tok_usize, 0], |tok_embed| {
+            self.fwd.tok_embed.with_row([seq_tok.rank(), 0], |tok_embed| {
                 tok_embeddings.set_row([seq_idx, 0], tok_embed);
             });
             // and the right pos embedding to pos_embeddings
@@ -75,14 +74,12 @@ impl Model {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum InferenceError {
     MaxSeq,
-    TokOutOfRange(u32),
 }
 
 impl Display for InferenceError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             InferenceError::MaxSeq => write!(f, "max sequence length reached"),
-            InferenceError::TokOutOfRange(tok) => write!(f, "token is out of range: {tok}"),
         }
     }
 }

@@ -79,7 +79,8 @@ def main(size, check_download):
     with open(f"{unpack_dir}/stats.json", "w") as f:
         json.dump(stats_per_key, f, sort_keys=True, indent=4)
 
-    shutil.copy(f"data/{size}/download/hparams.json", f"{unpack_dir}/hparams.json")
+    for copy_file in ["hparams.json", "vocab.bpe", "encoder.json"]:
+        shutil.copy(f"data/{size}/download/{copy_file}", f"{unpack_dir}/{copy_file}")
 
 
 def nice_key_segments(k, join_as=None):

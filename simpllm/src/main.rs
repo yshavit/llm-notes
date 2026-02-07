@@ -1,8 +1,8 @@
-use simpllm::load::{ModelPath, load_model};
+use simpllm::bpe::Rank;
+use simpllm::load::{ModelPath, load_model, load_tokenizer};
 use std::env;
 use std::io::{Write, stdin, stdout};
 use std::time::Instant;
-use tiktoken_rs::Rank;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args().take(3).collect();
@@ -16,19 +16,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model = load_model(&model_path)?.initialize();
 
     eprint!("Loading tokenizer... ");
-    let tokenizer = tiktoken_rs::r50k_base_singleton();
+    let tokenizer = load_tokenizer(&model_path)?;
     eprintln!("found special tokens:");
-
-    let mut end_of_text_tok = None;
-    let mut special_toks: Vec<_> = tokenizer.special_tokens().into_iter().collect();
-    special_toks.sort();
-    for special_tok in special_toks {
-        let encoded = tokenizer.encode_with_special_tokens(special_tok);
-        eprintln!("- {special_tok} -> {encoded:?}");
-        if special_tok == "<|endoftext|>" && encoded.len() == 1 {
-            end_of_text_tok = Some(encoded[0]);
-        }
-    }
 
     eprintln!();
     eprintln!("Ready!");
@@ -47,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         print!("{line}");
         let _ = stdout().flush();
 
-        let mut tok_indexes = tokenizer.encode_with_special_tokens(&line);
+        let mut tok_indexes = tokenizer.encode(&line);
 
         // infer 10 times, hard-coded for now
         let mut durations = Vec::new();
@@ -71,16 +60,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 max_idx
             });
-            let result_rank = result_rank as Rank;
-            tok_indexes.push(result_rank);
-            if end_of_text_tok.map(|eot| eot == result_rank).unwrap_or(false) {
+            let result_rank: Rank = result_rank.into();
+            if tokenizer.is_eos(result_rank) {
                 break;
             }
 
-            let result_str = tokenizer
-                .decode(vec![result_rank as Rank])
-                .unwrap_or_else(|_| "<??>".to_string());
-            print!("{result_str}");
+            tok_indexes.push(result_rank);
+
+            stdout().write(&tokenizer.decode_bytes(&[result_rank]))?;
             let _ = stdout().flush();
         }
 
