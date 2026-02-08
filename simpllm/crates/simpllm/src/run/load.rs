@@ -1,6 +1,6 @@
 use crate::llm::ModelLoader;
 use crate::tensor::{Shape, Tensor};
-use crate::transformer::{Attention, Ffn, Norm, QkvWeights, TransformerBlock};
+use crate::transformer::{Attention, Ffn, Norm, TransformerBlock};
 use gpt2weights::{
     HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,
 };
@@ -81,22 +81,12 @@ fn load_transformer(
 
     let mut attn = Attention::new(d, h_params.n_head);
 
-    let qkv_floats = load_floats([1, d, qkv_3d], path, Transformer(h, Qkv, Weights))?;
-    let qkv_weights = QkvWeights::from_flat_tensorflow(&qkv_floats)?;
-
-    let qkv_bias_floats = load_floats([qkv_3d], path, Transformer(h, Qkv, Bias))?;
-    let mut qkv_bias_chunks = qkv_bias_floats.chunks_exact(d);
-    let attn_q_bias = populate_tensor([d], &qkv_bias_chunks.next().unwrap());
-    let attn_k_bias = populate_tensor([d], &qkv_bias_chunks.next().unwrap());
-    let attn_v_bias = populate_tensor([d], &qkv_bias_chunks.next().unwrap());
-    assert_eq!(qkv_bias_chunks.count(), 0);
+    let qkv_weights = load_tensor([d, qkv_3d], path, Transformer(h, Qkv, Weights))?;
+    let qkv_bias = load_tensor([qkv_3d], path, Transformer(h, Qkv, Bias))?;
+    attn.qkv_mut().set(&qkv_weights, &qkv_bias);
 
     let attn_wo = load_tensor([d, d], path, Transformer(h, AttnOutput, Weights))?;
     let attn_o_bias = load_tensor([d], path, Transformer(h, AttnOutput, Bias))?;
-
-    attn.q_mut().set(&qkv_weights.q, &attn_q_bias);
-    attn.k_mut().set(&qkv_weights.k, &attn_k_bias);
-    attn.v_mut().set(&qkv_weights.v, &attn_v_bias);
     attn.o_mut().set(&attn_wo, &attn_o_bias);
 
     let attn_norm = load_norm(path, NormFile::BeforeAttention(h), d)?;
