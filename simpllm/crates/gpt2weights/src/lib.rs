@@ -1,5 +1,7 @@
-pub mod metadata;
-pub mod path;
+mod metadata;
+mod path;
 mod size;
 
+pub use metadata::*;
+pub use path::*;
 pub use size::*;

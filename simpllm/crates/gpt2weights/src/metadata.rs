@@ -1,4 +1,4 @@
-use crate::path::{ModelPath, read_nicely};
+use crate::path::{ModelFile, ModelPath, read_nicely};
 use serde::Deserialize;
 use std::error::Error;
 
@@ -52,10 +52,10 @@ pub struct HParams {
 }
 
 pub fn load_metadata(model: &ModelPath) -> Result<(ModelShape, HParams), Box<dyn Error>> {
-    let shape_reader = read_nicely(&model.path("metadata.json"))?;
+    let shape_reader = read_nicely(model, ModelFile::MetadataJson)?;
     let shape: ModelShape = serde_json::from_reader(shape_reader)?;
 
-    let h_params_reader = read_nicely(&model.path("hparams.json"))?;
+    let h_params_reader = read_nicely(model, ModelFile::HParamsJson)?;
     let h_params: HParams = serde_json::from_reader(h_params_reader)?;
 
     Ok((shape, h_params))
