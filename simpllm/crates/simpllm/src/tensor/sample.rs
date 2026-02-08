@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, softmax};
+use crate::tensor::{softmax, Matrix};
 use std::cmp::Ordering;
 
 pub struct LogitSampler {
@@ -18,18 +18,18 @@ impl LogitSampler {
         }
     }
 
-    pub fn top_k(mut self, k: usize) -> Self {
-        self.top_k = Some(k);
+    pub fn top_k(mut self, k: Option<usize>) -> Self {
+        self.top_k = k;
         self
     }
 
-    pub fn top_prob(mut self, p: f32) -> Self {
-        self.top_p = Some(p);
+    pub fn top_prob(mut self, p: Option<f32>) -> Self {
+        self.top_p = p;
         self
     }
 
-    pub fn temperature(mut self, t: f32) -> Self {
-        self.temperature = Some(t);
+    pub fn temperature(mut self, t: Option<f32>) -> Self {
+        self.temperature = t;
         self
     }
 
@@ -42,21 +42,14 @@ impl LogitSampler {
                 top_prob(row, use_top_p);
             }
             if let Some(temp) = self.temperature {
-                multinomial_sample(row, temp)
-            } else {
-                // argmax
-                row.iter()
-                    .enumerate()
-                    .reduce(|acc, e| if e.1 > acc.1 { e } else { acc })
-                    .map(|r| r.0)
-                    .unwrap_or(0)
+                row.iter_mut().for_each(|v| *v /= temp);
             }
+            multinomial_sample(row)
         })
     }
 }
 
-fn multinomial_sample(mut logits: &mut [f32], temperature: f32) -> usize {
-    logits.iter_mut().for_each(|v| *v /= temperature);
+fn multinomial_sample(mut logits: &mut [f32]) -> usize {
     softmax(&mut logits);
 
     let target_cumulative: f32 = rand::random();
@@ -137,7 +130,7 @@ mod test {
             // softmax applies exp() to each element; so, we'll pre-apply fn() to each, such that softmax gets us back
             // to the original values
             let mut normalized_logits: Vec<f32> = logits.iter().map(|logit| logit.ln()).collect();
-            let idx = multinomial_sample(&mut normalized_logits, 1.0);
+            let idx = multinomial_sample(&mut normalized_logits);
             actual_counts[idx] += 1;
         }
 
