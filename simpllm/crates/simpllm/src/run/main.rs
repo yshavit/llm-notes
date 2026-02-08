@@ -1,14 +1,16 @@
-use crate::load::{load_model, load_tokenizer, ModelPath};
 use crate::run::Cli;
+use crate::run::load::load_model;
+use crate::run::tokenizer::load_tokenizer;
 use crate::tensor::LogitSampler;
 use clap::Parser;
+use gpt2weights::path::ModelPath;
 use std::error::Error;
-use std::io::{stdin, stdout, Write};
+use std::io::{Write, stdin, stdout};
 use std::time::Instant;
 
 pub fn run_main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
-    let model_path = ModelPath::from(cli.size.size());
+    let model_path = ModelPath::from(cli.size);
     let model = load_model(&model_path)?.initialize();
 
     eprint!("Loading tokenizer... ");

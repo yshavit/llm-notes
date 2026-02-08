@@ -1,23 +1,23 @@
+use crate::Gpt2Size;
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelPath {
-    model: String,
+    model: Gpt2Size,
 }
 
-impl<S: ToString> From<S> for ModelPath {
-    fn from(model: S) -> Self {
-        ModelPath {
-            model: model.to_string(),
-        }
+impl From<Gpt2Size> for ModelPath {
+    fn from(model: Gpt2Size) -> Self {
+        ModelPath { model }
     }
 }
 
 impl ModelPath {
     pub fn path(&self, file_name: impl Filename) -> PathBuf {
-        let segments = ["data", &self.model, "unpacked", &file_name.get()];
+        let segments = ["data", self.model.size(), "unpacked", &file_name.get()];
         segments.iter().collect()
     }
 }
@@ -38,9 +38,8 @@ impl<const R: usize> Filename for [&str; R] {
     }
 }
 
-pub fn read_nicely(path: &PathBuf) -> super::Result<BufReader<File>> {
-    let raw = File::open(path).map_err(|e| -> Box<dyn std::error::Error> {
-        format!("failed to open {}: {e}", path.as_path().display()).into()
-    })?;
+pub fn read_nicely(path: &PathBuf) -> Result<BufReader<File>, Box<dyn Error>> {
+    let raw = File::open(path)
+        .map_err(|e| -> Box<dyn Error> { format!("failed to open {}: {e}", path.as_path().display()).into() })?;
     Ok(BufReader::new(raw))
 }

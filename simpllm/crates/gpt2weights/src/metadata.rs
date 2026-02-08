@@ -1,5 +1,6 @@
-use crate::load::path::{ModelPath, read_nicely};
+use crate::path::{ModelPath, read_nicely};
 use serde::Deserialize;
+use std::error::Error;
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct ModelShape {
@@ -50,7 +51,7 @@ pub struct HParams {
     pub n_layer: usize,
 }
 
-pub fn load_metadata(model: &ModelPath) -> super::Result<(ModelShape, HParams)> {
+pub fn load_metadata(model: &ModelPath) -> Result<(ModelShape, HParams), Box<dyn Error>> {
     let shape_reader = read_nicely(&model.path("metadata.json"))?;
     let shape: ModelShape = serde_json::from_reader(shape_reader)?;
 

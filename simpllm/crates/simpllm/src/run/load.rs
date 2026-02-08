@@ -1,14 +1,14 @@
 use crate::llm::ModelLoader;
-use crate::load::load_metadata;
-use crate::load::metadata::{NormShape, TransformerShape};
-use crate::load::path::{ModelPath, read_nicely};
 use crate::tensor::{Shape, Tensor};
 use crate::transformer::{Attention, Ffn, Norm, QkvWeights, TransformerBlock};
+use gpt2weights::metadata::{NormShape, TransformerShape, load_metadata};
+use gpt2weights::path::{ModelPath, read_nicely};
+use std::error::Error;
 use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 
-pub fn load_model(path: &ModelPath) -> super::Result<ModelLoader> {
+pub fn load_model(path: &ModelPath) -> Result<ModelLoader, Box<dyn Error>> {
     let (shape, h_params) = load_metadata(path)?;
 
     // metadata.tok_embed is [n_vocab, dim]. Pos is [n_seq, dim]
@@ -37,7 +37,7 @@ pub fn load_model(path: &ModelPath) -> super::Result<ModelLoader> {
     })
 }
 
-fn load_norm(path: &ModelPath, prefix: &str, metadata: &NormShape) -> super::Result<Norm> {
+fn load_norm(path: &ModelPath, prefix: &str, metadata: &NormShape) -> Result<Norm, Box<dyn Error>> {
     assert_eq!(metadata.scale, metadata.bias);
     let scale = load_tensor([metadata.scale], &path.path([prefix, ".scale.bin"]))?;
     let bias = load_tensor([metadata.bias], &path.path([prefix, ".bias.bin"]))?;
@@ -67,7 +67,7 @@ fn load_transformer(
     layer_idx: usize,
     metadata: &TransformerShape,
     n_heads: usize,
-) -> super::Result<TransformerBlock> {
+) -> Result<TransformerBlock, Box<dyn Error>> {
     let layer_idx_string = find_transformer_prefix(path, layer_idx)?;
 
     // QKV should ba a tensor of [d x 3d]
@@ -133,7 +133,7 @@ fn load_transformer(
     Ok(block)
 }
 
-fn find_transformer_prefix(path: &ModelPath, layer_idx: usize) -> super::Result<String> {
+fn find_transformer_prefix(path: &ModelPath, layer_idx: usize) -> Result<String, Box<dyn Error>> {
     for padding_len in 0..10 {
         let num = format!("{}{layer_idx}", "0".repeat(padding_len));
         // look for the attention qkv weights, arbitrarily; any of them should be okay
@@ -145,7 +145,7 @@ fn find_transformer_prefix(path: &ModelPath, layer_idx: usize) -> super::Result<
     Err(format!("couldn't find files for layer {layer_idx}").into())
 }
 
-fn load_tensor<const R: usize>(size: [usize; R], path: &PathBuf) -> super::Result<Tensor<R>> {
+fn load_tensor<const R: usize>(size: [usize; R], path: &PathBuf) -> Result<Tensor<R>, Box<dyn Error>> {
     let floats = load_floats(size, &path)?;
     Ok(populate_tensor(size, &floats))
 }
@@ -156,7 +156,7 @@ fn populate_tensor<const R: usize>(size: [usize; R], vals: &[f32]) -> Tensor<R> 
     t
 }
 
-fn load_floats<const R: usize>(size: [usize; R], path: &PathBuf) -> super::Result<Vec<f32>> {
+fn load_floats<const R: usize>(size: [usize; R], path: &PathBuf) -> Result<Vec<f32>, Box<dyn Error>> {
     let size: Shape<R> = size.into();
 
     let expected_size = size.num_elements() * size_of::<f32>();
