@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, Vector};
+use crate::cputensor::{Matrix, Tensor, Vector};
 use crate::transformer::activation::gelu;
 use crate::transformer::weights::MatrixAndBias;
 
@@ -93,7 +93,7 @@ impl LayerTransform {
 pub mod tests {
     use super::*;
     use crate::assert_f32_slice;
-    use crate::tensor::Shape;
+    use crate::cputensor::Shape;
 
     /// Compares against a reference pytorch implementation.
     ///

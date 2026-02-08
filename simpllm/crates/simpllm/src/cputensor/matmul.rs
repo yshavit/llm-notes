@@ -1,4 +1,4 @@
-use crate::tensor::tensor::{MatrixView, MatrixViewMut, Tensor};
+use crate::cputensor::tensor::{MatrixView, MatrixViewMut, Tensor};
 
 pub fn matmul_batched_3(a: &Tensor<3>, b: &Tensor<3>) -> Tensor<3> {
     assert!(
@@ -67,7 +67,7 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tensor::tensor::Tensor;
+    use crate::cputensor::tensor::Tensor;
 
     mod matrix {
         use super::*;

@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, Vector};
+use crate::cputensor::{Matrix, Tensor, Vector};
 
 pub struct Norm {
     scale: Vector,

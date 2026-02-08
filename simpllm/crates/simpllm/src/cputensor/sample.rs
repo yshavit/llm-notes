@@ -1,4 +1,4 @@
-use crate::tensor::{softmax, Matrix};
+use crate::cputensor::{Matrix, softmax};
 use std::cmp::Ordering;
 
 pub struct LogitSampler {

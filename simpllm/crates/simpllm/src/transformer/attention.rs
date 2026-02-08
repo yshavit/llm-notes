@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, softmax};
+use crate::cputensor::{Matrix, softmax};
 use crate::transformer::weights::MatrixAndBias;
 
 pub struct Attention {
@@ -91,7 +91,7 @@ impl Attention {
 #[cfg(test)]
 mod tests {
     use crate::assert_f32_slice;
-    use crate::tensor::Tensor;
+    use crate::cputensor::Tensor;
     use crate::transformer::attention::Attention;
 
     /// Compares against a reference pytorch implementation.

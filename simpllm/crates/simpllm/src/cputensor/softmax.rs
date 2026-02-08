@@ -12,7 +12,7 @@ pub fn softmax(vals: &mut [f32]) {
 mod tests {
     mod softmax {
         use crate::assert_f32_slice;
-        use crate::tensor::softmax::softmax;
+        use crate::cputensor::softmax::softmax;
         use approx::abs_diff_eq;
 
         #[test]

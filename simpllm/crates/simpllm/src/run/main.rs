@@ -1,7 +1,7 @@
+use crate::cputensor::LogitSampler;
 use crate::run::Cli;
 use crate::run::load::load_model;
 use crate::run::tokenizer::load_tokenizer;
-use crate::tensor::LogitSampler;
 use clap::Parser;
 use gpt2weights::ModelPath;
 use std::error::Error;

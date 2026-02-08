@@ -1,5 +1,5 @@
 use crate::bpe::Rank;
-use crate::tensor::{Matrix, Tensor};
+use crate::cputensor::{Matrix, Tensor};
 use crate::transformer::{Norm, TransformerBlock};
 use std::fmt::{Display, Formatter};
 

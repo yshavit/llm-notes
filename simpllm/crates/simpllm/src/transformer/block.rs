@@ -1,4 +1,4 @@
-use crate::tensor::Matrix;
+use crate::cputensor::Matrix;
 use crate::transformer::attention::Attention;
 use crate::transformer::ffn::Ffn;
 use crate::transformer::norm::Norm;

@@ -1,5 +1,5 @@
+use crate::cputensor::{Shape, Tensor};
 use crate::llm::ModelLoader;
-use crate::tensor::{Shape, Tensor};
 use crate::transformer::{Attention, Ffn, Norm, TransformerBlock};
 use gpt2weights::{
     HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,

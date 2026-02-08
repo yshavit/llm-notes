@@ -1,5 +1,5 @@
-use crate::tensor::Shape;
-use crate::tensor::matmul::{matmul, matmul_batched_3};
+use crate::cputensor::Shape;
+use crate::cputensor::matmul::{matmul, matmul_batched_3};
 use rayon::prelude::*;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
