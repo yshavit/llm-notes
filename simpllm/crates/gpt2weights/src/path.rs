@@ -4,9 +4,15 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelPath {
     model: Gpt2Size,
+}
+
+impl ModelPath {
+    pub fn model(&self) -> Gpt2Size {
+        self.model
+    }
 }
 
 impl From<Gpt2Size> for ModelPath {
@@ -17,8 +23,8 @@ impl From<Gpt2Size> for ModelPath {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ModelFile {
-    TokenizerVocabBpe,
-    TokenizerEncoderJson,
+    BpeMerges,
+    BpeEncoder,
     MetadataJson,
     HParamsJson,
     TokEmbed,
@@ -64,13 +70,13 @@ pub enum WeightVariant {
 }
 
 impl ModelFile {
-    fn to_string(self) -> String {
+    pub fn to_string(self) -> String {
         fn s(s: &str) -> String {
             s.to_string()
         }
         match self {
-            Self::TokenizerVocabBpe => s("vocab.bpe"),
-            Self::TokenizerEncoderJson => s("encoder.json"),
+            Self::BpeMerges => s("vocab.bpe"),
+            Self::BpeEncoder => s("encoder.json"),
             Self::MetadataJson => s("metadata.json"),
             Self::HParamsJson => s("hparams.json"),
             Self::TokEmbed => s("tok_embed.bin"),
@@ -107,10 +113,13 @@ impl ModelFile {
 
 impl ModelPath {
     pub fn path(&self, file: ModelFile) -> PathBuf {
-        let mut segments = vec!["data", self.model.size(), "unpacked"];
-        let file_name = file.to_string();
-        segments.push(&file_name);
-        segments.into_iter().collect()
+        let mut path_buf = self.unpack_dir();
+        path_buf.push(file.to_string());
+        path_buf
+    }
+
+    pub fn unpack_dir(&self) -> PathBuf {
+        ["data", self.model.size(), "unpacked"].into_iter().collect()
     }
 }
 

@@ -1,39 +1,15 @@
 use crate::path::{ModelFile, ModelPath, read_nicely};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ModelShape {
-    pub layer: Vec<TransformerShape>,
-    pub final_norm: NormShape,
-    pub tok_embed: Vec<usize>,
-    pub pos_embed: Vec<usize>,
+    pub transformer: Vec<TransformerShape>,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct NormShape {
-    pub bias: usize,
-    pub scale: usize,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct TransformerShape {
-    pub attn: AttentionShape,
-    pub attn_norm: NormShape,
-    pub ffn: FfnShape,
-    pub ffn_norm: NormShape,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct AttentionShape {
-    pub qkv: WeightsShape,
-    pub output: WeightsShape,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct FfnShape {
-    pub hidden: WeightsShape,
-    pub output: WeightsShape,
+    pub ffn_hidden_layer_embed: usize,
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
@@ -44,7 +20,7 @@ pub struct WeightsShape {
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct HParams {
-    pub n_vocab: usize,
+    pub vocab_size: usize,
     pub n_ctx: usize,
     pub n_embd: usize,
     pub n_head: usize,

@@ -2,7 +2,7 @@ use crate::llm::ModelLoader;
 use crate::tensor::{Shape, Tensor};
 use crate::transformer::{Attention, Ffn, Norm, QkvWeights, TransformerBlock};
 use gpt2weights::{
-    ModelFile, ModelPath, NormFile, NormShape, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,
+    HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,
 };
 use std::error::Error;
 use std::io::Read;
@@ -12,20 +12,22 @@ pub fn load_model(path: &ModelPath) -> Result<ModelLoader, Box<dyn Error>> {
 
     // metadata.tok_embed is [n_vocab, dim]. Pos is [n_seq, dim]
     eprint!("loading token embeddings... ");
-    let tok_embed = load_tensor([shape.tok_embed[0], shape.tok_embed[1]], path, ModelFile::TokEmbed)?;
-    eprint!("position embeddings... ");
-    let pos_embed = load_tensor([shape.pos_embed[0], shape.pos_embed[1]], path, ModelFile::PosEmbed)?;
 
-    let mut layers = Vec::with_capacity(shape.layer.len());
-    eprint!("{} layers [ ", shape.layer.len());
-    for (layer_idx, layer_meta) in shape.layer.iter().enumerate() {
+    let tok_embed = load_tensor([h_params.vocab_size, h_params.n_embd], path, ModelFile::TokEmbed)?;
+    eprint!("position embeddings... ");
+    let pos_embed = load_tensor([h_params.n_ctx, h_params.n_embd], path, ModelFile::PosEmbed)?;
+
+    let mut layers = Vec::with_capacity(h_params.n_layer);
+    eprint!("{} layers [ ", h_params.n_layer);
+    for layer_idx in 0..h_params.n_layer {
+        let layer_meta = &shape.transformer[layer_idx];
         eprint!("{} ", layer_idx + 1);
-        let transformer = load_transformer(path, layer_idx, layer_meta, h_params.n_head)?;
+        let transformer = load_transformer(path, layer_idx, &layer_meta, &h_params)?;
         layers.push(transformer);
     }
 
     eprint!("] ... final normalization...");
-    let final_norm = load_norm(&path, NormFile::Final, &shape.final_norm)?;
+    let final_norm = load_norm(&path, NormFile::Final, h_params.n_embd)?;
     eprintln!("Model loaded!");
 
     Ok(ModelLoader {
@@ -36,11 +38,10 @@ pub fn load_model(path: &ModelPath) -> Result<ModelLoader, Box<dyn Error>> {
     })
 }
 
-fn load_norm(path: &ModelPath, norm: NormFile, metadata: &NormShape) -> Result<Norm, Box<dyn Error>> {
-    assert_eq!(metadata.scale, metadata.bias);
-    let scale = load_tensor([metadata.scale], path, ModelFile::Norm(norm, NormVariant::Scale))?;
-    let bias = load_tensor([metadata.bias], path, ModelFile::Norm(norm, NormVariant::Scale))?;
-    let mut norm = Norm::new(metadata.scale);
+fn load_norm(path: &ModelPath, norm: NormFile, n_embed: usize) -> Result<Norm, Box<dyn Error>> {
+    let scale = load_tensor([n_embed], path, ModelFile::Norm(norm, NormVariant::Scale))?;
+    let bias = load_tensor([n_embed], path, ModelFile::Norm(norm, NormVariant::Bias))?;
+    let mut norm = Norm::new(n_embed);
     norm.set(&scale, &bias);
     Ok(norm)
 }
@@ -65,27 +66,25 @@ fn load_transformer(
     path: &ModelPath,
     layer_idx: usize,
     metadata: &TransformerShape,
-    n_heads: usize,
+    h_params: &HParams,
 ) -> Result<TransformerBlock, Box<dyn Error>> {
     use ModelFile::Transformer;
     use gpt2weights::TransformerComponent::*;
     use gpt2weights::WeightVariant::*;
 
     // QKV should ba a tensor of [d x 3d]
-    let (d, qkv_3d) = metadata.attn.qkv.weights;
-    assert_eq!(qkv_3d, d * 3);
-    assert_eq!(metadata.attn.qkv.bias, d * 3);
+    let (d, qkv_3d) = (h_params.n_embd, h_params.n_embd * 3);
 
     let h = TransformerN(layer_idx);
 
     // attention
 
-    let mut attn = Attention::new(d, n_heads);
+    let mut attn = Attention::new(d, h_params.n_head);
 
     let qkv_floats = load_floats([1, d, qkv_3d], path, Transformer(h, Qkv, Weights))?;
     let qkv_weights = QkvWeights::from_flat_tensorflow(&qkv_floats)?;
 
-    let qkv_bias_floats = load_floats([metadata.attn.qkv.bias], path, Transformer(h, Qkv, Bias))?;
+    let qkv_bias_floats = load_floats([qkv_3d], path, Transformer(h, Qkv, Bias))?;
     let mut qkv_bias_chunks = qkv_bias_floats.chunks_exact(d);
     let attn_q_bias = populate_tensor([d], &qkv_bias_chunks.next().unwrap());
     let attn_k_bias = populate_tensor([d], &qkv_bias_chunks.next().unwrap());
@@ -100,25 +99,17 @@ fn load_transformer(
     attn.v_mut().set(&qkv_weights.v, &attn_v_bias);
     attn.o_mut().set(&attn_wo, &attn_o_bias);
 
-    let attn_norm = load_norm(path, NormFile::BeforeAttention(h), &metadata.attn_norm)?;
+    let attn_norm = load_norm(path, NormFile::BeforeAttention(h), d)?;
 
     // ffn
-    let ffn_m = &metadata.ffn;
-    let mut ffn = Ffn::new(d, &[ffn_m.hidden.bias], d);
+    let hidden_d = metadata.ffn_hidden_layer_embed;
+    let mut ffn = Ffn::new(d, &[hidden_d], d);
 
-    let ffn_hidden_weights = load_tensor(
-        [ffn_m.hidden.weights.0, ffn_m.hidden.weights.1],
-        path,
-        Transformer(h, FfnHidden, Weights),
-    )?;
-    let ffn_hidden_bias = load_tensor([ffn_m.hidden.bias], path, Transformer(h, FfnHidden, Bias))?;
-    let ffn_output_weights = load_tensor(
-        [ffn_m.output.weights.0, ffn_m.output.weights.1],
-        path,
-        Transformer(h, FfnOutput, Weights),
-    )?;
-    let ffn_output_bias = load_tensor([ffn_m.output.bias], path, Transformer(h, FfnOutput, Bias))?;
-    let ffn_norm = load_norm(path, NormFile::BeforeFfn(h), &metadata.attn_norm)?;
+    let ffn_hidden_weights = load_tensor([d, hidden_d], path, Transformer(h, FfnHidden, Weights))?;
+    let ffn_hidden_bias = load_tensor([hidden_d], path, Transformer(h, FfnHidden, Bias))?;
+    let ffn_output_weights = load_tensor([hidden_d, d], path, Transformer(h, FfnOutput, Weights))?;
+    let ffn_output_bias = load_tensor([d], path, Transformer(h, FfnOutput, Bias))?;
+    let ffn_norm = load_norm(path, NormFile::BeforeFfn(h), d)?;
 
     ffn.layer_mut(0).set(&ffn_hidden_weights, &ffn_hidden_bias);
     ffn.layer_mut(1).set(&ffn_output_weights, &ffn_output_bias);

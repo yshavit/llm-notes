@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
-members = [ "crates/gpt2weights",
+members = [
+    "crates/download",
+    "crates/gpt2weights",
     "crates/simpllm",
 ]
 
