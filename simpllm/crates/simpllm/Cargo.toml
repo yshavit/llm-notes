@@ -8,9 +8,8 @@ name = "simpllm"
 path = "src/main.rs"
 
 [dependencies]
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-rand = "0.9"
+serde_json = { workspace = true }
+rand = "0.10.0"
 rayon = "1.11.0"
 clap = { workspace = true }
 gpt2weights = { path = "../gpt2weights" }
