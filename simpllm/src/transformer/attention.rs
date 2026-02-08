@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, matmul, matmul_batched_3, softmax};
+use crate::tensor::{Matrix, Tensor, softmax};
 use crate::transformer::weights::MatrixAndBias;
 use std::fmt::{Display, Formatter};
 
@@ -57,8 +57,7 @@ impl Attention {
         );
         let (n, d, h) = (input.num_rows(), self.embedding_dim, self.num_heads);
         let qkv = |weight: &MatrixAndBias| -> Tensor<3> {
-            let mut result = Tensor::new_matrix(n, d);
-            matmul(input, weight.weights(), &mut result);
+            let mut result = input.matmul(weight.weights());
             // result is (N x d). Add the biases before reshaping.
             result.add_broadcasted_vector(weight.bias());
 
@@ -72,7 +71,7 @@ impl Attention {
         let keys = qkv(&self.w_k);
         let values = qkv(&self.w_v);
 
-        let mut a = matmul_batched_3(&queries, &keys.transposed(1, 2));
+        let mut a = queries.matmul_batched(&keys.transposed(1, 2));
         // divide by sqrt(d/h), and do softmax on the last dimension (d/h)
         let dim_per_head = d / h;
         a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
@@ -87,14 +86,13 @@ impl Attention {
             }
         }
 
-        let mut attn = matmul_batched_3(&a, &values);
+        let mut attn = a.matmul_batched(&values);
         // transpose from (h, n, d/h) to (n, h, d/h)
         attn = attn.transposed(0, 1);
         // reshape
         let attn = attn.contiguous().reshape([n, d]);
 
-        let mut output = Tensor::new_matrix(n, d);
-        matmul(&attn, self.w_o.weights(), &mut output);
+        let mut output = attn.matmul(self.w_o.weights());
         output.add_broadcasted_vector(self.w_o.bias());
 
         output

@@ -1,4 +1,5 @@
 use crate::tensor::Shape;
+use crate::tensor::matmul::{matmul, matmul_batched_3};
 use rayon::prelude::*;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
@@ -111,32 +112,6 @@ impl<const R: usize> Tensor<R> {
         } else {
             todo!("transposed mut_rows not supported");
         }
-        // if self.strides[R - 1] == 1 {
-        //     // Row-major format; we can just get slices
-        //     assert!(
-        //         base_indexes[R - 1] == 0 && base_indexes[R - 2] == 0,
-        //         "base_indexes must end in [..0, 0]. was: {base_indexes:?}"
-        //     );
-        //     let n_rows = self.shape[R - 2];
-        //     let n_cols = self.shape[R - 1];
-        //
-        //     self.data.get_disjoint_unchecked_mut()
-        //
-        //
-        //     let offset_within_first_batching = self.data_offset(base_indexes);
-        //     let first_batching_len = self.data.len() / self.shape[0];
-        //     let chunks = self.data.chunks_exact_mut(first_batching_len).enumerate().map(|(| ())
-        //     (0..n_rows).for_each(|row_idx| {
-        //         let mut index = base_indexes;
-        //         index[R - 2] = row_idx;
-        //         let data_start = self.data_offset(index);
-        //         let slice = &mut self.data[data_start..(data_start + n_cols)];
-        //         slice.fill(0.0);
-        //         f(row_idx, slice);
-        //     });
-        // } else {
-        //     todo!("transposed mut_rows not supported");
-        // }
     }
 
     pub fn multiply_scalar(&mut self, factor: f32) {
@@ -504,6 +479,12 @@ impl<'a, const R: usize> Display for Pretty<'a, R> {
     }
 }
 
+impl Tensor<3> {
+    pub fn matmul_batched(&self, other: &Self) -> Self {
+        matmul_batched_3(self, other)
+    }
+}
+
 impl Tensor<2> {
     pub fn new_matrix(num_rows: usize, num_columns: usize) -> Self {
         Self::new(Shape::new([num_rows, num_columns]))
@@ -523,6 +504,12 @@ impl Tensor<2> {
 
     pub fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
         self.mut_rows_at_batch([0, 0], f);
+    }
+
+    pub fn matmul(&self, other: &Self) -> Self {
+        let mut result = Tensor::new_matrix(self.num_rows(), other.num_cols());
+        matmul(self, other, &mut result);
+        result
     }
 
     pub fn add_broadcasted_vector(&mut self, v: &Vector) {
@@ -559,6 +546,12 @@ impl Tensor<1> {
 
     pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<'_, 1> {
         MatrixViewMut::new(self, [0])
+    }
+
+    pub fn matmul(&self, matrix: &Matrix) -> Self {
+        let mut output = Tensor::new_vector(matrix.num_cols());
+        matmul(self.as_row_matrix(), matrix, output.as_row_matrix_mut());
+        output
     }
 
     pub fn len(&self) -> usize {

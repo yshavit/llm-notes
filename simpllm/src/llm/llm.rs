@@ -1,5 +1,5 @@
 use crate::bpe::Rank;
-use crate::tensor::{Matrix, Tensor, matmul};
+use crate::tensor::{Matrix, Tensor};
 use crate::transformer::{Norm, TransformerBlock};
 use std::fmt::{Display, Formatter};
 
@@ -32,8 +32,7 @@ impl Model {
 
         x = self.fwd.final_norm.apply(&x);
 
-        let mut unembedding = Tensor::new_matrix(x.num_rows(), self.vocab_size());
-        matmul(&x, &self.tok_unembed, &mut unembedding);
+        let unembedding = x.matmul(&self.tok_unembed);
 
         Ok(unembedding)
     }

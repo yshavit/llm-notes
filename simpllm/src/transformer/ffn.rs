@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, Vector, matmul};
+use crate::tensor::{Matrix, Tensor, Vector};
 use crate::transformer::activation::gelu;
 use crate::transformer::weights::MatrixAndBias;
 
@@ -56,8 +56,7 @@ impl Ffn {
         );
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
-            let mut output = Tensor::new_vector(transform.mab.out_dims());
-            transform.apply(&input, &mut output);
+            let mut output = transform.apply(&input);
             if transforms.peek().is_some() {
                 output.mut_row([0], |cols| cols.iter_mut().for_each(|v| *v = gelu(*v)))
             }
@@ -78,18 +77,15 @@ impl LayerTransform {
         }
     }
 
-    fn apply(&self, inputs: &Vector, activations: &mut Vector) {
+    fn apply(&self, inputs: &Vector) -> Vector {
         // matmul will overwrite the activations, so we don't need to zero them out first
-        matmul(
-            inputs.as_row_matrix(),
-            self.mab.weights(),
-            activations.as_row_matrix_mut(),
-        );
+        let mut activations = inputs.matmul(self.mab.weights());
         activations.mut_row([0], |row| {
             for i in 0..row.len() {
                 row[i] = row[i] + self.mab.bias().get([i]);
             }
-        })
+        });
+        activations
     }
 }
 
