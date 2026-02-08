@@ -1,4 +1,5 @@
 use crate::Gpt2Size;
+use std::env::current_dir;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
@@ -125,7 +126,11 @@ impl ModelPath {
 
 pub fn read_nicely(base: &ModelPath, file: ModelFile) -> Result<BufReader<File>, Box<dyn Error>> {
     let path = base.path(file);
-    let raw = File::open(&path)
-        .map_err(|e| -> Box<dyn Error> { format!("failed to open {}: {e}", path.as_path().display()).into() })?;
+    let raw = File::open(&path).map_err(|e| -> Box<dyn Error> {
+        let pwd = current_dir()
+            .map(|d| d.display().to_string())
+            .unwrap_or_else(|_| "<?>".to_string());
+        format!("failed to open {}: {e} (pwd={pwd})", path.as_path().display()).into()
+    })?;
     Ok(BufReader::new(raw))
 }
