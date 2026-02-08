@@ -48,6 +48,44 @@ impl<const R: usize> Tensor<R> {
         self.data.copy_from_slice(values);
     }
 
+    pub fn split<const S: usize>(self, dim: usize) -> [Tensor<R>; S] {
+        assert!(dim < R, "split dimension {dim} must be < rank {R}");
+
+        let orig_dim_size = self.shape[dim];
+        let ideal_dim_size = orig_dim_size / S;
+        assert!(ideal_dim_size > 0, "can't split {} into {S}", self.shape);
+
+        let mut split_tensors = {
+            let mut shapes = [self.shape; S];
+            shapes.iter_mut().for_each(|s| s[dim] = ideal_dim_size);
+            // if the last dimension is too big, trim it down
+            let dim_extra = orig_dim_size - shapes.iter().map(|s| s[dim]).sum::<usize>();
+            shapes[shapes.len() - 1][dim] -= dim_extra;
+            shapes.map(Tensor::new)
+        };
+        // Now copy over the slices. We'll make sure we'ere contiguous. Then we'll Iterate over batches of
+        // [a, b, ..., <dim>, 0, 0, 0, ...]. For each of those, we'll take the full slice, divide it by S, and then
+        // write it to the corresponding tensor data.
+        let contiguous_self = self.contiguous();
+        let batch_len = {
+            let mut len = contiguous_self.data.len();
+            for shape_idx in 0..dim {
+                len /= contiguous_self.shape[shape_idx]
+            }
+            len
+        };
+        for batch in contiguous_self.shape.iter_indices().skipping_dims_at(dim) {
+            let batch_start = contiguous_self.data_offset(batch);
+            let batch_slice = &contiguous_self.data[batch_start..(batch_start + batch_len)];
+            for (slice_idx, slice) in batch_slice.chunks(batch_len / S).enumerate() {
+                let target_tensor = &mut split_tensors[slice_idx];
+                let target_offset = target_tensor.data_offset(batch);
+                target_tensor.data[target_offset..(target_offset + slice.len())].copy_from_slice(slice);
+            }
+        }
+        split_tensors
+    }
+
     fn data_offset(&self, indices: [usize; R]) -> usize {
         let mut offset = 0;
         for i in 0..R {
@@ -136,6 +174,9 @@ impl<const R: usize> Tensor<R> {
     }
 
     pub fn contiguous(mut self) -> Self {
+        if self.strides == Self::contiguous_strides(self.shape) {
+            return self;
+        }
         let mut new_data = vec![0.0; self.shape.num_elements()];
         let chunk_sizes = self.data.len() / self.shape[0];
 
@@ -640,7 +681,7 @@ mod tests {
             m.set_row([1, 0], &[5., 6., 7., 8.]);
             m.set_row([2, 0], &[9., 10., 11., 12.]);
 
-            let mut transposed = m.t();
+            let transposed = m.t();
             assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
             check_row(&transposed, 0, [1., 5., 9.]);
@@ -656,7 +697,7 @@ mod tests {
 
         #[test]
         fn transposed_set_row() {
-            let mut m = Tensor::new_matrix(3, 4);
+            let m = Tensor::new_matrix(3, 4);
 
             let mut transposed = m.t();
             let values = &[1., 2., 3.];
@@ -859,6 +900,145 @@ mod tests {
         fn transposed() {
             let original = Tensor::new_matrix(2, 6).transposed(0, 1);
             let _ = original.reshape([6, 2]);
+        }
+    }
+
+    mod split {
+        use super::*;
+
+        #[test]
+        fn split_on_last_dim() {
+            let mut orig = Tensor::new([2, 2, 6]);
+            orig.data
+                .iter_mut()
+                .enumerate()
+                .for_each(|(count, value)| *value = count as f32);
+            // sanity check
+            assert_eq!(
+                format!("{orig}"),
+                [
+                    "|  0 |  1 |  2 |  3 |  4 |  5 |    | 12 | 13 | 14 | 15 | 16 | 17 |",
+                    "|  6 |  7 |  8 |  9 | 10 | 11 |    | 18 | 19 | 20 | 21 | 22 | 23 |",
+                ]
+                .join("\n")
+            );
+
+            let [split_1, split_2, split_3] = orig.split::<3>(2);
+            assert_eq!(
+                format!("{}", split_1),
+                [
+                    // split 1
+                    "|  0 |  1 |    | 12 | 13 |",
+                    "|  6 |  7 |    | 18 | 19 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{split_2}"),
+                ["|  2 |  3 |    | 14 | 15 |", "|  8 |  9 |    | 20 | 21 |",].join("\n")
+            );
+            assert_eq!(
+                format!("{split_3}"),
+                ["|  4 |  5 |    | 16 | 17 |", "| 10 | 11 |    | 22 | 23 |",].join("\n")
+            );
+        }
+
+        #[test]
+        fn split_on_middle_dim() {
+            let mut orig = Tensor::new([2, 6, 2]);
+            orig.data
+                .iter_mut()
+                .enumerate()
+                .for_each(|(count, value)| *value = count as f32);
+            // sanity check
+            assert_eq!(
+                format!("{orig}"),
+                [
+                    "|  0 |  1 |    | 12 | 13 |",
+                    "|  2 |  3 |    | 14 | 15 |",
+                    "|  4 |  5 |    | 16 | 17 |",
+                    "|  6 |  7 |    | 18 | 19 |",
+                    "|  8 |  9 |    | 20 | 21 |",
+                    "| 10 | 11 |    | 22 | 23 |",
+                ]
+                .join("\n")
+            );
+
+            let [split_1, split_2, split_3] = orig.split::<3>(1);
+            assert_eq!(
+                format!("{}", split_1),
+                [
+                    // split 1 - rows 0-1
+                    "|  0 |  1 |    | 12 | 13 |",
+                    "|  2 |  3 |    | 14 | 15 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{split_2}"),
+                [
+                    // split 2 - rows 2-3
+                    "|  4 |  5 |    | 16 | 17 |",
+                    "|  6 |  7 |    | 18 | 19 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{split_3}"),
+                [
+                    // split 3 - rows 4-5
+                    "|  8 |  9 |    | 20 | 21 |",
+                    "| 10 | 11 |    | 22 | 23 |",
+                ]
+                .join("\n")
+            );
+        }
+
+        #[test]
+        fn split_on_first_dim() {
+            let mut orig = Tensor::new([6, 2, 2]);
+            orig.data
+                .iter_mut()
+                .enumerate()
+                .for_each(|(count, value)| *value = count as f32);
+            // sanity check
+            assert_eq!(
+                format!("{orig}"),
+                [
+                    "|  0 |  1 |    |  4 |  5 |    |  8 |  9 |    | 12 | 13 |    | 16 | 17 |    | 20 | 21 |",
+                    "|  2 |  3 |    |  6 |  7 |    | 10 | 11 |    | 14 | 15 |    | 18 | 19 |    | 22 | 23 |",
+                ]
+                .join("\n")
+            );
+
+            let [split_1, split_2, split_3] = orig.split::<3>(0);
+            assert_eq!(
+                format!("{}", split_1),
+                [
+                    // split 1 - first 2 matrices
+                    "| 0 | 1 |    | 4 | 5 |",
+                    "| 2 | 3 |    | 6 | 7 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{split_2}"),
+                [
+                    // split 2 - next 2 matrices
+                    "|  8 |  9 |    | 12 | 13 |",
+                    "| 10 | 11 |    | 14 | 15 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{split_3}"),
+                [
+                    // split 3 - last 2 matrices
+                    "| 16 | 17 |    | 20 | 21 |",
+                    "| 18 | 19 |    | 22 | 23 |",
+                ]
+                .join("\n")
+            );
         }
     }
 

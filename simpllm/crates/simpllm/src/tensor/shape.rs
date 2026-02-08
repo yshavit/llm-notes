@@ -6,11 +6,11 @@ use std::ops::{Deref, DerefMut};
 pub struct Shape<const R: usize>([usize; R]);
 
 impl<const R: usize> Shape<R> {
-    pub fn iter_indices(self) -> impl Iterator<Item = [usize; R]> {
+    pub fn iter_indices(self) -> IndicesIter<R> {
         self.iter_indices_starting_at([0; R])
     }
 
-    pub fn iter_indices_starting_at(self, start: [usize; R]) -> impl Iterator<Item = [usize; R]> {
+    pub fn iter_indices_starting_at(self, start: [usize; R]) -> IndicesIter<R> {
         IndicesIter::new(self, start)
     }
 }
@@ -70,9 +70,10 @@ impl<const R: usize> Display for Shape<R> {
     }
 }
 
-struct IndicesIter<const R: usize> {
+pub struct IndicesIter<const R: usize> {
     shape: Shape<R>,
     next_index: Option<[usize; R]>,
+    until_dim: usize,
 }
 
 impl<const R: usize> IndicesIter<R> {
@@ -80,7 +81,17 @@ impl<const R: usize> IndicesIter<R> {
         Self {
             shape,
             next_index: Some(start_at),
+            until_dim: R,
         }
+    }
+
+    pub fn skipping_dims_at(mut self, dim: usize) -> Self {
+        assert!(
+            dim < R,
+            "can't skip after dimension {dim} for iterator over rank-{R} tensorA"
+        );
+        self.until_dim = dim;
+        self
     }
 }
 
@@ -95,7 +106,7 @@ impl<const R: usize> Iterator for IndicesIter<R> {
             // can mark the increment as successful. Otherwise, we'll set it to 0 and then try the next index.
             // At the end, if we didn't increment any indices, then the whole iterator is done.
             let mut could_increment = false;
-            for idx in (0..R).rev() {
+            for idx in (0..self.until_dim).rev() {
                 if next[idx] < (self.shape[idx] - 1) {
                     next[idx] += 1;
                     could_increment = true;
@@ -166,6 +177,39 @@ mod tests {
                     [0, 2, 0],
                     [0, 2, 1],
                 ],
+            );
+        }
+
+        #[test]
+        fn shape_3_with_skips() {
+            // note: shape is 2x3x2, not 1x3x2 as in the other tests
+            let shape = Shape::new([2, 3, 2]);
+            assert_eq!(
+                shape.iter_indices().skipping_dims_at(2).collect::<Vec<_>>(),
+                vec![
+                    //
+                    [0, 0, 0],
+                    [0, 1, 0],
+                    [0, 2, 0],
+                    [1, 0, 0],
+                    [1, 1, 0],
+                    [1, 2, 0],
+                ]
+            );
+            assert_eq!(
+                shape.iter_indices().skipping_dims_at(1).collect::<Vec<_>>(),
+                vec![
+                    //
+                    [0, 0, 0],
+                    [1, 0, 0],
+                ]
+            );
+            assert_eq!(
+                shape.iter_indices().skipping_dims_at(0).collect::<Vec<_>>(),
+                vec![
+                    //
+                    [0, 0, 0],
+                ]
             );
         }
 
