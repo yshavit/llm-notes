@@ -1,15 +1,16 @@
-use crate::cputensor::{Matrix, softmax};
+use crate::cputensor::softmax;
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use std::cmp::Ordering;
 
-pub struct LogitSampler {
-    logits: Matrix,
+pub struct LogitSampler<B: TensorBackend> {
+    logits: Matrix<B>,
     top_k: Option<usize>,
     top_p: Option<f32>,
     temperature: Option<f32>,
 }
 
-impl LogitSampler {
-    pub fn new(logits: Matrix) -> Self {
+impl<B: TensorBackend> LogitSampler<B> {
+    pub fn new(logits: Matrix<B>) -> Self {
         Self {
             logits,
             top_k: None,

@@ -1,10 +1,17 @@
+pub mod gelu;
 mod matmul;
 mod sample;
-mod shape;
 pub mod softmax;
 mod tensor;
+mod trait_adapter;
 
 pub use sample::LogitSampler;
-pub use shape::*;
 pub use softmax::*;
 pub use tensor::*;
+
+/// CPU-based tensor backend implementation
+pub struct CpuBackend;
+
+impl crate::tensor::TensorBackend for CpuBackend {
+    type Tensor<const R: usize> = CpuTensor<R>;
+}

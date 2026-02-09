@@ -1,4 +1,4 @@
-pub fn gelu(x: f32) -> f32 {
+pub(super) fn gelu(x: f32) -> f32 {
     use std::f32::consts::PI;
     0.5 * x * (1. + f32::tanh((2. / PI).sqrt() * (x + 0.044715 * x.powi(3))))
 }

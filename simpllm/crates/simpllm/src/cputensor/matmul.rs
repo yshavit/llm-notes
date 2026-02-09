@@ -1,18 +1,28 @@
-use crate::cputensor::tensor::{MatrixView, MatrixViewMut, Tensor};
+use crate::cputensor::tensor::{CpuTensor, MatrixView, MatrixViewMut};
 
-pub fn matmul_batched_3(a: &Tensor<3>, b: &Tensor<3>) -> Tensor<3> {
+pub fn matmul_batched<const R: usize>(a: &CpuTensor<R>, b: &CpuTensor<R>) -> CpuTensor<R> {
+    let a_shape = a.shape();
+    let b_shape = b.shape();
+    if R == 1 {
+        assert!(a_shape == b_shape, "can't multiply ({a_shape}) by ({b_shape})");
+    }
+    let a_shape = a.shape();
+    let b_shape = b.shape();
     assert!(
-        a.shape()[0] == b.shape()[0] && a.shape()[2] == b.shape()[1],
-        "can't multiply ({}) by ({})",
-        a.shape(),
-        b.shape()
+        a_shape[..R - 2] == b_shape[..R - 2],
+        "can't multiply ({a_shape}) by ({b_shape})",
     );
 
-    let mut out = Tensor::new([a.shape()[0], a.shape()[1], b.shape()[2]]);
+    assert!(
+        a_shape[R - 1] == b_shape[R - 2],
+        "can't multiply ({a_shape}) by ({b_shape})"
+    );
 
-    let num_batches = a.shape()[0];
-    for batch in 0..num_batches {
-        let batch_indices = [batch, 0, 0];
+    let mut out_shape = a_shape;
+    out_shape[R - 1] = b_shape[R - 1];
+    let mut out = CpuTensor::new(out_shape);
+
+    for batch_indices in a_shape.iter_indices().skipping_dims_at(R - 2) {
         let a_matrix = a.matrix_slice(batch_indices);
         let b_matrix = b.matrix_slice(batch_indices);
         let out_matrix = out.matrix_slice_mut(batch_indices);
@@ -21,7 +31,7 @@ pub fn matmul_batched_3(a: &Tensor<3>, b: &Tensor<3>) -> Tensor<3> {
     out
 }
 
-pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
+fn matmul<'a, const A: usize, const B: usize, const C: usize>(
     a: impl Into<MatrixView<'a, A>>,
     b: impl Into<MatrixView<'a, B>>,
     out: impl Into<MatrixViewMut<'a, C>>,
@@ -67,27 +77,27 @@ pub fn matmul<'a, const A: usize, const B: usize, const C: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cputensor::tensor::Tensor;
+    use crate::cputensor::tensor::CpuTensor;
 
     mod matrix {
         use super::*;
 
         #[test]
         fn check_matmul_more_rows_than_cols() {
-            let a: Tensor<2> = [
+            let a: CpuTensor<2> = [
                 // comment, so that rustfmt doesn't collapse this to a single line
                 [1., 2.],
                 [3., 4.],
                 [5., 6.],
             ]
             .into();
-            let b: Tensor<2> = [
+            let b: CpuTensor<2> = [
                 //
                 [7., 8.],
                 [9., 10.],
             ]
             .into();
-            let mut out: Tensor<2> = [[0.0; 2]; 3].into();
+            let mut out: CpuTensor<2> = [[0.0; 2]; 3].into();
             matmul(&a, &b, &mut out);
             assert_eq!(
                 out,
@@ -102,20 +112,20 @@ mod tests {
 
         #[test]
         fn check_matmul_more_cols_than_rows() {
-            let a: Tensor<2> = [
+            let a: CpuTensor<2> = [
                 // comment, so that rustfmt doesn't collapse this to a single line
                 [1., 2., 3.],
                 [4., 5., 6.],
             ]
             .into();
-            let b: Tensor<2> = [
+            let b: CpuTensor<2> = [
                 //
                 [7., 8.],
                 [9., 10.],
                 [11., 12.],
             ]
             .into();
-            let mut out: Tensor<2> = Tensor::new_matrix(2, 2);
+            let mut out: CpuTensor<2> = CpuTensor::new_matrix(2, 2);
             matmul(&a, &b, &mut out);
             assert_eq!(
                 out,
@@ -151,7 +161,7 @@ mod tests {
 
         #[test]
         fn check_matmul_batched_3() {
-            let mut a = Tensor::new([2, 3, 4]);
+            let mut a = CpuTensor::new([2, 3, 4]);
             // Batch 0: values are 1BRC (tensor 1, batch, row, col)
             a.set_row([0, 0, 0], &[1000., 1001., 1002., 1003.]);
             a.set_row([0, 1, 0], &[1010., 1011., 1012., 1013.]);
@@ -161,7 +171,7 @@ mod tests {
             a.set_row([1, 1, 0], &[1110., 1111., 1112., 1113.]);
             a.set_row([1, 2, 0], &[1120., 1121., 1122., 1123.]);
 
-            let mut b = Tensor::new([2, 4, 5]);
+            let mut b = CpuTensor::new([2, 4, 5]);
             // Batch 0: values are 2BRC (tensor 2, batch, row, col)
             b.set_row([0, 0, 0], &[2000., 2001., 2002., 2003., 2004.]);
             b.set_row([0, 1, 0], &[2010., 2011., 2012., 2013., 2014.]);
@@ -173,9 +183,9 @@ mod tests {
             b.set_row([1, 2, 0], &[2120., 2121., 2122., 2123., 2124.]);
             b.set_row([1, 3, 0], &[2130., 2131., 2132., 2133., 2134.]);
 
-            let out = matmul_batched_3(&a, &b);
+            let out = matmul_batched(&a, &b);
 
-            let mut expected: Tensor<3> = Tensor::new([2, 3, 5]);
+            let mut expected: CpuTensor<3> = CpuTensor::new([2, 3, 5]);
             // Batch 0, row 0: [1000., 1001., 1002., 1003.] × b
             expected.set_row(
                 [0, 0, 0],
@@ -249,27 +259,27 @@ mod tests {
         #[test]
         #[should_panic = "can't multiply (2x3x4) by (2x3x4)"]
         fn matmul_batched_inner_dim_mismatch() {
-            let a: Tensor<3> = Tensor::new([2, 3, 4]);
-            let b: Tensor<3> = Tensor::new([2, 3, 4]);
-            let _ = matmul_batched_3(&a, &b);
+            let a: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
+            let b: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
+            let _ = matmul_batched(&a, &b);
         }
 
         #[test]
         #[should_panic = "can't multiply (2x3x4) by (9x4x5)"]
         fn matmul_batched_batch_dim_mismatch() {
-            let a: Tensor<3> = Tensor::new([2, 3, 4]);
-            let b: Tensor<3> = Tensor::new([9, 4, 5]);
-            let _ = matmul_batched_3(&a, &b);
+            let a: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
+            let b: CpuTensor<3> = CpuTensor::new([9, 4, 5]);
+            let _ = matmul_batched(&a, &b);
         }
     }
 
-    fn array_matrix<const R: usize, const C: usize>() -> Tensor<2> {
-        Tensor::new_matrix(R, C)
+    fn array_matrix<const R: usize, const C: usize>() -> CpuTensor<2> {
+        CpuTensor::new_matrix(R, C)
     }
 
-    impl<const R: usize, const C: usize> Into<Tensor<2>> for [[f32; C]; R] {
-        fn into(self) -> Tensor<2> {
-            let mut m = Tensor::new_matrix(R, C);
+    impl<const R: usize, const C: usize> Into<CpuTensor<2>> for [[f32; C]; R] {
+        fn into(self) -> CpuTensor<2> {
+            let mut m = CpuTensor::new_matrix(R, C);
             for (row_idx, row_vals) in self.iter().enumerate() {
                 m.set_row([row_idx, 0], row_vals);
             }

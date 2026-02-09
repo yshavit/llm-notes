@@ -2,16 +2,17 @@ use crate::cputensor::LogitSampler;
 use crate::run::Cli;
 use crate::run::load::load_model;
 use crate::run::tokenizer::load_tokenizer;
+use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
 use gpt2weights::ModelPath;
 use std::error::Error;
 use std::io::{Write, stdin, stdout};
 use std::time::Instant;
 
-pub fn run_main() -> Result<(), Box<dyn Error>> {
+pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let model_path = ModelPath::from(cli.size);
-    let model = load_model(&model_path)?.initialize();
+    let model = load_model::<B>(&model_path)?.initialize();
 
     eprint!("Loading tokenizer... ");
     let tokenizer = load_tokenizer(&model_path)?;
@@ -61,7 +62,7 @@ pub fn run_main() -> Result<(), Box<dyn Error>> {
                         .unwrap_or(0)
                 })
             } else {
-                LogitSampler::new(result)
+                LogitSampler::<B>::new(result)
                     .top_k(cli.sample_top_k.into())
                     .top_prob(cli.sample_top_p.into())
                     .temperature(cli.sample_temp.into())

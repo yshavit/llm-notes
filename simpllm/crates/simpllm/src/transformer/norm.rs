@@ -1,26 +1,26 @@
-use crate::cputensor::{Matrix, Tensor, Vector};
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, Vector};
 
-pub struct Norm {
-    scale: Vector,
-    shift: Vector,
+pub struct Norm<B: TensorBackend> {
+    scale: Vector<B>,
+    shift: Vector<B>,
     epsilon: f32,
 }
 
-impl Norm {
+impl<B: TensorBackend> Norm<B> {
     pub fn new(dimension: usize) -> Self {
         Self {
-            scale: Tensor::new_vector(dimension),
-            shift: Tensor::new_vector(dimension),
+            scale: B::new_vector(dimension),
+            shift: B::new_vector(dimension),
             epsilon: 1e-5,
         }
     }
 
-    pub fn set(&mut self, scale: &Vector, shift: &Vector) {
+    pub fn set(&mut self, scale: &Vector<B>, shift: &Vector<B>) {
         self.scale.reset_values(&scale.flat_f32());
         self.shift.reset_values(&shift.flat_f32());
     }
 
-    pub fn apply(&self, input: &Matrix) -> Matrix {
+    pub fn apply(&self, input: &Matrix<B>) -> Matrix<B> {
         let mut result = input.clone();
         result.mut_rows(|_, row| {
             let Stats { mean, variance } = row.iter().copied().into();

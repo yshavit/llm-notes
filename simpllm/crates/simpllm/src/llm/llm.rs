@@ -1,29 +1,31 @@
 use crate::bpe::Rank;
-use crate::cputensor::{Matrix, Tensor};
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::{Norm, TransformerBlock};
 use std::fmt::{Display, Formatter};
 
-pub struct ModelLoader {
-    pub tok_embed: Matrix,
-    pub pos_embed: Matrix,
-    pub layers: Vec<TransformerBlock>,
-    pub final_norm: Norm,
+pub struct ModelLoader<B: TensorBackend> {
+    pub tok_embed: Matrix<B>,
+    pub pos_embed: Matrix<B>,
+    pub layers: Vec<TransformerBlock<B>>,
+    pub final_norm: Norm<B>,
 }
 
-pub struct Model {
-    fwd: ModelLoader,
-    tok_unembed: Matrix,
+pub struct Model<B: TensorBackend> {
+    fwd: ModelLoader<B>,
+    tok_unembed: Matrix<B>,
 }
 
-impl ModelLoader {
-    pub fn initialize(self) -> Model {
-        let tok_unembed = self.tok_embed.clone().t().contiguous();
+impl<B: TensorBackend> ModelLoader<B> {
+    pub fn initialize(self) -> Model<B> {
+        let mut tok_embed = B::Tensor::new(self.tok_embed.shape());
+        tok_embed.reset_values(&self.tok_embed.flat_f32());
+        let tok_unembed = tok_embed.transposed(0, 1).contiguous();
         Model { fwd: self, tok_unembed }
     }
 }
 
-impl Model {
-    pub fn apply(&self, seq: &Vec<Rank>) -> Result<Matrix, InferenceError> {
+impl<B: TensorBackend> Model<B> {
+    pub fn apply(&self, seq: &Vec<Rank>) -> Result<Matrix<B>, InferenceError> {
         let mut x = self.embed_inputs(seq)?;
 
         for transformer in &self.fwd.layers {
@@ -49,12 +51,12 @@ impl Model {
         self.fwd.pos_embed.num_rows()
     }
 
-    fn embed_inputs(&self, seq: &Vec<Rank>) -> Result<Matrix, InferenceError> {
+    fn embed_inputs(&self, seq: &Vec<Rank>) -> Result<Matrix<B>, InferenceError> {
         if seq.len() > self.max_seq_len() {
             return Err(InferenceError::MaxSeq);
         }
-        let mut tok_embeddings = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
-        let mut pos_embeddings = Tensor::new_matrix(seq.len(), self.token_embedding_dim());
+        let mut tok_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
+        let mut pos_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
         for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
             // copy the right token embedding to tok_embeddings
             self.fwd.tok_embed.with_row([seq_tok.rank(), 0], |tok_embed| {
@@ -65,7 +67,7 @@ impl Model {
                 pos_embeddings.set_row([seq_idx, 0], pos_embed);
             });
         }
-        let input = tok_embeddings.add_tensor(&pos_embeddings);
+        let input = tok_embeddings.add(pos_embeddings);
         Ok(input)
     }
 }

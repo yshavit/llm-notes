@@ -1,21 +1,23 @@
-use crate::cputensor::Shape;
-use crate::cputensor::matmul::{matmul, matmul_batched_3};
+use crate::cputensor::gelu::gelu;
+use crate::cputensor::matmul::matmul_batched;
+use crate::cputensor::softmax;
+use crate::tensor::Shape;
 use rayon::prelude::*;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Clone)]
-pub struct Tensor<const R: usize> {
+pub struct CpuTensor<const R: usize> {
     data: Vec<f32>,
     shape: Shape<R>,
     strides: Shape<R>,
 }
 
-pub type Vector = Tensor<1>;
-pub type Matrix = Tensor<2>;
+pub type CpuVector = CpuTensor<1>;
+pub type CpuMatrix = CpuTensor<2>;
 
-impl<const R: usize> Tensor<R> {
-    pub fn new<S: Into<Shape<R>>>(shape: S) -> Self {
+impl<const R: usize> CpuTensor<R> {
+    pub(super) fn new<S: Into<Shape<R>>>(shape: S) -> Self {
         assert_ne!(R, 0, "0-tensors are not allowed");
         let shape: Shape<R> = shape.into();
         Self {
@@ -37,18 +39,18 @@ impl<const R: usize> Tensor<R> {
         strides.into()
     }
 
-    pub fn shape(&self) -> Shape<R> {
+    pub(super) fn shape(&self) -> Shape<R> {
         self.shape
     }
 
-    pub fn reset_values(&mut self, values: &[f32]) {
+    pub(super) fn reset_values(&mut self, values: &[f32]) {
         assert_eq!(self.shape.num_elements(), values.len());
         // reset to be contiguous
         self.strides = Self::contiguous_strides(self.shape);
         self.data.copy_from_slice(values);
     }
 
-    pub fn split<const S: usize>(self, dim: usize) -> [Tensor<R>; S] {
+    pub(super) fn split<const S: usize>(self, dim: usize) -> [CpuTensor<R>; S] {
         assert!(dim < R, "split dimension {dim} must be < rank {R}");
 
         let orig_dim_size = self.shape[dim];
@@ -61,7 +63,7 @@ impl<const R: usize> Tensor<R> {
             // if the last dimension is too big, trim it down
             let dim_extra = orig_dim_size - shapes.iter().map(|s| s[dim]).sum::<usize>();
             shapes[shapes.len() - 1][dim] -= dim_extra;
-            shapes.map(Tensor::new)
+            shapes.map(CpuTensor::new)
         };
         // Now copy over the slices. We'll make sure we'ere contiguous. Then we'll Iterate over batches of
         // [a, b, ..., <dim>, 0, 0, 0, ...]. For each of those, we'll take the full slice, divide it by S, and then
@@ -99,7 +101,7 @@ impl<const R: usize> Tensor<R> {
         offset
     }
 
-    pub fn get(&self, indices: [usize; R]) -> f32 {
+    pub(super) fn get(&self, indices: [usize; R]) -> f32 {
         self.data[self.data_offset(indices)]
     }
 
@@ -109,7 +111,7 @@ impl<const R: usize> Tensor<R> {
     ///
     /// The row is provided as a borrowed slice for efficiency: if it's possible to read it directly from the tensor's
     /// underlying data, then this method will do that.
-    pub fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
+    pub(super) fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
         let read_start = self.data_offset(indices);
         let read_len = self.shape[R - 1] - indices[R - 1];
 
@@ -152,28 +154,47 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
-    pub fn multiply_scalar(&mut self, factor: f32) {
+    pub(super) fn multiply_scalar(&mut self, factor: f32) {
         for v in &mut self.data {
             *v = *v * factor;
         }
     }
 
-    pub fn add_tensor(mut self, other: &Tensor<R>) -> Self {
-        assert_eq!(self.shape, other.shape, "shapes didn't match");
-        if self.strides == other.strides {
-            // easy peasy, just add them element-wise!
+    pub(super) fn add_tensor<const R2: usize>(mut self, other: CpuTensor<R2>) -> Self {
+        assert!(
+            R2 <= R && self.shape[R - R2..] == other.shape[..],
+            "can't add broadcasted {} into {}",
+            other.shape,
+            self.shape
+        );
+
+        // Fast path: same rank and strides - simple element-wise addition
+        if R == R2 && self.strides.as_ref() == other.strides.as_ref() {
             other.data.iter().enumerate().for_each(|(i, v)| self.data[i] += v);
-        } else {
-            // do it the hard way
-            for idx in self.shape.iter_indices() {
-                let my_index = self.data_offset(idx);
-                self.data[my_index] += other.get(idx);
-            }
+            return self;
+        }
+
+        // Iterate through the "other" matrix's rows
+        for other_batch in other.shape.iter_indices().skipping_dims_at(R2 - 1) {
+            other.with_row(other_batch, |other_row| {
+                // iterate over self's batch indices (the ones to be broadcast against)
+                for mut self_batch in self.shape.iter_indices().skipping_dims_at(R - R2) {
+                    self_batch[R - R2..].copy_from_slice(&other_batch);
+
+                    self.mut_row(self_batch, |self_row| {
+                        self_row.iter_mut().enumerate().for_each(|(j, v)| *v += other_row[j])
+                    })
+                }
+            });
         }
         self
     }
 
-    pub fn contiguous(mut self) -> Self {
+    pub(super) fn matmul_todo(&self, other: &Self) -> Self {
+        matmul_batched(self, other)
+    }
+
+    pub(super) fn contiguous(mut self) -> Self {
         if self.strides == Self::contiguous_strides(self.shape) {
             return self;
         }
@@ -201,7 +222,7 @@ impl<const R: usize> Tensor<R> {
         self
     }
 
-    pub fn flat_f32(&self) -> Cow<'_, [f32]> {
+    pub(super) fn flat_f32(&self) -> Cow<'_, [f32]> {
         if self.strides == Self::contiguous_strides(self.shape) {
             Cow::from(&self.data)
         } else {
@@ -209,7 +230,19 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
-    pub fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> Tensor<R2> {
+    pub(super) fn gelu(mut self) -> Self {
+        self.data.iter_mut().for_each(|x| *x = gelu(*x));
+        self
+    }
+
+    pub(super) fn softmax(mut self) -> Self {
+        for batches in self.shape.iter_indices().skipping_dims_at(R - 1) {
+            self.mut_row(batches, softmax)
+        }
+        self
+    }
+
+    pub(super) fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> CpuTensor<R2> {
         assert_eq!(
             self.strides,
             Self::contiguous_strides(self.shape),
@@ -224,18 +257,14 @@ impl<const R: usize> Tensor<R> {
             new_shape
         );
 
-        Tensor {
+        CpuTensor {
             data: self.data,
             shape: new_shape,
-            strides: Tensor::contiguous_strides(new_shape),
+            strides: CpuTensor::contiguous_strides(new_shape),
         }
     }
 
-    pub fn clear(&mut self) {
-        self.data.fill(0.);
-    }
-
-    pub fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
+    pub(super) fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
         let read_start = self.data_offset(indices);
         let read_len = self.shape[R - 1] - indices[R - 1];
 
@@ -255,7 +284,7 @@ impl<const R: usize> Tensor<R> {
         }
     }
 
-    pub fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
+    pub(super) fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
         self.shape.swap(dim0, dim1);
         self.strides.swap(dim0, dim1);
         self
@@ -266,7 +295,7 @@ impl<const R: usize> Tensor<R> {
     /// The tensor must be at least rank 2. The batch is actually `R-2`, with the last two indices of this tensor being
     /// the ones that the [`MatrixView`] will represent. (Rust doesn't let us specify a type of `R-2`.) As such, the
     /// last two elements of `batch` must be `0`.
-    pub fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<'_, R> {
+    pub(super) fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<'_, R> {
         assert!(R >= 2, "cannot take matrix slice on vectors");
         assert!(
             batch[R - 1] == 0 && batch[R - 2] == 0,
@@ -276,7 +305,7 @@ impl<const R: usize> Tensor<R> {
         MatrixView::new(self, batch)
     }
 
-    pub fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<'_, R> {
+    pub(super) fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<'_, R> {
         assert!(R >= 2, "cannot take matrix slice on vectors");
         assert!(
             batch[R - 1] == 0 && batch[R - 2] == 0,
@@ -289,7 +318,7 @@ impl<const R: usize> Tensor<R> {
     /// Sets all or part of a row's values. The first `R-1` indices specify an offset into the tensor, and the last
     /// index specifies an offset into the row. That offset + `values.len()` must be less than the last index's
     /// dimensionality.
-    pub fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
+    pub(super) fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
         let write_start = self.data_offset(indices);
         let row_offset = indices[R - 1];
         assert!(
@@ -314,7 +343,7 @@ impl<const R: usize> Tensor<R> {
     }
 }
 
-impl<const R: usize> Debug for Tensor<R> {
+impl<const R: usize> Debug for CpuTensor<R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.shape)?;
         match R {
@@ -327,7 +356,7 @@ impl<const R: usize> Debug for Tensor<R> {
 
 macro_rules! prettier {
     ($r:literal) => {
-        impl Display for Tensor<$r> {
+        impl Display for CpuTensor<$r> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 Pretty(self).fmt(f)
             }
@@ -340,24 +369,24 @@ prettier! {3}
 
 macro_rules! matrix_view {
     ($name:ident $($mut:ident)?) => {
-        pub struct $name<'a, const R: usize> {
-            tensor: &'a $($mut)? Tensor<R>,
+        pub(super) struct $name<'a, const R: usize> {
+            tensor: &'a $($mut)? CpuTensor<R>,
             batch_dimensions: [usize; R],
         }
 
         impl<'a, const R: usize> $name<'a, R> {
-            fn new(tensor: &'a $($mut)? Tensor<R>, batch_dimensions: [usize; R]) -> Self {
+            fn new(tensor: &'a $($mut)? CpuTensor<R>, batch_dimensions: [usize; R]) -> Self {
                 Self {
                     tensor,
                     batch_dimensions,
                 }
             }
 
-            pub fn shape(&self) -> Shape<2> {
+            pub(super) fn shape(&self) -> Shape<2> {
                 Shape::new([self.num_rows(), self.num_cols()])
             }
 
-            pub fn num_rows(&self) -> usize {
+            pub(super) fn num_rows(&self) -> usize {
                 if R == 1 {
                     1
                 } else {
@@ -365,11 +394,11 @@ macro_rules! matrix_view {
                 }
             }
 
-            pub fn num_cols(&self) -> usize {
+            pub(super) fn num_cols(&self) -> usize {
                 self.tensor.shape[R - 1]
             }
 
-            pub fn get(&self, row: usize, col: usize) -> f32 {
+            pub(super) fn get(&self, row: usize, col: usize) -> f32 {
                 let mut indices = self.batch_dimensions;
                 if R > 1 {
                     indices[R - 2] = row;
@@ -379,8 +408,8 @@ macro_rules! matrix_view {
             }
         }
 
-        impl<'a> From<&'a $($mut)? Tensor<2>> for $name<'a, 2> {
-            fn from(tensor: &'a $($mut)? Tensor<2>) -> Self {
+        impl<'a> From<&'a $($mut)? CpuTensor<2>> for $name<'a, 2> {
+            fn from(tensor: &'a $($mut)? CpuTensor<2>) -> Self {
                 $name {
                     tensor,
                     batch_dimensions: [0; 2],
@@ -394,7 +423,7 @@ matrix_view! {MatrixView}
 matrix_view! {MatrixViewMut mut}
 
 impl<'a, const R: usize> MatrixViewMut<'a, R> {
-    pub fn set_row(&mut self, row: usize, values: &[f32]) {
+    pub(super) fn set_row(&mut self, row: usize, values: &[f32]) {
         let mut indices = self.batch_dimensions;
         if R == 1 {
             assert_eq!(row, 0, "vector's row parameter must be 0")
@@ -405,7 +434,7 @@ impl<'a, const R: usize> MatrixViewMut<'a, R> {
         self.tensor.set_row(indices, values);
     }
 
-    pub fn mut_row(&mut self, row: usize, f: impl Fn(&mut [f32])) {
+    pub(super) fn mut_row(&mut self, row: usize, f: impl Fn(&mut [f32])) {
         let mut indices = self.batch_dimensions;
         if R == 1 {
             assert_eq!(row, 0, "vector's row parameter must be 0")
@@ -416,12 +445,12 @@ impl<'a, const R: usize> MatrixViewMut<'a, R> {
         self.tensor.mut_row(indices, f);
     }
 
-    pub fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
+    pub(super) fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
         self.tensor.mut_rows_at_batch(self.batch_dimensions, f);
     }
 }
 
-struct Pretty<'a, const R: usize>(&'a Tensor<R>);
+struct Pretty<'a, const R: usize>(&'a CpuTensor<R>);
 
 impl<'a, const R: usize> Display for Pretty<'a, R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -520,53 +549,28 @@ impl<'a, const R: usize> Display for Pretty<'a, R> {
     }
 }
 
-impl Tensor<3> {
-    pub fn matmul_batched(&self, other: &Self) -> Self {
-        matmul_batched_3(self, other)
-    }
-}
-
-impl Tensor<2> {
-    pub fn new_matrix(num_rows: usize, num_columns: usize) -> Self {
+impl CpuTensor<2> {
+    pub(super) fn new_matrix(num_rows: usize, num_columns: usize) -> Self {
         Self::new(Shape::new([num_rows, num_columns]))
     }
 
-    pub fn t(self) -> Self {
+    fn t(self) -> Self {
         self.transposed(0, 1)
     }
 
-    pub fn num_rows(&self) -> usize {
+    fn num_rows(&self) -> usize {
         self.shape[0]
     }
 
-    pub fn num_cols(&self) -> usize {
+    fn num_cols(&self) -> usize {
         self.shape[1]
     }
 
-    pub fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
+    fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
         self.mut_rows_at_batch([0, 0], f);
     }
 
-    pub fn matmul(&self, other: &Self) -> Self {
-        let mut result = Tensor::new_matrix(self.num_rows(), other.num_cols());
-        matmul(self, other, &mut result);
-        result
-    }
-
-    pub fn add_broadcasted_vector(&mut self, v: &Vector) {
-        let num_cols = self.num_cols();
-        v.with_row([0], |v_row| {
-            for i in 0..self.num_rows() {
-                self.mut_row([i, 0], |my_row| {
-                    for j in 0..num_cols {
-                        my_row[j] += v_row[j]
-                    }
-                });
-            }
-        });
-    }
-
-    pub fn to_f32(&self) -> Vec<Vec<f32>> {
+    fn to_f32(&self) -> Vec<Vec<f32>> {
         let mut result = Vec::with_capacity(self.num_rows());
         for row in 0..self.num_rows() {
             let cols: Vec<_> = (0..self.num_cols()).map(|col| self.get([row, col])).collect();
@@ -576,35 +580,7 @@ impl Tensor<2> {
     }
 }
 
-impl Tensor<1> {
-    pub fn new_vector(num_elems: usize) -> Self {
-        Self::new([num_elems])
-    }
-
-    pub fn as_row_matrix(&self) -> MatrixView<'_, 1> {
-        MatrixView::new(self, [0])
-    }
-
-    pub fn as_row_matrix_mut(&mut self) -> MatrixViewMut<'_, 1> {
-        MatrixViewMut::new(self, [0])
-    }
-
-    pub fn matmul(&self, matrix: &Matrix) -> Self {
-        let mut output = Tensor::new_vector(matrix.num_cols());
-        matmul(self.as_row_matrix(), matrix, output.as_row_matrix_mut());
-        output
-    }
-
-    pub fn len(&self) -> usize {
-        self.shape[0]
-    }
-
-    pub fn as_f32(&self) -> &[f32] {
-        &self.data // this works regardless of whether the vector is rows or columns
-    }
-}
-
-impl<const R: usize> PartialEq for Tensor<R> {
+impl<const R: usize> PartialEq for CpuTensor<R> {
     fn eq(&self, other: &Self) -> bool {
         if self.shape != other.shape {
             return false;
@@ -628,6 +604,7 @@ impl<const R: usize> PartialEq for Tensor<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tensor::Tensor;
     use std::panic;
 
     mod matrix {
@@ -636,7 +613,7 @@ mod tests {
         /// Smoke test of the various shapes of things.
         #[test]
         fn matrix_data_shape() {
-            let m = Tensor::new_matrix(3, 4);
+            let m = CpuTensor::new_matrix(3, 4);
             assert_eq!(m.num_rows(), 3);
             assert_eq!(m.num_cols(), 4);
             assert_eq!(m.shape(), Shape::new([3, 4]));
@@ -649,7 +626,7 @@ mod tests {
 
         #[test]
         fn data_round_trip() {
-            let mut m = Tensor::new_matrix(3, 4);
+            let mut m = CpuTensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -669,13 +646,13 @@ mod tests {
         #[test]
         #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
         fn row_mut_set_all_bounds() {
-            let mut m = Tensor::new_matrix(3, 4);
+            let mut m = CpuTensor::new_matrix(3, 4);
             m.set_row([0, 0], &[1., 2., 3., 4., 5., 6.]);
         }
 
         #[test]
         fn transposition() {
-            let mut m = Tensor::new_matrix(3, 4);
+            let mut m = CpuTensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -697,7 +674,7 @@ mod tests {
 
         #[test]
         fn transposed_set_row() {
-            let m = Tensor::new_matrix(3, 4);
+            let m = CpuTensor::new_matrix(3, 4);
 
             let mut transposed = m.t();
             let values = &[1., 2., 3.];
@@ -715,7 +692,7 @@ mod tests {
             check_row(&transposed, 1, [10., 200., 300.]);
         }
 
-        fn check_row<const N: usize>(m: &Matrix, row: usize, expected: [f32; N]) {
+        fn check_row<const N: usize>(m: &CpuMatrix, row: usize, expected: [f32; N]) {
             let actual: Vec<_> = (0..N).map(|i| m.get([row, i])).collect();
             let expected = Vec::from(expected);
             assert_eq!(actual, expected);
@@ -727,7 +704,7 @@ mod tests {
     mod tensor3 {
         use super::*;
 
-        type Tensor3 = Tensor<3>;
+        type Tensor3 = CpuTensor<3>;
 
         #[test]
         fn shape() {
@@ -814,7 +791,7 @@ mod tests {
 
         #[test]
         fn matrix_view_round_trip() {
-            let mut t = Tensor::new([4, 2, 3]);
+            let mut t = CpuTensor::new([4, 2, 3]);
 
             // Get the second batch (doesn't really matter which)
             let slice_indices = [1, 0, 0];
@@ -845,7 +822,7 @@ mod tests {
         fn reshape_2_to_3() {
             // use pretty-print to check values
 
-            let mut original = Tensor::new_matrix(2, 6);
+            let mut original = CpuTensor::new_matrix(2, 6);
             original.set_row([0, 0], &[01., 02., 03., 04., 05., 06.]);
             original.set_row([1, 0], &[07., 08., 09., 10., 11., 12.]);
             assert_eq!(
@@ -891,14 +868,14 @@ mod tests {
         #[test]
         #[should_panic]
         fn shape_mismatch() {
-            let original = Tensor::new_matrix(2, 6);
+            let original = CpuTensor::new_matrix(2, 6);
             let _ = original.reshape([2, 7]);
         }
 
         #[test]
         #[should_panic]
         fn transposed() {
-            let original = Tensor::new_matrix(2, 6).transposed(0, 1);
+            let original = CpuTensor::new_matrix(2, 6).transposed(0, 1);
             let _ = original.reshape([6, 2]);
         }
     }
@@ -908,7 +885,7 @@ mod tests {
 
         #[test]
         fn split_on_last_dim() {
-            let mut orig = Tensor::new([2, 2, 6]);
+            let mut orig = CpuTensor::new([2, 2, 6]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -945,7 +922,7 @@ mod tests {
 
         #[test]
         fn split_on_middle_dim() {
-            let mut orig = Tensor::new([2, 6, 2]);
+            let mut orig = CpuTensor::new([2, 6, 2]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -996,7 +973,7 @@ mod tests {
 
         #[test]
         fn split_on_first_dim() {
-            let mut orig = Tensor::new([6, 2, 2]);
+            let mut orig = CpuTensor::new([6, 2, 2]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -1042,12 +1019,78 @@ mod tests {
         }
     }
 
+    mod add {
+        use super::*;
+
+        #[test]
+        fn same_shape() {
+            let mut a = CpuTensor::new_matrix(3, 3);
+            let mut b = CpuTensor::new_matrix(3, 3);
+            a.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
+            b.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 10) as f32);
+
+            let c = a.add(b);
+
+            assert_eq!(
+                format!("{c}"),
+                [
+                    //
+                    "|  0 | 11 | 22 |",
+                    "| 33 | 44 | 55 |",
+                    "| 66 | 77 | 88 |",
+                ]
+                .join("\n")
+            );
+        }
+
+        #[test]
+        fn broadcast() {
+            let mut a = CpuTensor::new([2, 3, 3]);
+            let mut b = CpuTensor::new_matrix(3, 3);
+            a.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 100) as f32);
+            b.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
+
+            assert_eq!(
+                format!("{a}"),
+                [
+                    //
+                    "|    0 |  100 |  200 |    |  900 | 1000 | 1100 |",
+                    "|  300 |  400 |  500 |    | 1200 | 1300 | 1400 |",
+                    "|  600 |  700 |  800 |    | 1500 | 1600 | 1700 |",
+                ]
+                .join("\n")
+            );
+            assert_eq!(
+                format!("{b}"),
+                [
+                    //
+                    "| 0 | 1 | 2 |",
+                    "| 3 | 4 | 5 |",
+                    "| 6 | 7 | 8 |",
+                ]
+                .join("\n")
+            );
+            let c = a.add(b);
+
+            assert_eq!(
+                format!("{c}"),
+                [
+                    //
+                    "|    0 |  101 |  202 |    |  900 | 1001 | 1102 |",
+                    "|  303 |  404 |  505 |    | 1203 | 1304 | 1405 |",
+                    "|  606 |  707 |  808 |    | 1506 | 1607 | 1708 |",
+                ]
+                .join("\n")
+            );
+        }
+    }
+
     mod pretty {
         use super::*;
 
         #[test]
         fn pretty_vector() {
-            let mut m = Tensor::new([4]);
+            let mut m = CpuTensor::new([4]);
 
             m.set_row([0], &[1., 2., 3., 4.]);
 
@@ -1057,7 +1100,7 @@ mod tests {
 
         #[test]
         fn pretty_matrix() {
-            let mut m = Tensor::new_matrix(3, 4);
+            let mut m = CpuTensor::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -1079,7 +1122,7 @@ mod tests {
 
         #[test]
         fn pretty_tensor_3() {
-            let mut m = Tensor::new([3, 4, 2]);
+            let mut m = CpuTensor::new([3, 4, 2]);
 
             m.set_row([0, 0, 0], &[1., 2.]);
             m.set_row([1, 0, 0], &[3., 4.]);
@@ -1115,7 +1158,7 @@ mod tests {
         /// Check the fence post when there's just one batch
         #[test]
         fn pretty_tensor_3_batch_is_1() {
-            let mut m = Tensor::new([1, 2, 2]);
+            let mut m = CpuTensor::new([1, 2, 2]);
 
             m.set_row([0, 0, 0], &[1., 2.]);
             m.set_row([0, 1, 0], &[3., 4.]);
@@ -1134,7 +1177,7 @@ mod tests {
 
         #[test]
         fn pretty_tensor_4() {
-            let m = Tensor::new([1, 2, 3, 4]);
+            let m = CpuTensor::new([1, 2, 3, 4]);
 
             // can't pretty it via a tensor method; use prettier directly
             let pretty = format!("{}", Pretty(&m));

@@ -1,16 +1,16 @@
-use crate::cputensor::{Matrix, softmax};
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
-pub struct Attention {
+pub struct Attention<B: TensorBackend> {
     embedding_dim: usize,
     num_heads: usize,
 
     // TODO need to update the book to include that these all have bias!
-    w_qkv: MatrixAndBias,
-    w_o: MatrixAndBias,
+    w_qkv: MatrixAndBias<B>,
+    w_o: MatrixAndBias<B>,
 }
 
-impl Attention {
+impl<B: TensorBackend> Attention<B> {
     //noinspection RsAssertEqual -- I don't want assert_eq!, because I don't need to print the actual/expected
     pub fn new(embedding_dim: usize, num_heads: usize) -> Self {
         assert!(
@@ -26,15 +26,15 @@ impl Attention {
         }
     }
 
-    pub fn qkv_mut(&mut self) -> &mut MatrixAndBias {
+    pub fn qkv_mut(&mut self) -> &mut MatrixAndBias<B> {
         &mut self.w_qkv
     }
 
-    pub fn o_mut(&mut self) -> &mut MatrixAndBias {
+    pub fn o_mut(&mut self) -> &mut MatrixAndBias<B> {
         &mut self.w_o
     }
 
-    pub fn apply(&self, input: &Matrix) -> Matrix {
+    pub fn apply(&self, input: &Matrix<B>) -> Matrix<B> {
         assert_eq!(
             input.num_cols(),
             self.embedding_dim,
@@ -49,7 +49,7 @@ impl Attention {
         let [queries, keys, values] = {
             let mut combined = input.matmul(&self.w_qkv.weights());
             // Combined is (N x 3d). Add the biases before reshaping.
-            combined.add_broadcasted_vector(&self.w_qkv.bias());
+            combined.add_broadcasted_vector(self.w_qkv.bias());
 
             let split = combined.split::<3>(1);
             split.map(|m| {
@@ -60,22 +60,19 @@ impl Attention {
             })
         };
 
-        let mut a = queries.matmul_batched(&keys.transposed(1, 2));
+        let mut a = queries.matmul(&keys.transposed(1, 2));
         // divide by sqrt(d/h), and do softmax on the last dimension (d/h)
         let dim_per_head = d / h;
         a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
-        for batch in 0..h {
-            let mut batch_slice = a.matrix_slice_mut([batch, 0, 0]);
-            for row in 0..batch_slice.num_rows() {
-                // apply causal attention TODO need to update the book for this!
-                batch_slice.mut_row(row, |cols| {
-                    cols[row + 1..].fill(f32::NEG_INFINITY);
-                    softmax(cols);
-                });
-            }
-        }
 
-        let mut attn = a.matmul_batched(&values);
+        let mut causal_mask = B::new_matrix(n, n);
+        causal_mask.mut_rows(|row_idx, row| {
+            row.iter_mut().skip(row_idx + 1).for_each(|v| *v = f32::NEG_INFINITY);
+        });
+        a = a.add(causal_mask);
+        a = a.softmax();
+
+        let mut attn = a.matmul(&values);
         // transpose from (h, n, d/h) to (n, h, d/h)
         attn = attn.transposed(0, 1);
         // reshape
@@ -91,7 +88,8 @@ impl Attention {
 #[cfg(test)]
 mod tests {
     use crate::assert_f32_slice;
-    use crate::cputensor::Tensor;
+    use crate::cputensor::CpuTensor;
+    use crate::tensor::{Tensor, Tensor2D};
     use crate::transformer::attention::Attention;
 
     /// Compares against a reference pytorch implementation.
@@ -167,34 +165,35 @@ mod tests {
     ///
     #[test]
     fn compare_against_pytorch() {
+        use crate::cputensor::CpuBackend;
+
         let embedding_dim = 6;
         let n_heads = 3;
         let n_tokens = 2;
 
-        let mut attention = Attention::new(embedding_dim, n_heads);
+        let mut attention: Attention<CpuBackend> = Attention::new(embedding_dim, n_heads);
         let weights_size = embedding_dim.pow(2);
         let mut counter_data = (1..).map(|i| 1.0 / (i as f32));
         let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(n).collect::<Vec<_>>() };
 
-        // let QkvWeights { mut q, mut k, mut v } = QkvWeights::from_flat_tensorflow(&counter(weights_size * 3)).unwrap();
+        use crate::tensor::TensorBackend;
 
-        // pytorch transposes the q/k/v matrices internally, within its transforms. We don't, so I'll transpose them
-        // here instead.
-        // q = q.t().contiguous();
-        // k = k.t().contiguous();
-        // v = v.t().contiguous();
+        // PyTorch stores QKV as [3*d_model, d_model], we store as [d_model, 3*d_model]
+        // So we need to create the PyTorch layout and transpose it
+        let qkv_pytorch_layout = counter(weights_size * 3);
+        let mut qkv_weights = CpuBackend::new_matrix(embedding_dim * 3, embedding_dim);
+        qkv_weights.reset_values(&qkv_pytorch_layout);
+        let qkv_weights = qkv_weights.transposed(0, 1).contiguous();
 
-        let zero_bias = Tensor::new_vector(embedding_dim);
-        // TODO fix this test!
-        // attention.q_mut().set(&q, &zero_bias);
-        // attention.k_mut().set(&k, &zero_bias);
-        // attention.v_mut().set(&v, &zero_bias);
+        let zero_bias_qkv = CpuBackend::new_vector(embedding_dim * 3);
+        attention.qkv_mut().set(&qkv_weights, &zero_bias_qkv);
 
-        let mut o_weights = Tensor::new_matrix(embedding_dim, embedding_dim);
+        let mut o_weights = CpuBackend::new_matrix(embedding_dim, embedding_dim);
         o_weights.reset_values(&counter(weights_size));
-        attention.o_mut().set(&o_weights, &zero_bias);
+        let zero_bias_o = CpuBackend::new_vector(embedding_dim);
+        attention.o_mut().set(&o_weights, &zero_bias_o);
 
-        let mut tokens = Tensor::new([embedding_dim * n_tokens]);
+        let mut tokens = CpuTensor::new([embedding_dim * n_tokens]);
         tokens.reset_values(
             &(0..(n_tokens * embedding_dim))
                 .map(|i| (i + 1) as f32)
@@ -224,7 +223,10 @@ mod tests {
         ];
 
         assert_eq!(output.num_rows(), expected.len());
-        let actual_as_vec = output.to_f32();
+        let mut actual_as_vec = Vec::new();
+        for row in 0..output.num_rows() {
+            actual_as_vec.push(output.with_row([row, 0], |r| Vec::from(r)))
+        }
         for row in 0..expected.len() {
             assert_f32_slice!(&actual_as_vec[row], &expected[row]);
         }

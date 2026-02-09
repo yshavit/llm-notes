@@ -1,12 +1,11 @@
-use crate::cputensor::{Matrix, Tensor, Vector};
-use crate::transformer::activation::gelu;
+use crate::tensor::{Matrix, Shape, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
-pub struct Ffn {
-    layers_transforms: Vec<LayerTransform>,
+pub struct Ffn<B: TensorBackend> {
+    layers_transforms: Vec<LayerTransform<B>>,
 }
 
-impl Ffn {
+impl<B: TensorBackend> Ffn<B> {
     pub fn new(mut in_dim: usize, hidden_layer_dims: &[usize], out_dim: usize) -> Self {
         let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
         for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&out_dim)) {
@@ -26,39 +25,34 @@ impl Ffn {
         self.layers_transforms[self.layers_transforms.len() - 1].mab.out_dims()
     }
 
-    pub fn layer_mut(&mut self, layer: usize) -> &'_ mut MatrixAndBias {
+    pub fn layer_mut(&mut self, layer: usize) -> &'_ mut MatrixAndBias<B> {
         &mut self.layers_transforms[layer].mab
     }
 
-    pub fn apply_matrix(&self, mut input: Matrix) -> Matrix {
+    pub fn apply_matrix(&self, mut input: Matrix<B>) -> Matrix<B> {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
 
         let num_cols = input.num_cols();
         input.mut_rows(|_, row| {
-            let mut input_row = Tensor::new_vector(num_cols);
-            input_row.set_row([0], row);
+            let mut input_row = B::new_matrix(1, num_cols);
+            input_row.set_row([0, 0], row);
             let ffn_result = self.apply(input_row);
-            ffn_result.with_row([0], |in_row| {
+            ffn_result.with_row([0, 0], |in_row| {
                 row.copy_from_slice(in_row);
             });
         });
         input
     }
 
-    pub fn apply(&self, mut input: Vector) -> Vector {
-        assert_eq!(
-            input.len(),
-            self.layers_transforms[0].mab.in_dims(),
-            "expected input with dimension {}, got {}",
-            input.len(),
-            self.layers_transforms[0].mab.in_dims()
-        );
+    pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
+            assert_eq!(input.shape(), Shape::new([1, transform.mab.in_dims()]));
             let mut output = transform.apply(&input);
+            assert_eq!(output.shape(), Shape::new([1, transform.mab.out_dims()]));
             if transforms.peek().is_some() {
-                output.mut_row([0], |cols| cols.iter_mut().for_each(|v| *v = gelu(*v)))
+                output = output.gelu();
             }
             input = output;
         }
@@ -66,25 +60,20 @@ impl Ffn {
     }
 }
 
-struct LayerTransform {
-    mab: MatrixAndBias,
+struct LayerTransform<B: TensorBackend> {
+    mab: MatrixAndBias<B>,
 }
 
-impl LayerTransform {
+impl<B: TensorBackend> LayerTransform<B> {
     fn new(in_dims: usize, out_dims: usize) -> Self {
         Self {
             mab: MatrixAndBias::new(in_dims, out_dims),
         }
     }
 
-    fn apply(&self, inputs: &Vector) -> Vector {
-        // matmul will overwrite the activations, so we don't need to zero them out first
+    fn apply(&self, inputs: &Matrix<B>) -> Matrix<B> {
         let mut activations = inputs.matmul(self.mab.weights());
-        activations.mut_row([0], |row| {
-            for i in 0..row.len() {
-                row[i] = row[i] + self.mab.bias().get([i]);
-            }
-        });
+        activations.add_broadcasted_vector(self.mab.bias());
         activations
     }
 }
@@ -93,7 +82,7 @@ impl LayerTransform {
 pub mod tests {
     use super::*;
     use crate::assert_f32_slice;
-    use crate::cputensor::Shape;
+    use crate::tensor::Shape;
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -149,7 +138,9 @@ pub mod tests {
     ///
     #[test]
     fn compare_against_pytorch() {
-        let mut ffn = Ffn::new(5, &[7], 6);
+        use crate::cputensor::CpuBackend;
+
+        let mut ffn: Ffn<CpuBackend> = Ffn::new(5, &[7], 6);
         for transform in &mut ffn.layers_transforms {
             transform.mab.set(
                 &count_up([transform.mab.in_dims(), transform.mab.out_dims()]),
@@ -157,20 +148,20 @@ pub mod tests {
             );
         }
 
-        let input = count_up([5]);
+        let input = count_up([5]).reshape([1, 5]);
 
         let actual = ffn.apply(input);
 
-        let mut expect = Tensor::new_vector(6);
+        let mut expect = CpuBackend::new_vector(6);
         expect.reset_values(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
 
-        assert_f32_slice!(actual.as_f32(), expect.as_f32());
+        assert_f32_slice!(actual.flat_f32().as_ref(), expect.flat_f32().as_ref());
     }
 
-    fn count_up<const R: usize>(shape: [usize; R]) -> Tensor<R> {
+    fn count_up<const R: usize>(shape: [usize; R]) -> <crate::cputensor::CpuBackend as TensorBackend>::Tensor<R> {
         let shape = Shape::from(shape);
         let vals: Vec<_> = (0..shape.num_elements()).map(|i| (i + 1) as f32).collect();
-        let mut t = Tensor::new(shape);
+        let mut t = <crate::cputensor::CpuBackend as TensorBackend>::Tensor::new(shape);
         t.reset_values(&vals);
         t
     }
