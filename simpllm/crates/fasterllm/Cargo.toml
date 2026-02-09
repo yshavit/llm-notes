@@ -1,0 +1,8 @@
+[package]
+name = "fasterllm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.9.2", features = ["cuda"] }
+simpllm = { path = "../simpllm" }
