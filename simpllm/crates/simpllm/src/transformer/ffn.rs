@@ -72,9 +72,8 @@ impl<B: TensorBackend> LayerTransform<B> {
     }
 
     fn apply(&self, inputs: &Matrix<B>) -> Matrix<B> {
-        let mut activations = inputs.matmul(self.mab.weights());
-        activations.add_broadcasted_vector(self.mab.bias());
-        activations
+        let activations = inputs.matmul(self.mab.weights());
+        activations.add(self.mab.bias())
     }
 }
 

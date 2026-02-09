@@ -64,7 +64,7 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
         self.multiply_scalar(factor)
     }
 
-    fn add<const R2: usize>(self, other: <Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
+    fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
         self.add_tensor(other)
     }
 

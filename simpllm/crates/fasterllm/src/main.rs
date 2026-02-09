@@ -1,6 +1,6 @@
-use candle_core::{DType, Device, IndexOp};
+use candle_core::{DType, Device, IndexOp, Module};
 use candle_nn;
-use simpllm::tensor::{Shape, Tensor, TensorBackend};
+use simpllm::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
 use std::borrow::Cow;
 use std::error::Error;
 use std::sync::LazyLock;
@@ -13,8 +13,29 @@ static CUDA: LazyLock<Device> = LazyLock::new(|| Device::new_cuda(0).expect("cou
 
 struct CandleBackend;
 
+struct CandleLayerNorm(candle_nn::LayerNorm);
+
 impl TensorBackend for CandleBackend {
     type Tensor<const R: usize> = CandleTensor<R>;
+    type LayerNorm = CandleLayerNorm;
+}
+
+impl LayerNorm for CandleLayerNorm {
+    type B = CandleBackend;
+
+    fn new(scale: Vector<Self::B>, bias: Vector<Self::B>, epsilon: f32) -> Self {
+        let scale = scale.c_tensor.to_device(&Device::Cpu).unwrap();
+        let bias = bias.c_tensor.to_device(&Device::Cpu).unwrap();
+        let candle_layer_norm = candle_nn::LayerNorm::new(scale, bias, epsilon.into());
+        Self(candle_layer_norm)
+    }
+
+    fn apply(&self, input: &Matrix<Self::B>) -> Matrix<Self::B> {
+        let input_on_cpu = input.c_tensor.to_device(&Device::Cpu).unwrap();
+        let mut result = self.0.forward(&input_on_cpu).unwrap();
+        result = result.to_device(&CUDA).unwrap();
+        CandleTensor { c_tensor: result }
+    }
 }
 
 #[derive(Clone)]
@@ -52,7 +73,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     }
 
     fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S] {
-        let chunk_size = self.c_tensor.dim(dim).expect("invalid dim") / S;
         let chunks = self.c_tensor.chunk(S, dim).expect("couldn't split tensor");
         let array: [candle_core::Tensor; S] = chunks.try_into().expect("split size mismatch");
         array.map(|c_tensor| CandleTensor { c_tensor })
@@ -161,7 +181,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         self.c_tensor = self.c_tensor.affine(factor.into(), 0.0).unwrap();
     }
 
-    fn add<const R2: usize>(self, other: <Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
+    fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
         let c_tensor = self
             .c_tensor
             .broadcast_add(&other.c_tensor)

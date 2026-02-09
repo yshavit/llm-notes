@@ -1,13 +1,13 @@
 use crate::bpe::Rank;
-use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
-use crate::transformer::{Norm, TransformerBlock};
+use crate::tensor::{LayerNorm, Matrix, Tensor, Tensor2D, TensorBackend};
+use crate::transformer::TransformerBlock;
 use std::fmt::{Display, Formatter};
 
 pub struct ModelLoader<B: TensorBackend> {
     pub tok_embed: Matrix<B>,
     pub pos_embed: Matrix<B>,
     pub layers: Vec<TransformerBlock<B>>,
-    pub final_norm: Norm<B>,
+    pub final_norm: B::LayerNorm,
 }
 
 pub struct Model<B: TensorBackend> {
@@ -67,7 +67,7 @@ impl<B: TensorBackend> Model<B> {
                 pos_embeddings.set_row([seq_idx, 0], pos_embed);
             });
         }
-        let input = tok_embeddings.add(pos_embeddings);
+        let input = tok_embeddings.add(&pos_embeddings);
         Ok(input)
     }
 }

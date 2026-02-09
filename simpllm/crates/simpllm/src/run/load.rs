@@ -1,6 +1,6 @@
 use crate::llm::ModelLoader;
-use crate::tensor::{Shape, Tensor, TensorBackend};
-use crate::transformer::{Attention, Ffn, Norm, TransformerBlock};
+use crate::tensor::{LayerNorm, Shape, Tensor, TensorBackend};
+use crate::transformer::{Attention, Ffn, TransformerBlock};
 use gpt2weights::{
     HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,
 };
@@ -27,7 +27,7 @@ pub fn load_model<B: TensorBackend>(path: &ModelPath) -> Result<ModelLoader<B>, 
     }
 
     eprint!("] ... final normalization...");
-    let final_norm = load_norm(&path, NormFile::Final, h_params.n_embd)?;
+    let final_norm = load_norm::<B>(&path, NormFile::Final, h_params.n_embd)?;
     eprintln!("Model loaded!");
 
     Ok(ModelLoader {
@@ -38,11 +38,14 @@ pub fn load_model<B: TensorBackend>(path: &ModelPath) -> Result<ModelLoader<B>, 
     })
 }
 
-fn load_norm<B: TensorBackend>(path: &ModelPath, norm: NormFile, n_embed: usize) -> Result<Norm<B>, Box<dyn Error>> {
+fn load_norm<B: TensorBackend>(
+    path: &ModelPath,
+    norm: NormFile,
+    n_embed: usize,
+) -> Result<B::LayerNorm, Box<dyn Error>> {
     let scale = load_tensor::<B, _>([n_embed], path, ModelFile::Norm(norm, NormVariant::Scale))?;
     let bias = load_tensor::<B, _>([n_embed], path, ModelFile::Norm(norm, NormVariant::Bias))?;
-    let mut norm = Norm::<B>::new(n_embed);
-    norm.set(&scale, &bias);
+    let norm = B::LayerNorm::new(scale, bias, 1e-5);
     Ok(norm)
 }
 
@@ -89,7 +92,7 @@ fn load_transformer<B: TensorBackend>(
     let attn_o_bias = load_tensor::<B, _>([d], path, Transformer(h, AttnOutput, Bias))?;
     attn.o_mut().set(&attn_wo, &attn_o_bias);
 
-    let attn_norm = load_norm(path, NormFile::BeforeAttention(h), d)?;
+    let attn_norm = load_norm::<B>(path, NormFile::BeforeAttention(h), d)?;
 
     // ffn
     let hidden_d = metadata.ffn_hidden_layer_embed;
@@ -99,7 +102,7 @@ fn load_transformer<B: TensorBackend>(
     let ffn_hidden_bias = load_tensor::<B, _>([hidden_d], path, Transformer(h, FfnHidden, Bias))?;
     let ffn_output_weights = load_tensor::<B, _>([hidden_d, d], path, Transformer(h, FfnOutput, Weights))?;
     let ffn_output_bias = load_tensor::<B, _>([d], path, Transformer(h, FfnOutput, Bias))?;
-    let ffn_norm = load_norm(path, NormFile::BeforeFfn(h), d)?;
+    let ffn_norm = load_norm::<B>(path, NormFile::BeforeFfn(h), d)?;
 
     ffn.layer_mut(0).set(&ffn_hidden_weights, &ffn_hidden_bias);
     ffn.layer_mut(1).set(&ffn_output_weights, &ffn_output_bias);

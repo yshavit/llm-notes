@@ -24,14 +24,13 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
     fn softmax(self) -> Self;
 
     fn multiply_scalar(&mut self, factor: f32);
-    fn add<const R2: usize>(self, other: <Self::Backend as TensorBackend>::Tensor<R2>) -> Self;
+    fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self;
     fn set_row(&mut self, indices: [usize; R], values: &[f32]);
 }
 
 pub trait Tensor2D: Tensor<2> {
     fn num_rows(&self) -> usize;
     fn num_cols(&self) -> usize;
-    fn add_broadcasted_vector<V: Tensor<1>>(&mut self, v: &V);
     fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync);
 }
 
@@ -42,19 +41,6 @@ impl<T: Tensor<2>> Tensor2D for T {
 
     fn num_cols(&self) -> usize {
         self.shape()[1]
-    }
-
-    fn add_broadcasted_vector<V: Tensor<1>>(&mut self, v: &V) {
-        let num_cols = self.num_cols();
-        v.with_row([0], |v_row| {
-            for i in 0..self.num_rows() {
-                self.mut_row([i, 0], |my_row| {
-                    for j in 0..num_cols {
-                        my_row[j] += v_row[j]
-                    }
-                });
-            }
-        });
     }
 
     fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {

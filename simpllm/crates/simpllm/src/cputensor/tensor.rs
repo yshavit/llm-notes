@@ -160,7 +160,7 @@ impl<const R: usize> CpuTensor<R> {
         }
     }
 
-    pub(super) fn add_tensor<const R2: usize>(mut self, other: CpuTensor<R2>) -> Self {
+    pub(super) fn add_tensor<const R2: usize>(mut self, other: &CpuTensor<R2>) -> Self {
         assert!(
             R2 <= R && self.shape[R - R2..] == other.shape[..],
             "can't add broadcasted {} into {}",
@@ -1029,7 +1029,7 @@ mod tests {
             a.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
             b.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 10) as f32);
 
-            let c = a.add(b);
+            let c = a.add(&b);
 
             assert_eq!(
                 format!("{c}"),
@@ -1070,7 +1070,7 @@ mod tests {
                 ]
                 .join("\n")
             );
-            let c = a.add(b);
+            let c = a.add(&b);
 
             assert_eq!(
                 format!("{c}"),

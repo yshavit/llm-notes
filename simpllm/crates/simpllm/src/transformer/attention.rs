@@ -49,7 +49,7 @@ impl<B: TensorBackend> Attention<B> {
         let [queries, keys, values] = {
             let mut combined = input.matmul(&self.w_qkv.weights());
             // Combined is (N x 3d). Add the biases before reshaping.
-            combined.add_broadcasted_vector(self.w_qkv.bias());
+            combined = combined.add(&self.w_qkv.bias());
 
             let split = combined.split::<3>(1);
             split.map(|m| {
@@ -69,7 +69,7 @@ impl<B: TensorBackend> Attention<B> {
         causal_mask.mut_rows(|row_idx, row| {
             row.iter_mut().skip(row_idx + 1).for_each(|v| *v = f32::NEG_INFINITY);
         });
-        a = a.add(causal_mask);
+        a = a.add(&causal_mask);
         a = a.softmax();
 
         let mut attn = a.matmul(&values);
@@ -78,10 +78,8 @@ impl<B: TensorBackend> Attention<B> {
         // reshape
         let attn = attn.contiguous().reshape([n, d]);
 
-        let mut output = attn.matmul(self.w_o.weights());
-        output.add_broadcasted_vector(self.w_o.bias());
-
-        output
+        let output = attn.matmul(self.w_o.weights());
+        output.add(self.w_o.bias())
     }
 }
 

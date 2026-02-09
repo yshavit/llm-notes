@@ -1,32 +1,26 @@
+use crate::cputensor::{CpuBackend, CpuVector};
 use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, Vector};
 
-pub struct Norm<B: TensorBackend> {
-    scale: Vector<B>,
-    shift: Vector<B>,
-    epsilon: f32,
+pub struct CpuLayerNorm {
+    pub scale: CpuVector,
+    pub bias: CpuVector,
+    pub epsilon: f32,
 }
 
-impl<B: TensorBackend> Norm<B> {
-    pub fn new(dimension: usize) -> Self {
-        Self {
-            scale: B::new_vector(dimension),
-            shift: B::new_vector(dimension),
-            epsilon: 1e-5,
-        }
+impl crate::tensor::LayerNorm for CpuLayerNorm {
+    type B = CpuBackend;
+
+    fn new(scale: Vector<Self::B>, bias: Vector<Self::B>, epsilon: f32) -> Self {
+        Self { scale, bias, epsilon }
     }
 
-    pub fn set(&mut self, scale: &Vector<B>, shift: &Vector<B>) {
-        self.scale.reset_values(&scale.flat_f32());
-        self.shift.reset_values(&shift.flat_f32());
-    }
-
-    pub fn apply(&self, input: &Matrix<B>) -> Matrix<B> {
+    fn apply(&self, input: &Matrix<Self::B>) -> Matrix<Self::B> {
         let mut result = input.clone();
         result.mut_rows(|_, row| {
             let Stats { mean, variance } = row.iter().copied().into();
             for col_idx in 0..row.len() {
                 let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
-                row[col_idx] = (normalized * self.scale.get([col_idx])) + self.shift.get([col_idx]);
+                row[col_idx] = (normalized * self.scale.get([col_idx])) + self.bias.get([col_idx]);
             }
         });
         result
