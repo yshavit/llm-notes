@@ -45,6 +45,7 @@ struct CandleTensor<const R: usize> {
 
 impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Backend = CandleBackend;
+    type Slice = candle_core::Tensor;
 
     fn new(shape: impl Into<Shape<R>>) -> Self {
         let shape: Shape<R> = shape.into();
@@ -125,6 +126,53 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         let flat = tensor.flatten_all().expect("couldn't flatten tensor");
         let vec = flat.to_vec1::<f32>().expect("couldn't convert to vec");
         f(&vec)
+    }
+
+    fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
+        let mut tensor = self.c_tensor.clone();
+        for (i, &idx) in indices.iter().enumerate().take(R - 1) {
+            tensor = tensor.narrow(i, idx, 1).expect("couldn't narrow tensor");
+        }
+        tensor = tensor
+            .narrow(R - 1, indices[R - 1], self.shape()[R - 1])
+            .expect("couldn't narrow tensor");
+        let flat = tensor.flatten_all().expect("couldn't flatten tensor");
+        f(&flat)
+    }
+
+    fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice) {
+        let mut slice_params = vec![];
+        let v_dims = values.dims();
+        let mut target_shape = vec![];
+
+        // The input `values` is expected to represent a slice that starts at `indices`.
+        // Its dimensions should correspond to the sizes of the ranges we are assigning to.
+        // If `values` has fewer dimensions than R, it's likely a flattened or reduced-rank
+        // representation of the slice (e.g., a row from a matrix), so we must reshape it
+        // to match the destination's rank for `slice_assign`.
+
+        for (i, &idx) in indices.iter().enumerate() {
+            // We assume values provides dimensions for the trailing axes.
+            // If it's a "row" slice, it might only have 1 dimension (the last one).
+            // So we align v_dims to the END of indices.
+            let v_dim_idx = i as i32 + (v_dims.len() as i32 - R as i32);
+            let size = if v_dim_idx >= 0 { v_dims[v_dim_idx as usize] } else { 1 };
+            slice_params.push(idx..idx + size);
+            target_shape.push(size);
+        }
+
+        let values = if v_dims.len() != R {
+            values
+                .reshape(target_shape)
+                .expect("couldn't reshape values for slice assignment")
+        } else {
+            values.clone()
+        };
+
+        self.c_tensor = self
+            .c_tensor
+            .slice_assign(&slice_params, &values)
+            .expect("couldn't assign slice");
     }
 
     fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {

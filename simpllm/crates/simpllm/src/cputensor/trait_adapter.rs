@@ -3,6 +3,7 @@ use std::borrow::Cow;
 
 impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
     type Backend = crate::cputensor::CpuBackend;
+    type Slice = [f32];
 
     fn new(shape: impl Into<Shape<R>>) -> Self {
         super::CpuTensor::new(shape)
@@ -42,6 +43,14 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
 
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
         self.with_row(indices, f)
+    }
+
+    fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
+        self.with_row(indices, f)
+    }
+
+    fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice) {
+        self.set_row(indices, values)
     }
 
     fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {

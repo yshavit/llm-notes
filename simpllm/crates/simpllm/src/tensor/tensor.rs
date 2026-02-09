@@ -3,6 +3,7 @@ use std::borrow::Cow;
 
 pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
     type Backend: TensorBackend;
+    type Slice: ?Sized;
 
     fn new(shape: impl Into<Shape<R>>) -> Self;
     fn shape(&self) -> Shape<R>;
@@ -17,6 +18,9 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
 
     fn get(&self, indices: [usize; R]) -> f32;
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X;
+
+    fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X;
+    fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice);
 
     fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X;
     fn flat_f32(&self) -> Cow<'_, [f32]>;

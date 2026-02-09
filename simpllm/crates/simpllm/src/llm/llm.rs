@@ -59,12 +59,12 @@ impl<B: TensorBackend> Model<B> {
         let mut pos_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
         for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
             // copy the right token embedding to tok_embeddings
-            self.fwd.tok_embed.with_row([seq_tok.rank(), 0], |tok_embed| {
-                tok_embeddings.set_row([seq_idx, 0], tok_embed);
+            self.fwd.tok_embed.slice_row([seq_tok.rank(), 0], |tok_embed| {
+                tok_embeddings.set_slice([seq_idx, 0], tok_embed);
             });
             // and the right pos embedding to pos_embeddings
-            self.fwd.pos_embed.with_row([seq_idx, 0], |pos_embed| {
-                pos_embeddings.set_row([seq_idx, 0], pos_embed);
+            self.fwd.pos_embed.slice_row([seq_idx, 0], |pos_embed| {
+                pos_embeddings.set_slice([seq_idx, 0], pos_embed);
             });
         }
         let input = tok_embeddings.add(&pos_embeddings);
