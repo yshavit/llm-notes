@@ -3,13 +3,42 @@ use candle_nn;
 use simpllm::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
 use std::borrow::Cow;
 use std::error::Error;
+use std::ops::Deref;
 use std::sync::LazyLock;
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let _ = CUDA.deref(); // force initialization before loading; this just makes the loading eprintln's show up first.
     simpllm::run::run_main::<CandleBackend>()
 }
 
-static CUDA: LazyLock<Device> = LazyLock::new(|| Device::new_cuda(0).expect("couldn't initialize CUDA"));
+static CUDA: LazyLock<Device> = LazyLock::new(|| {
+    if candle_core::utils::cuda_is_available() {
+        Device::new_cuda(0)
+            .map(|d| {
+                eprintln!("CUDA initialized");
+                d
+            })
+            .unwrap_or_else(|err| {
+                eprintln!("Error initializing CUDA: {err}");
+                eprintln!("Will use CPU instead.");
+                Device::Cpu
+            })
+    } else if candle_core::utils::metal_is_available() {
+        Device::new_metal(0)
+            .map(|d| {
+                eprintln!("Metal initialized");
+                d
+            })
+            .unwrap_or_else(|err| {
+                eprintln!("Error initializing Metal: {err}");
+                eprintln!("Will use CPU instead.");
+                Device::Cpu
+            })
+    } else {
+        eprintln!("Neither CUDA nor Metal were available. Will use CPU processing.");
+        Device::Cpu
+    }
+});
 
 struct CandleBackend;
 
@@ -25,7 +54,7 @@ impl TensorBackend for CandleBackend {
         let neg_inf_row = zeros_row.affine(0.0, f64::NEG_INFINITY).unwrap();
 
         // triangle of 0s on top, 1s on bottom
-        let ones_triangle = candle_core::Tensor::tril2(n, DType::F32, &CUDA).unwrap();
+        let ones_triangle = candle_core::Tensor::tril2(n, DType::U8, &CUDA).unwrap();
 
         // use where_cond to 0s on the bottom (== 1, the true condition) and -inf on the top
         let mask = ones_triangle.where_cond(&zeros_row, &neg_inf_row).unwrap();
