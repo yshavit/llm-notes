@@ -1,4 +1,4 @@
-use crate::path::{ModelFile, ModelPath, read_nicely};
+use crate::path::{read_nicely, ModelFile, ModelPath};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
@@ -25,6 +25,7 @@ pub struct HParams {
     pub n_embd: usize,
     pub n_head: usize,
     pub n_layer: usize,
+    pub eos_token_id: usize,
 }
 
 pub fn load_metadata(model: &ModelPath) -> Result<(ModelShape, HParams), Box<dyn Error>> {

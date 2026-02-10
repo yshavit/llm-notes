@@ -1,12 +1,12 @@
 use crate::cputensor::LogitSampler;
-use crate::run::Cli;
 use crate::run::load::load_model;
 use crate::run::tokenizer::load_tokenizer;
+use crate::run::Cli;
 use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
 use gpt2weights::ModelPath;
 use std::error::Error;
-use std::io::{Write, stdin, stdout};
+use std::io::{stdin, stdout, Write};
 use std::time::Instant;
 
 pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
@@ -16,7 +16,11 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
 
     eprint!("Loading tokenizer... ");
     let tokenizer = load_tokenizer(&model_path)?;
-    eprintln!("found special tokens:");
+    if tokenizer.is_eos(model.eos().into()) {
+        eprintln!("<eos> is {}", model.eos());
+    } else {
+        return Err("Error! Tokenizer and model disagreed on EOS".into());
+    }
 
     eprintln!();
     eprintln!("Ready!");

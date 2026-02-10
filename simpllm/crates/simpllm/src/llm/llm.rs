@@ -8,6 +8,7 @@ pub struct ModelLoader<B: TensorBackend> {
     pub pos_embed: Matrix<B>,
     pub layers: Vec<TransformerBlock<B>>,
     pub final_norm: B::LayerNorm,
+    pub eos_token_id: usize,
 }
 
 pub struct Model<B: TensorBackend> {
@@ -37,6 +38,10 @@ impl<B: TensorBackend> Model<B> {
         let unembedding = x.matmul(&self.tok_unembed);
 
         Ok(unembedding)
+    }
+
+    pub fn eos(&self) -> usize {
+        self.fwd.eos_token_id
     }
 
     pub fn vocab_size(&self) -> usize {

@@ -2,7 +2,7 @@ use crate::llm::ModelLoader;
 use crate::tensor::{LayerNorm, Shape, Tensor, TensorBackend};
 use crate::transformer::{Attention, Ffn, TransformerBlock};
 use gpt2weights::{
-    HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape, load_metadata, read_nicely,
+    load_metadata, read_nicely, HParams, ModelFile, ModelPath, NormFile, NormVariant, TransformerN, TransformerShape,
 };
 use std::error::Error;
 use std::io::Read;
@@ -35,6 +35,7 @@ pub fn load_model<B: TensorBackend>(path: &ModelPath) -> Result<ModelLoader<B>, 
         pos_embed,
         layers,
         final_norm,
+        eos_token_id: h_params.eos_token_id,
     })
 }
 
