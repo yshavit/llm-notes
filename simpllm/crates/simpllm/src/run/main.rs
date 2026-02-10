@@ -1,21 +1,22 @@
 use crate::cputensor::LogitSampler;
+use crate::run::Cli;
 use crate::run::load::load_model;
 use crate::run::tokenizer::load_tokenizer;
-use crate::run::Cli;
 use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
 use gpt2weights::ModelPath;
 use std::error::Error;
-use std::io::{stdin, stdout, Write};
+use std::io::{Write, stdin, stdout};
 use std::time::Instant;
 
 pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
     let model_path = ModelPath::from(cli.size);
-    let model = load_model::<B>(&model_path)?.initialize();
+    let (model_loader, model_shape) = load_model::<B>(&model_path)?;
+    let model = model_loader.initialize();
 
     eprint!("Loading tokenizer... ");
-    let tokenizer = load_tokenizer(&model_path)?;
+    let tokenizer = load_tokenizer(&model_path, &model_shape.file_names)?;
     if tokenizer.is_eos(model.eos().into()) {
         eprintln!("<eos> is {}", model.eos());
     } else {

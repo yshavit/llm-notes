@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", version = "0.9.2", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", version = "0.9.2" }
+candle-core = { version = "0.9", features = ["cuda"] }
+candle-nn = "0.9"
 simpllm = { path = "../simpllm" }
+

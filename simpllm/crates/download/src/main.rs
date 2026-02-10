@@ -1,13 +1,14 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use gpt2weights::{
-    Gpt2Size, ModelFile, ModelPath, ModelShape, NormFile, NormVariant, TransformerComponent, TransformerN,
-    TransformerShape, WeightVariant,
+    read_nicely, FileNames, Gpt2Size, HParams, ModelPath, ModelShape, Offsets, TensorFileOffsets, TransformerShape,
+    SIMPLLM_METADATA_FILE,
 };
 use indicatif::{ProgressBar, ProgressStyle};
-use safetensors::SafeTensors;
+use memmap2::MmapOptions;
+use safetensors::{Dtype, SafeTensors};
 use std::fs;
-use std::io::{stdout, Write};
+use std::fs::File;
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -66,95 +67,94 @@ async fn main() -> Result<()> {
     let model_path = ModelPath::from(args.size);
     download_files(&model_path, args.check_download).await?;
 
-    println!(
-        "\nDownload complete! HuggingFace files saved to {}/",
-        download_dir(&model_path, "")
-    );
+    let (offsets, transformer_shapes) = read_tensor_file(&model_path)?;
 
-    let model_shape = write_tensor_files(&model_path)?;
+    let hf_config_stream = read_nicely(&model_path, HfModelFiles::Config.file_name())
+        .map_err(|e| anyhow!("while reading {}: {e}", HfModelFiles::Config.file_name()))?;
+    let h_params: HParams = serde_json::from_reader(hf_config_stream)?;
 
-    for hf_file in HfModelFiles::iter() {
-        let copy_to = match hf_file {
-            HfModelFiles::Config => Some(ModelFile::HParamsJson),
-            HfModelFiles::BpeEncoding => Some(ModelFile::BpeEncoder),
-            HfModelFiles::BpeMerges => Some(ModelFile::BpeMerges),
-            HfModelFiles::Tensors => None,
-        };
-        let Some(copy_to) = copy_to else {
-            continue;
-        };
-        fs::copy(download_dir(&model_path, hf_file.file_name()), model_path.path(copy_to))?;
-        println!("wrote {}", copy_to.to_string());
-    }
+    let ms = ModelShape {
+        transformer: transformer_shapes,
+        h_params,
+        tensor_offsets: offsets,
+        file_names: FileNames {
+            tensors: HfModelFiles::Tensors.file_name().to_string(),
+            bpe_merges: HfModelFiles::BpeMerges.file_name().to_string(),
+            bpe_encodings: HfModelFiles::BpeEncoding.file_name().to_string(),
+        },
+    };
 
-    let model_shape_json = serde_json::to_vec_pretty(&model_shape)?;
-    fs::write(model_path.path(ModelFile::MetadataJson), model_shape_json)?;
+    let ms_bytes = serde_json::to_vec_pretty(&ms)?;
+    let out_path = model_path.path(SIMPLLM_METADATA_FILE);
+    fs::write(&out_path, ms_bytes)?;
+    println!("wrote {}", out_path.display());
 
     Ok(())
 }
 
-fn download_dir(model_path: &ModelPath, file: &str) -> String {
-    format!("data/{}/download/{file}", model_path.model().size())
-}
+fn read_tensor_file(model_path: &ModelPath) -> Result<(TensorFileOffsets, Vec<TransformerShape>)> {
+    let file1 = HfModelFiles::Tensors.file_name();
+    let file = File::open(model_path.path(file1))?;
+    let header_bytes = unsafe { MmapOptions::new().map(&file)? };
+    // Safetensors format is: 8 bytes for a header length, which is an LE u64; then the header; then the blocks.
+    const SF_PRE_HEADER: usize = 8;
 
-fn write_tensor_files(model_path: &ModelPath) -> Result<ModelShape> {
-    let tensor_bytes = fs::read(download_dir(model_path, HfModelFiles::Tensors.file_name()))?;
-    let tensors_handle = SafeTensors::deserialize(&tensor_bytes)?;
-    let mut tensor_names = tensors_handle.names();
-    tensor_names.sort();
+    let (sf_header_size, metadata) = SafeTensors::read_metadata(&header_bytes)?;
+    let tensors_map = metadata.tensors();
 
-    fs::create_dir_all(model_path.unpack_dir())
-        .with_context(|| format!("Failed to create directory {}", model_path.unpack_dir().display()))?;
+    let mut model_file_index = TensorFileOffsets::default();
+    let mut transformer_sizes: Vec<TransformerShape> = vec![];
 
-    struct HiddenFfn {
-        layer_num: usize,
-        dim: usize,
-    }
-    let mut hidden_ffn_d: Vec<HiddenFfn> = vec![];
-
-    let mut tensor_names = tensors_handle.names();
-    tensor_names.sort();
-
-    for name in tensor_names {
-        match parse_tensor_name(name)? {
-            None => {}
-            Some(file) => {
-                let tensor = tensors_handle.tensor(&name)?;
-                print!("writing {} ({:?})... ", file.to_string(), tensor.shape());
-                let _ = stdout().flush(); // ignore flush errors, not much we can do about 'em
-                let data = tensor.data();
-
-                fs::write(model_path.path(file), data)?;
-                println!("ok");
-
-                if let ModelFile::Transformer(n, TransformerComponent::FfnHidden, WeightVariant::Weights) = file {
-                    let dim = *tensor.shape().last().unwrap();
-                    hidden_ffn_d.push(HiddenFfn { layer_num: n.0, dim })
-                }
-            }
+    for (tensor_name, tensor_metadata) in tensors_map {
+        let Some(parsed) = parse_tensor_name(&tensor_name, &mut model_file_index)? else {
+            continue;
+        };
+        if tensor_metadata.dtype != Dtype::F32 {
+            return Err(anyhow!("unexpected dtype in tensor {tensor_name}"));
+        }
+        *parsed.offsets = (
+            tensor_metadata.data_offsets.0 + sf_header_size + SF_PRE_HEADER,
+            tensor_metadata.data_offsets.1 + sf_header_size + SF_PRE_HEADER,
+        );
+        if let Some(n) = parsed.ffn_hidden_layer_bias {
+            ensure_and_get(&mut transformer_sizes, n).ffn_hidden_layer_embed =
+                tensor_metadata.shape[tensor_metadata.shape.len() - 1];
         }
     }
 
-    hidden_ffn_d.sort_by(|a, b| a.layer_num.cmp(&b.layer_num));
-    let transformer = hidden_ffn_d
-        .into_iter()
-        .map(|ffn| TransformerShape {
-            ffn_hidden_layer_embed: ffn.dim,
-        })
-        .collect();
-
-    Ok(ModelShape { transformer })
+    Ok((model_file_index, transformer_sizes))
 }
 
-fn parse_tensor_name(name: &str) -> Result<Option<ModelFile>> {
-    use gpt2weights::TransformerComponent::*;
-    use ModelFile::*;
+#[derive(Debug, Eq, PartialEq)]
+struct TensorNameParse<'a> {
+    offsets: &'a mut Offsets,
+    ffn_hidden_layer_bias: Option<usize>,
+}
+
+fn ensure_and_get<I: Clone + Default>(list: &mut Vec<I>, num: usize) -> &mut I {
+    if num >= list.len() {
+        let missing_transformers_count = num - list.len() + 1; // num is 0-indexed
+        let add = std::iter::repeat_n(I::default(), missing_transformers_count);
+        list.extend(add);
+    }
+    &mut list[num]
+}
+
+fn parse_tensor_name<'a>(name: &str, builder: &'a mut TensorFileOffsets) -> Result<Option<TensorNameParse<'a>>> {
+    //noinspection RsNeedlessLifetimes
+    fn ok<'b>(offsets: &'b mut Offsets) -> Result<Option<TensorNameParse<'b>>> {
+        // tiny helper to remove the Ok(Some(..)) noise
+        Ok(Some(TensorNameParse {
+            offsets,
+            ffn_hidden_layer_bias: None,
+        }))
+    }
 
     match name {
-        "ln_f.bias" => Ok(Some(Norm(NormFile::Final, NormVariant::Bias))),
-        "ln_f.weight" => Ok(Some(Norm(NormFile::Final, NormVariant::Scale))),
-        "wpe.weight" => Ok(Some(PosEmbed)),
-        "wte.weight" => Ok(Some(TokEmbed)),
+        "ln_f.bias" => ok(&mut builder.final_norm.bias),
+        "ln_f.weight" => ok(&mut builder.final_norm.scale),
+        "wpe.weight" => ok(&mut builder.pos_embed),
+        "wte.weight" => ok(&mut builder.tok_embed),
         name => {
             let mut splits = name.splitn(3, '.');
 
@@ -164,30 +164,32 @@ fn parse_tensor_name(name: &str) -> Result<Option<ModelFile>> {
 
             let num = splits.next().ok_or_else(|| anyhow!("expected \"h.<num\""))?;
             let num: usize = num.parse()?;
-            let num = TransformerN(num);
 
-            fn ok(f: ModelFile) -> Result<Option<ModelFile>> {
-                Ok(Some(f))
-            }
+            let transformer = ensure_and_get(&mut builder.transformers, num);
 
             match splits.next() {
-                Some("ln_1.bias") => ok(Norm(NormFile::BeforeAttention(num), NormVariant::Bias)),
-                Some("ln_1.weight") => ok(Norm(NormFile::BeforeAttention(num), NormVariant::Scale)),
+                Some("ln_1.bias") => ok(&mut transformer.before_attn_norm.bias),
+                Some("ln_1.weight") => ok(&mut transformer.before_attn_norm.scale),
 
                 Some("attn.bias") => Ok(None),
-                Some("attn.c_attn.bias") => ok(Transformer(num, Qkv, WeightVariant::Bias)),
-                Some("attn.c_attn.weight") => ok(Transformer(num, Qkv, WeightVariant::Weights)),
-                Some("attn.c_proj.bias") => ok(Transformer(num, AttnOutput, WeightVariant::Bias)),
-                Some("attn.c_proj.weight") => ok(Transformer(num, AttnOutput, WeightVariant::Weights)),
+                Some("attn.c_attn.bias") => ok(&mut transformer.attn_qkv.bias),
+                Some("attn.c_attn.weight") => ok(&mut transformer.attn_qkv.weight),
+                Some("attn.c_proj.bias") => ok(&mut transformer.attn_wo.bias),
+                Some("attn.c_proj.weight") => ok(&mut transformer.attn_wo.weight),
 
-                Some("ln_2.bias") => ok(Norm(NormFile::BeforeFfn(num), NormVariant::Bias)),
-                Some("ln_2.weight") => ok(Norm(NormFile::BeforeFfn(num), NormVariant::Scale)),
+                Some("ln_2.bias") => ok(&mut transformer.before_ffn_norm.bias),
+                Some("ln_2.weight") => ok(&mut transformer.before_ffn_norm.scale),
 
-                Some("mlp.c_fc.bias") => ok(Transformer(num, FfnHidden, WeightVariant::Bias)),
-                Some("mlp.c_fc.weight") => ok(Transformer(num, FfnHidden, WeightVariant::Weights)),
-                Some("mlp.c_proj.bias") => ok(Transformer(num, FfnOutput, WeightVariant::Bias)),
-                Some("mlp.c_proj.weight") => ok(Transformer(num, FfnOutput, WeightVariant::Weights)),
-
+                Some("mlp.c_fc.bias") => ok(&mut transformer.ffn_hidden.bias),
+                Some("mlp.c_fc.weight") => {
+                    let offsets = &mut transformer.ffn_hidden.weight;
+                    Ok(Some(TensorNameParse {
+                        offsets,
+                        ffn_hidden_layer_bias: Some(num),
+                    }))
+                }
+                Some("mlp.c_proj.bias") => ok(&mut transformer.ffn_output.bias),
+                Some("mlp.c_proj.weight") => ok(&mut transformer.ffn_output.weight),
                 _ => Err(anyhow!("unexpected name")),
             }
         }
@@ -199,7 +201,7 @@ async fn download_files(model_path: &ModelPath, check: bool) -> Result<()> {
 
     for model_file in HfModelFiles::iter().map(HfModelFiles::file_name) {
         let download_url = format!("{}/{}/resolve/main/{}", HF_BASE_URL, repo, model_file);
-        let out_file = PathBuf::from(download_dir(model_path, model_file));
+        let out_file = PathBuf::from(model_path.path(model_file));
 
         download_file(&download_url, &out_file, check)
             .await
@@ -211,7 +213,7 @@ async fn download_files(model_path: &ModelPath, check: bool) -> Result<()> {
 async fn download_file(url: &str, output_path: &PathBuf, check: bool) -> Result<()> {
     let file_name = output_path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
 
-    // Check if file already exists
+    // Check if the file already exists
     if output_path.exists() {
         if !check {
             println!("{}: file already exists", output_path.display());

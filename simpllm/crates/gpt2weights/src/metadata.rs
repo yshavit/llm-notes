@@ -1,24 +1,29 @@
-use crate::path::{read_nicely, ModelFile, ModelPath};
+use crate::path::{ModelPath, read_nicely};
+use crate::{SIMPLLM_METADATA_FILE, TensorFileOffsets};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct ModelShape {
     pub transformer: Vec<TransformerShape>,
+    pub h_params: HParams,
+    pub tensor_offsets: TensorFileOffsets,
+    pub file_names: FileNames,
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+pub struct FileNames {
+    pub tensors: String,
+    pub bpe_merges: String,
+    pub bpe_encodings: String,
+}
+
+#[derive(Default, Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct TransformerShape {
     pub ffn_hidden_layer_embed: usize,
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct WeightsShape {
-    pub weights: (usize, usize),
-    pub bias: usize,
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct HParams {
     pub vocab_size: usize,
     pub n_ctx: usize,
@@ -28,12 +33,9 @@ pub struct HParams {
     pub eos_token_id: usize,
 }
 
-pub fn load_metadata(model: &ModelPath) -> Result<(ModelShape, HParams), Box<dyn Error>> {
-    let shape_reader = read_nicely(model, ModelFile::MetadataJson)?;
+pub fn load_metadata(model: &ModelPath) -> Result<ModelShape, Box<dyn Error>> {
+    let shape_reader = read_nicely(model, SIMPLLM_METADATA_FILE)?;
     let shape: ModelShape = serde_json::from_reader(shape_reader)?;
 
-    let h_params_reader = read_nicely(model, ModelFile::HParamsJson)?;
-    let h_params: HParams = serde_json::from_reader(h_params_reader)?;
-
-    Ok((shape, h_params))
+    Ok(shape)
 }
