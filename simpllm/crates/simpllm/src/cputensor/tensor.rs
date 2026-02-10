@@ -1,5 +1,4 @@
 use crate::cputensor::gelu::gelu;
-use crate::cputensor::matmul::matmul_batched;
 use crate::cputensor::softmax;
 use crate::tensor::Shape;
 use rayon::prelude::*;
@@ -190,10 +189,6 @@ impl<const R: usize> CpuTensor<R> {
         self
     }
 
-    pub(super) fn matmul_todo(&self, other: &Self) -> Self {
-        matmul_batched(self, other)
-    }
-
     pub(super) fn contiguous(mut self) -> Self {
         if self.strides == Self::contiguous_strides(self.shape) {
             return self;
@@ -368,7 +363,7 @@ prettier! {2}
 prettier! {3}
 
 macro_rules! matrix_view {
-    ($name:ident $($mut:ident)?) => {
+    ($name:ident $($mut:ident ( get: $($get_meta:tt)* ))?) => {
         pub(super) struct $name<'a, const R: usize> {
             tensor: &'a $($mut)? CpuTensor<R>,
             batch_dimensions: [usize; R],
@@ -398,6 +393,7 @@ macro_rules! matrix_view {
                 self.tensor.shape[R - 1]
             }
 
+            $($($get_meta)*)?
             pub(super) fn get(&self, row: usize, col: usize) -> f32 {
                 let mut indices = self.batch_dimensions;
                 if R > 1 {
@@ -420,7 +416,7 @@ macro_rules! matrix_view {
     };
 }
 matrix_view! {MatrixView}
-matrix_view! {MatrixViewMut mut}
+matrix_view! {MatrixViewMut mut (get: #[cfg(test)])}
 
 impl<'a, const R: usize> MatrixViewMut<'a, R> {
     pub(super) fn set_row(&mut self, row: usize, values: &[f32]) {
@@ -432,17 +428,6 @@ impl<'a, const R: usize> MatrixViewMut<'a, R> {
             indices[R - 1] = 0;
         }
         self.tensor.set_row(indices, values);
-    }
-
-    pub(super) fn mut_row(&mut self, row: usize, f: impl Fn(&mut [f32])) {
-        let mut indices = self.batch_dimensions;
-        if R == 1 {
-            assert_eq!(row, 0, "vector's row parameter must be 0")
-        } else {
-            indices[R - 2] = row;
-            indices[R - 1] = 0;
-        }
-        self.tensor.mut_row(indices, f);
     }
 
     pub(super) fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
@@ -550,10 +535,6 @@ impl<'a, const R: usize> Display for Pretty<'a, R> {
 }
 
 impl CpuTensor<2> {
-    pub(super) fn new_matrix(num_rows: usize, num_columns: usize) -> Self {
-        Self::new(Shape::new([num_rows, num_columns]))
-    }
-
     fn t(self) -> Self {
         self.transposed(0, 1)
     }
@@ -564,19 +545,6 @@ impl CpuTensor<2> {
 
     fn num_cols(&self) -> usize {
         self.shape[1]
-    }
-
-    fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
-        self.mut_rows_at_batch([0, 0], f);
-    }
-
-    fn to_f32(&self) -> Vec<Vec<f32>> {
-        let mut result = Vec::with_capacity(self.num_rows());
-        for row in 0..self.num_rows() {
-            let cols: Vec<_> = (0..self.num_cols()).map(|col| self.get([row, col])).collect();
-            result.push(cols);
-        }
-        result
     }
 }
 
@@ -604,7 +572,9 @@ impl<const R: usize> PartialEq for CpuTensor<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cputensor::CpuBackend;
     use crate::tensor::Tensor;
+    use crate::tensor::TensorBackend;
     use std::panic;
 
     mod matrix {
@@ -613,7 +583,7 @@ mod tests {
         /// Smoke test of the various shapes of things.
         #[test]
         fn matrix_data_shape() {
-            let m = CpuTensor::new_matrix(3, 4);
+            let m = CpuBackend::new_matrix(3, 4);
             assert_eq!(m.num_rows(), 3);
             assert_eq!(m.num_cols(), 4);
             assert_eq!(m.shape(), Shape::new([3, 4]));
@@ -626,7 +596,7 @@ mod tests {
 
         #[test]
         fn data_round_trip() {
-            let mut m = CpuTensor::new_matrix(3, 4);
+            let mut m = CpuBackend::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -646,13 +616,13 @@ mod tests {
         #[test]
         #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
         fn row_mut_set_all_bounds() {
-            let mut m = CpuTensor::new_matrix(3, 4);
+            let mut m = CpuBackend::new_matrix(3, 4);
             m.set_row([0, 0], &[1., 2., 3., 4., 5., 6.]);
         }
 
         #[test]
         fn transposition() {
-            let mut m = CpuTensor::new_matrix(3, 4);
+            let mut m = CpuBackend::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);
@@ -674,7 +644,7 @@ mod tests {
 
         #[test]
         fn transposed_set_row() {
-            let m = CpuTensor::new_matrix(3, 4);
+            let m = CpuBackend::new_matrix(3, 4);
 
             let mut transposed = m.t();
             let values = &[1., 2., 3.];
@@ -807,11 +777,6 @@ mod tests {
             // just some spot checks
             assert_eq!(t_mut_matrix.get(0, 0), 1.);
             assert_eq!(t_mut_matrix.get(1, 2), 6.);
-
-            // check the non-mut version too. again, just some spot checks
-            let t_matrix = t.matrix_slice(slice_indices);
-            assert_eq!(t_matrix.get(0, 1), 2.);
-            assert_eq!(t_matrix.get(1, 1), 5.);
         }
     }
 
@@ -822,7 +787,7 @@ mod tests {
         fn reshape_2_to_3() {
             // use pretty-print to check values
 
-            let mut original = CpuTensor::new_matrix(2, 6);
+            let mut original = CpuBackend::new_matrix(2, 6);
             original.set_row([0, 0], &[01., 02., 03., 04., 05., 06.]);
             original.set_row([1, 0], &[07., 08., 09., 10., 11., 12.]);
             assert_eq!(
@@ -868,14 +833,14 @@ mod tests {
         #[test]
         #[should_panic]
         fn shape_mismatch() {
-            let original = CpuTensor::new_matrix(2, 6);
+            let original = CpuBackend::new_matrix(2, 6);
             let _ = original.reshape([2, 7]);
         }
 
         #[test]
         #[should_panic]
         fn transposed() {
-            let original = CpuTensor::new_matrix(2, 6).transposed(0, 1);
+            let original = CpuBackend::new_matrix(2, 6).transposed(0, 1);
             let _ = original.reshape([6, 2]);
         }
     }
@@ -1024,8 +989,8 @@ mod tests {
 
         #[test]
         fn same_shape() {
-            let mut a = CpuTensor::new_matrix(3, 3);
-            let mut b = CpuTensor::new_matrix(3, 3);
+            let mut a = CpuBackend::new_matrix(3, 3);
+            let mut b = CpuBackend::new_matrix(3, 3);
             a.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
             b.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 10) as f32);
 
@@ -1046,7 +1011,7 @@ mod tests {
         #[test]
         fn broadcast() {
             let mut a = CpuTensor::new([2, 3, 3]);
-            let mut b = CpuTensor::new_matrix(3, 3);
+            let mut b = CpuBackend::new_matrix(3, 3);
             a.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 100) as f32);
             b.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
 
@@ -1100,7 +1065,7 @@ mod tests {
 
         #[test]
         fn pretty_matrix() {
-            let mut m = CpuTensor::new_matrix(3, 4);
+            let mut m = CpuBackend::new_matrix(3, 4);
 
             m.set_row([0, 0], &[1., 2., 3., 4.]);
             m.set_row([1, 0], &[5., 6., 7., 8.]);

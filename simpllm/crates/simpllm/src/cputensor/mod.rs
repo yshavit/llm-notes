@@ -6,7 +6,6 @@ pub mod softmax;
 mod tensor;
 mod trait_adapter;
 
-use crate::tensor::LayerNorm;
 pub use sample::LogitSampler;
 pub use softmax::*;
 pub use tensor::*;

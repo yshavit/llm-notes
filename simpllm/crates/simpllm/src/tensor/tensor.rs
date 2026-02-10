@@ -16,7 +16,6 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
     fn contiguous(self) -> Self;
     fn matmul(&self, other: &Self) -> Self;
 
-    fn get(&self, indices: [usize; R]) -> f32;
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X;
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X;

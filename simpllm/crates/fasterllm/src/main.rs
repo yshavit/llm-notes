@@ -1,4 +1,4 @@
-use candle_core::{DType, Device, IndexOp, Module};
+use candle_core::{DType, Device, Module};
 use candle_nn;
 use simpllm::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
 use std::borrow::Cow;
@@ -102,17 +102,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         };
         let c_tensor = lhs.matmul(&rhs).expect("couldn't perform matmul");
         Self { c_tensor }
-    }
-
-    fn get(&self, indices: [usize; R]) -> f32 {
-        let r = match R {
-            1 => self.c_tensor.i(indices[0]),
-            2 => self.c_tensor.i((indices[0], indices[1])),
-            3 => self.c_tensor.i((indices[0], indices[1], indices[2])),
-            4 => self.c_tensor.i((indices[0], indices[1], indices[2], indices[3])),
-            _ => panic!("unsupported"),
-        };
-        r.unwrap().to_scalar().unwrap()
     }
 
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {

@@ -77,10 +77,14 @@ fn matmul<'a, const A: usize, const B: usize, const C: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cputensor::CpuBackend;
     use crate::cputensor::tensor::CpuTensor;
+    use crate::tensor::TensorBackend;
 
     mod matrix {
         use super::*;
+        use crate::cputensor::CpuBackend;
+        use crate::tensor::TensorBackend;
 
         #[test]
         fn check_matmul_more_rows_than_cols() {
@@ -125,7 +129,7 @@ mod tests {
                 [11., 12.],
             ]
             .into();
-            let mut out: CpuTensor<2> = CpuTensor::new_matrix(2, 2);
+            let mut out: CpuTensor<2> = CpuBackend::new_matrix(2, 2);
             matmul(&a, &b, &mut out);
             assert_eq!(
                 out,
@@ -274,12 +278,12 @@ mod tests {
     }
 
     fn array_matrix<const R: usize, const C: usize>() -> CpuTensor<2> {
-        CpuTensor::new_matrix(R, C)
+        CpuBackend::new_matrix(R, C)
     }
 
     impl<const R: usize, const C: usize> Into<CpuTensor<2>> for [[f32; C]; R] {
         fn into(self) -> CpuTensor<2> {
-            let mut m = CpuTensor::new_matrix(R, C);
+            let mut m = CpuBackend::new_matrix(R, C);
             for (row_idx, row_vals) in self.iter().enumerate() {
                 m.set_row([row_idx, 0], row_vals);
             }

@@ -1,5 +1,5 @@
 use crate::cputensor::{CpuBackend, CpuVector};
-use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, Vector};
+use crate::tensor::{Matrix, Tensor2D, Vector};
 
 pub struct CpuLayerNorm {
     pub scale: CpuVector,

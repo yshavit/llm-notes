@@ -1,9 +1,6 @@
 #[cfg(test)]
-pub use contents::*;
-
-mod contents {
-    #[macro_export]
-    macro_rules! assert_f32_slice {
+#[macro_export]
+macro_rules! assert_f32_slice {
         ($actual:expr, $expected:expr) => {{
             use approx::abs_diff_eq;
             assert_f32_slice!($actual, $expected, abs_diff_eq);
@@ -25,4 +22,3 @@ mod contents {
             }
         };
     }
-}

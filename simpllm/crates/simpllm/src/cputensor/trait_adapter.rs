@@ -1,3 +1,4 @@
+use crate::cputensor::matmul::matmul_batched;
 use crate::tensor::{Shape, TensorBackend};
 use std::borrow::Cow;
 
@@ -34,11 +35,7 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
     }
 
     fn matmul(&self, other: &Self) -> Self {
-        self.matmul_todo(other)
-    }
-
-    fn get(&self, indices: [usize; R]) -> f32 {
-        self.get(indices)
+        matmul_batched(self, other)
     }
 
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
