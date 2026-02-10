@@ -5,9 +5,10 @@ edition = "2024"
 
 [features]
 cuda = ["candle-core/cuda"]
+metal = ["candle-core/metal"]
 
 [dependencies]
-candle-core = { workspace = true }
+candle-core = "0.9"
 candle-nn = "0.9"
 simpllm = { path = "../simpllm" }
 
