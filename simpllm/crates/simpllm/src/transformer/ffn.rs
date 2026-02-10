@@ -29,25 +29,13 @@ impl<B: TensorBackend> Ffn<B> {
         &mut self.layers_transforms[layer].mab
     }
 
-    pub fn apply_matrix(&self, mut input: Matrix<B>) -> Matrix<B> {
+    pub fn apply_matrix(&self, input: Matrix<B>) -> Matrix<B> {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
 
         // TODO in the book, I talk about this being a 1xD matrix, and then applied separately to each row.
         //   But it can (and should!) be done as an RxD matrix, as done here
-        let num_cols = input.num_cols();
-
-        let mut all_data: Vec<f32> = Vec::with_capacity(input.shape().num_elements());
-        for row_idx in 0..input.num_rows() {
-            input.clone().extract_row([row_idx, 0], |row| {
-                let mut input_row = B::new_matrix(1, num_cols);
-                input_row.set_row([0, 0], row);
-                let ffn_result = self.apply(input_row);
-                all_data.extend(ffn_result.flat_f32().into_iter());
-            });
-        }
-        input.reset_values(&all_data);
-        input
+        self.apply(input)
     }
 
     pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
