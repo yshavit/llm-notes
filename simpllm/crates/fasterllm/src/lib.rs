@@ -35,7 +35,11 @@ static CUDA: LazyLock<Device> = LazyLock::new(|| {
                 Device::Cpu
             })
     } else {
-        eprintln!("Neither CUDA nor Metal were available. Will use CPU processing.");
+        eprintln!("!! Attention !! Neither CUDA nor Metal were available. Will use CPU processing.");
+        #[cfg(any(target_os = "windows", target_os = "linux"))]
+        eprintln!("Make sure to build with --features cuda");
+        #[cfg(target_os = "macos")]
+        eprintln!("You should use the fasterllm-macos crate instead");
         Device::Cpu
     }
 });

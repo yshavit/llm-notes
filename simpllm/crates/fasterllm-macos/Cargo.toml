@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 fasterllm = { path = "../fasterllm" }
-candle-core = { version = "0.9", default-features = false, features = ["metal"] }
+candle-core = { workspace = true, default-features = false, features = ["metal"] }
