@@ -65,10 +65,8 @@ impl<B: TensorBackend> Attention<B> {
         let dim_per_head = d / h;
         a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
 
-        let mut causal_mask = B::new_matrix(n, n);
-        causal_mask.mut_rows(|row_idx, row| {
-            row.iter_mut().skip(row_idx + 1).for_each(|v| *v = f32::NEG_INFINITY);
-        });
+        // causal attention, then softmax
+        let causal_mask = B::lower_triangle(n);
         a = a.add(&causal_mask);
         a = a.softmax();
 

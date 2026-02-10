@@ -1,4 +1,4 @@
-use crate::cputensor::{CpuBackend, CpuVector};
+use crate::cputensor::{CpuBackend, CpuTensor, CpuVector};
 use crate::tensor::{Matrix, Tensor2D, Vector};
 
 pub struct CpuLayerNorm {
@@ -15,15 +15,15 @@ impl crate::tensor::LayerNorm for CpuLayerNorm {
     }
 
     fn apply(&self, input: &Matrix<Self::B>) -> Matrix<Self::B> {
-        let mut result = input.clone();
-        result.mut_rows(|_, row| {
+        let mut data = input.flat_f32().into_owned();
+        data.chunks_exact_mut(input.num_cols()).for_each(|row| {
             let Stats { mean, variance } = row.iter().copied().into();
             for col_idx in 0..row.len() {
                 let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
                 row[col_idx] = (normalized * self.scale.get([col_idx])) + self.bias.get([col_idx]);
             }
         });
-        result
+        CpuTensor::new_with_data(input.shape(), data)
     }
 }
 

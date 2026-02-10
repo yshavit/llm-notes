@@ -5,6 +5,8 @@ pub trait TensorBackend: Sized {
     type Tensor<const R: usize>: Tensor<R, Backend = Self>;
     type LayerNorm: LayerNorm<B = Self>;
 
+    fn lower_triangle(n: usize) -> Self::Tensor<2>;
+
     fn new_matrix(rows: usize, cols: usize) -> Self::Tensor<2> {
         Self::Tensor::new([rows, cols])
     }

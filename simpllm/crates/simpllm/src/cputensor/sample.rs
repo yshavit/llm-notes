@@ -34,8 +34,9 @@ impl<B: TensorBackend> LogitSampler<B> {
         self
     }
 
-    pub fn get(mut self) -> usize {
-        self.logits.mut_row([self.logits.num_rows() - 1, 0], |row| {
+    pub fn get(self) -> usize {
+        let last_logit = self.logits.num_rows() - 1;
+        self.logits.extract_row([last_logit, 0], |row| {
             if let Some(use_top_k) = self.top_k {
                 top_k(row, use_top_k);
             }

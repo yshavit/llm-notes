@@ -1,7 +1,8 @@
 use crate::tensor::{Shape, TensorBackend};
 use std::borrow::Cow;
+use std::fmt::Debug;
 
-pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
+pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     type Backend: TensorBackend;
     type Slice: ?Sized;
 
@@ -21,7 +22,7 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X;
     fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice);
 
-    fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X;
+    fn extract_row<X>(self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X;
     fn flat_f32(&self) -> Cow<'_, [f32]>;
     fn gelu(self) -> Self;
     fn softmax(self) -> Self;
@@ -34,7 +35,6 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync {
 pub trait Tensor2D: Tensor<2> {
     fn num_rows(&self) -> usize;
     fn num_cols(&self) -> usize;
-    fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync);
 }
 
 impl<T: Tensor<2>> Tensor2D for T {
@@ -44,12 +44,5 @@ impl<T: Tensor<2>> Tensor2D for T {
 
     fn num_cols(&self) -> usize {
         self.shape()[1]
-    }
-
-    fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
-        // Simple, sequential implementation using mut_row.
-        for row_idx in 0..self.num_rows() {
-            self.mut_row([row_idx, 0], |row| f(row_idx, row));
-        }
     }
 }

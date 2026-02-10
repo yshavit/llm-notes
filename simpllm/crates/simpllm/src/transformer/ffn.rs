@@ -33,24 +33,30 @@ impl<B: TensorBackend> Ffn<B> {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
 
+        // TODO in the book, I talk about this being a 1xD matrix, and then applied separately to each row.
+        //   But it can (and should!) be done as an RxD matrix, as done here
         let num_cols = input.num_cols();
-        input.mut_rows(|_, row| {
-            let mut input_row = B::new_matrix(1, num_cols);
-            input_row.set_row([0, 0], row);
-            let ffn_result = self.apply(input_row);
-            ffn_result.with_row([0, 0], |in_row| {
-                row.copy_from_slice(in_row);
+
+        let mut all_data: Vec<f32> = Vec::with_capacity(input.shape().num_elements());
+        for row_idx in 0..input.num_rows() {
+            input.clone().extract_row([row_idx, 0], |row| {
+                let mut input_row = B::new_matrix(1, num_cols);
+                input_row.set_row([0, 0], row);
+                let ffn_result = self.apply(input_row);
+                all_data.extend(ffn_result.flat_f32().into_iter());
             });
-        });
+        }
+        input.reset_values(&all_data);
         input
     }
 
     pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
+        let n_rows = input.num_rows();
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
-            assert_eq!(input.shape(), Shape::new([1, transform.mab.in_dims()]));
+            assert_eq!(input.shape(), Shape::new([n_rows, transform.mab.in_dims()]));
             let mut output = transform.apply(&input);
-            assert_eq!(output.shape(), Shape::new([1, transform.mab.out_dims()]));
+            assert_eq!(output.shape(), Shape::new([n_rows, transform.mab.out_dims()]));
             if transforms.peek().is_some() {
                 output = output.gelu();
             }

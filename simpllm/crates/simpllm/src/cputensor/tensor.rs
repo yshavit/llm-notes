@@ -26,6 +26,16 @@ impl<const R: usize> CpuTensor<R> {
         }
     }
 
+    pub(super) fn new_with_data(shape: Shape<R>, data: Vec<f32>) -> CpuTensor<R> {
+        assert_ne!(R, 0, "0-tensors are not allowed");
+        assert_eq!(data.len(), shape.num_elements());
+        Self {
+            data,
+            shape,
+            strides: Self::contiguous_strides(shape),
+        }
+    }
+
     fn contiguous_strides(shape: Shape<R>) -> Shape<R> {
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
@@ -419,17 +429,6 @@ matrix_view! {MatrixView}
 matrix_view! {MatrixViewMut mut (get: #[cfg(test)])}
 
 impl<'a, const R: usize> MatrixViewMut<'a, R> {
-    pub(super) fn set_row(&mut self, row: usize, values: &[f32]) {
-        let mut indices = self.batch_dimensions;
-        if R == 1 {
-            assert_eq!(row, 0, "vector's row parameter must be 0")
-        } else {
-            indices[R - 2] = row;
-            indices[R - 1] = 0;
-        }
-        self.tensor.set_row(indices, values);
-    }
-
     pub(super) fn mut_rows(&mut self, f: impl Fn(usize, &mut [f32]) + Sync) {
         self.tensor.mut_rows_at_batch(self.batch_dimensions, f);
     }
@@ -534,20 +533,6 @@ impl<'a, const R: usize> Display for Pretty<'a, R> {
     }
 }
 
-impl CpuTensor<2> {
-    fn t(self) -> Self {
-        self.transposed(0, 1)
-    }
-
-    fn num_rows(&self) -> usize {
-        self.shape[0]
-    }
-
-    fn num_cols(&self) -> usize {
-        self.shape[1]
-    }
-}
-
 impl<const R: usize> PartialEq for CpuTensor<R> {
     fn eq(&self, other: &Self) -> bool {
         if self.shape != other.shape {
@@ -584,8 +569,7 @@ mod tests {
         #[test]
         fn matrix_data_shape() {
             let m = CpuBackend::new_matrix(3, 4);
-            assert_eq!(m.num_rows(), 3);
-            assert_eq!(m.num_cols(), 4);
+            assert_eq!(m.shape(), [3, 4].into());
             assert_eq!(m.shape(), Shape::new([3, 4]));
 
             check_row(&m, 0, [0., 0., 0., 0.]);
@@ -628,7 +612,7 @@ mod tests {
             m.set_row([1, 0], &[5., 6., 7., 8.]);
             m.set_row([2, 0], &[9., 10., 11., 12.]);
 
-            let transposed = m.t();
+            let transposed = m.transposed(0, 1);
             assert_eq!(transposed.shape(), Shape::new([4, 3]));
 
             check_row(&transposed, 0, [1., 5., 9.]);
@@ -638,7 +622,7 @@ mod tests {
             expect_panic(|| transposed.get([4, 0]));
 
             // quick sanity check on double-transposition
-            let double_transposed = transposed.t();
+            let double_transposed = transposed.transposed(0, 1);
             check_row(&double_transposed, 0, [1., 2., 3., 4.]);
         }
 
@@ -646,7 +630,7 @@ mod tests {
         fn transposed_set_row() {
             let m = CpuBackend::new_matrix(3, 4);
 
-            let mut transposed = m.t();
+            let mut transposed = m.transposed(0, 1);
             let values = &[1., 2., 3.];
             transposed.set_row([1, 0], values);
 
@@ -771,8 +755,14 @@ mod tests {
             assert_eq!(t_mut_matrix.shape(), Shape::new([2, 3]));
             assert_eq!(t_mut_matrix.num_rows(), 2);
             assert_eq!(t_mut_matrix.num_cols(), 3);
-            t_mut_matrix.set_row(0, &[1., 2., 3.]);
-            t_mut_matrix.set_row(1, &[4., 5., 6.]);
+            t_mut_matrix.mut_rows(|row_idx, vals| {
+                let new_vals = match row_idx {
+                    0 => [1., 2., 3.],
+                    1 => [4., 5., 6.],
+                    _ => panic!("out of range: {row_idx}"),
+                };
+                vals.copy_from_slice(&new_vals);
+            });
 
             // just some spot checks
             assert_eq!(t_mut_matrix.get(0, 0), 1.);

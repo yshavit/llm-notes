@@ -18,6 +18,20 @@ struct CandleLayerNorm(candle_nn::LayerNorm);
 impl TensorBackend for CandleBackend {
     type Tensor<const R: usize> = CandleTensor<R>;
     type LayerNorm = CandleLayerNorm;
+
+    fn lower_triangle(n: usize) -> Self::Tensor<2> {
+        // a row of zeros, and a row of negative infinities
+        let zeros_row = candle_core::Tensor::zeros((n, n), DType::F32, &CUDA).unwrap();
+        let neg_inf_row = zeros_row.affine(0.0, f64::NEG_INFINITY).unwrap();
+
+        // triangle of 0s on top, 1s on bottom
+        let ones_triangle = candle_core::Tensor::tril2(n, DType::F32, &CUDA).unwrap();
+
+        // use where_cond to 0s on the bottom (== 1, the true condition) and -inf on the top
+        let mask = ones_triangle.where_cond(&zeros_row, &neg_inf_row).unwrap();
+
+        CandleTensor { c_tensor: mask }
+    }
 }
 
 impl LayerNorm for CandleLayerNorm {
@@ -38,7 +52,7 @@ impl LayerNorm for CandleLayerNorm {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CandleTensor<const R: usize> {
     c_tensor: candle_core::Tensor,
 }
@@ -164,7 +178,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
             .expect("couldn't assign slice");
     }
 
-    fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
+    fn extract_row<X>(self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
         let mut tensor = self.c_tensor.clone();
         for (i, &idx) in indices.iter().enumerate().take(R - 1) {
             tensor = tensor.narrow(i, idx, 1).expect("couldn't narrow tensor");
@@ -174,24 +188,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
             .expect("couldn't narrow tensor");
         let flat = tensor.flatten_all().expect("couldn't flatten tensor");
         let mut vec = flat.to_vec1::<f32>().expect("couldn't convert to vec");
-        let result = f(&mut vec);
-
-        // Write the modified values back
-        let mut row_shape = vec![1; R - 1];
-        row_shape.push(self.shape()[R - 1]);
-        let row_tensor =
-            candle_core::Tensor::from_slice(&vec, row_shape, flat.device()).expect("couldn't create tensor");
-        let mut slice_params = vec![];
-        for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            slice_params.push(idx..idx + 1);
-        }
-        slice_params.push(indices[R - 1]..indices[R - 1] + self.shape()[R - 1]);
-        self.c_tensor = self
-            .c_tensor
-            .slice_assign(&slice_params, &row_tensor)
-            .expect("couldn't assign slice");
-
-        result
+        f(&mut vec)
     }
 
     fn flat_f32(&self) -> Cow<'_, [f32]> {
@@ -234,7 +231,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
             .expect("couldn't create tensor from slice");
 
         let mut slice_params = vec![];
-        for (i, &idx) in indices.iter().enumerate().take(R - 1) {
+        for &idx in indices.iter().take(R - 1) {
             slice_params.push(idx..idx + 1);
         }
         slice_params.push(indices[R - 1]..indices[R - 1] + shape[R - 1]);

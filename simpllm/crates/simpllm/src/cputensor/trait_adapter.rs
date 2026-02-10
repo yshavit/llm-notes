@@ -50,7 +50,7 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
         self.set_row(indices, values)
     }
 
-    fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
+    fn extract_row<X>(mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
         self.mut_row(indices, f)
     }
 
