@@ -4,7 +4,7 @@ members = [
     "crates/download",
     "crates/fasterllm",
     "crates/gpt2weights",
-    "crates/simpllm",
+    "simpllm",
 ]
 
 [workspace.dependencies]

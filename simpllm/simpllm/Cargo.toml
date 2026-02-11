@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 # loading the tensors
-gpt2weights = { path = "../gpt2weights" }
+gpt2weights = { path = "../crates/gpt2weights" }
 # for sampling logits
 rand = "0.10.0"
 # multithreading

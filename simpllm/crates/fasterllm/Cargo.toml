@@ -10,5 +10,5 @@ metal = ["candle-core/metal"]
 [dependencies]
 candle-core = "0.9"
 candle-nn = "0.9"
-simpllm = { path = "../simpllm" }
+simpllm = { path = "../../simpllm" }
 
