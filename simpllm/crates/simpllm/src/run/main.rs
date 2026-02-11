@@ -1,6 +1,7 @@
 use crate::cputensor::LogitSampler;
 use crate::run::Cli;
 use crate::run::load::load_model;
+use crate::run::simple_tui::Ui;
 use crate::run::tokenizer::load_tokenizer;
 use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
@@ -42,9 +43,10 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
 
         let mut tok_indexes = tokenizer.encode(&line);
 
-        // infer 10 times, hard-coded for now
         let mut durations = Vec::new();
         let mut remaining = cli.generate_limit;
+        let mut generated = line.as_bytes().to_vec();
+        let mut ui = Ui::new()?;
         loop {
             match remaining.as_mut() {
                 None => { /* nothing */ }
@@ -84,9 +86,9 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
             }
 
             tok_indexes.push(result_rank);
-
-            stdout().write(&tokenizer.decode_bytes(&[result_rank]))?;
-            let _ = stdout().flush();
+            generated.extend(&tokenizer.decode_bytes(&[result_rank]));
+            let generated_str = String::from_utf8_lossy(&generated);
+            ui.display(&generated_str, &durations, tok_indexes.len())?;
         }
         eprintln!("{durations:?}");
     }
