@@ -1,8 +1,10 @@
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::{Terminal, backend::CrosstermBackend};
+use std::borrow::Cow;
 use std::error::Error;
 use std::io;
 use std::io::Stdout;
+use std::ops::Deref;
 use std::time::Duration;
 
 use ratatui::crossterm::execute;
@@ -32,7 +34,7 @@ impl Ui {
         Ok(Self { terminal })
     }
 
-    pub fn display(&mut self, text: &str, durations: &[Duration], token_count: usize) -> Result<(), Box<dyn Error>> {
+    pub fn inference(&mut self, text: &str, durations: &[Duration], token_count: usize) -> Result<(), Box<dyn Error>> {
         let total_duration: Duration = durations.iter().sum();
         if event::poll(Duration::from_millis(0))? {
             if let Event::Key(key) = event::read()? {
@@ -47,50 +49,47 @@ impl Ui {
         let latest = values.last().copied().unwrap_or(0);
 
         self.terminal.draw(|f| {
-            let area = f.area();
-
-            let chunks = Layout::default()
+            let [text_pane, graph_pane] = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(1),    // wrapped text
                     Constraint::Length(4), // graph
                 ])
-                .split(area);
+                .areas(f.area());
 
-            // Wrapped text
-            let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-            f.render_widget(paragraph, chunks[0]);
+            f.render_widget(Paragraph::new(text).wrap(Wrap { trim: false }), text_pane);
 
-            let width = chunks[1].width as usize;
-
+            // Graph
+            let width = graph_pane.width as usize;
             let data = if values.len() <= width {
-                values.clone()
+                Cow::Borrowed(&values)
             } else {
                 // simple bucket max
                 let step = values.len() as f64 / width as f64;
-                (0..width)
+                let buckets = (0..width)
                     .map(|i| {
                         let start = (i as f64 * step) as usize;
                         let end = ((i + 1) as f64 * step) as usize;
                         values[start..end].iter().copied().max().unwrap_or(0)
                     })
-                    .collect()
+                    .collect();
+                Cow::Owned(buckets)
             };
 
             // Sparkline (height = 4 by layout)
             let spark = Sparkline::default()
                 .cyan()
-                .data(&data)
+                .data(data.deref())
                 .max(max)
                 .block(Block::bordered().blue());
-            f.render_widget(spark, chunks[1]);
+            f.render_widget(spark, graph_pane);
 
             // Max label aligned to top row
             f.render_widget(
                 Paragraph::new(Line::from(format!("┌ max: {max} ms / latest: {latest} ms ")))
                     .style(Style::default())
                     .left_aligned(),
-                chunks[1],
+                graph_pane,
             );
             f.render_widget(
                 Paragraph::new(Line::from(format!(
@@ -98,7 +97,7 @@ impl Ui {
                 )))
                 .style(Style::default())
                 .right_aligned(),
-                chunks[1],
+                graph_pane,
             );
         })?;
 

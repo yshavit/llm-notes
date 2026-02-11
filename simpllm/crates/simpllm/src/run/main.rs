@@ -1,13 +1,13 @@
 use crate::cputensor::LogitSampler;
-use crate::run::Cli;
 use crate::run::load::load_model;
 use crate::run::simple_tui::Ui;
 use crate::run::tokenizer::load_tokenizer;
+use crate::run::Cli;
 use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
 use gpt2weights::ModelPath;
 use std::error::Error;
-use std::io::{Write, stdin, stdout};
+use std::io::{stdin, stdout, Write};
 use std::time::Instant;
 
 pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
@@ -88,7 +88,7 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
             tok_indexes.push(result_rank);
             generated.extend(&tokenizer.decode_bytes(&[result_rank]));
             let generated_str = String::from_utf8_lossy(&generated);
-            ui.display(&generated_str, &durations, tok_indexes.len())?;
+            ui.inference(&generated_str, &durations, tok_indexes.len())?;
         }
         eprintln!("{durations:?}");
     }
