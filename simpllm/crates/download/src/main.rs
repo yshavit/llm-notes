@@ -93,8 +93,7 @@ async fn main() -> Result<()> {
 }
 
 fn read_tensor_file(model_path: &ModelPath) -> Result<(TensorFileOffsets, Vec<TransformerShape>)> {
-    let file1 = HfModelFiles::Tensors.file_name();
-    let file = File::open(model_path.path(file1))?;
+    let file = File::open(model_path.path(HfModelFiles::Tensors.file_name()))?;
     let header_bytes = unsafe { MmapOptions::new().map(&file)? };
     // Safetensors format is: 8 bytes for a header length, which is an LE u64; then the header; then the blocks.
     const SF_PRE_HEADER: usize = 8;

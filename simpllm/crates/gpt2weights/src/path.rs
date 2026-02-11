@@ -26,13 +26,9 @@ impl From<Gpt2Size> for ModelPath {
 
 impl ModelPath {
     pub fn path(&self, file: &str) -> PathBuf {
-        let mut path_buf = self.unpack_dir();
+        let mut path_buf: PathBuf = ["data", self.model.size()].into_iter().collect();
         path_buf.push(file);
         path_buf
-    }
-
-    pub fn unpack_dir(&self) -> PathBuf {
-        ["data", self.model.size()].into_iter().collect()
     }
 }
 
