@@ -1,6 +1,6 @@
 use candle_core::{DType, Device, Module};
 use candle_nn;
-use simpllm::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
+use simpllm_core::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
 use std::borrow::Cow;
 use std::error::Error;
 use std::ops::Deref;
@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let _ = CUDA.deref(); // force initialization before loading; this just makes the loading eprintln's show up first.
-    simpllm::run::run_main::<CandleBackend>()
+    simpllm_core::run::run_main::<CandleBackend>()
 }
 
 static CUDA: LazyLock<Device> = LazyLock::new(|| {

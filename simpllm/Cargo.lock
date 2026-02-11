@@ -872,7 +872,7 @@ version = "0.1.0"
 dependencies = [
  "candle-core",
  "candle-nn",
- "simpllm",
+ "simpllm-core",
 ]
 
 [[package]]
@@ -3073,7 +3073,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "simpllm"
+name = "simpllm-core"
 version = "0.1.0"
 dependencies = [
  "approx",
