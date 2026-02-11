@@ -1,4 +1,3 @@
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::borrow::Cow;
 use std::error::Error;
@@ -36,14 +35,6 @@ impl Ui {
 
     pub fn inference(&mut self, text: &str, durations: &[Duration], token_count: usize) -> Result<(), Box<dyn Error>> {
         let total_duration: Duration = durations.iter().sum();
-        if event::poll(Duration::from_millis(0))? {
-            if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-                    return Err("interrupted".into());
-                }
-            }
-        }
-
         let values: Vec<u64> = durations.iter().map(|d| d.as_millis() as u64).collect();
         let max = values.iter().copied().max().unwrap_or(0);
         let latest = values.last().copied().unwrap_or(0);
