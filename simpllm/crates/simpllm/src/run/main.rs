@@ -1,15 +1,15 @@
-use crate::cputensor::LogitSampler;
-use crate::run::Cli;
+use crate::run::cli::Cli;
 use crate::run::load::load_model;
 use crate::run::simple_tui::Ui;
 use crate::run::tokenizer::load_tokenizer;
-use crate::tensor::{Tensor, Tensor2D, TensorBackend};
 use clap::Parser;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use gpt2weights::ModelPath;
+use simpllm_core::cputensor::LogitSampler;
+use simpllm_core::tensor::TensorBackend;
 use std::error::Error;
-use std::io::{Write, stdin, stdout};
+use std::io::{stdin, stdout, Write};
 use std::time::{Duration, Instant};
 
 pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
@@ -29,6 +29,17 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
     eprintln!();
     eprintln!("Ready!");
     eprintln!();
+
+    let logit_sampler = if cli.no_sampling {
+        None
+    } else {
+        Some(
+            LogitSampler::new()
+                .top_k(cli.sample_top_k.into())
+                .top_prob(cli.sample_top_p.into())
+                .temperature(cli.sample_temp.into()),
+        )
+    };
 
     let mut line = String::new();
 
@@ -72,25 +83,7 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
             }
 
             let start_time = Instant::now();
-            let result = model.apply(&tok_indexes)?;
-            let result_rank = if cli.no_sampling {
-                result.with_row([result.num_rows() - 1, 0], |row| {
-                    // argmax
-                    row.iter()
-                        .enumerate()
-                        .reduce(|acc, e| if e.1 > acc.1 { e } else { acc })
-                        .map(|r| r.0)
-                        .unwrap_or(0)
-                })
-            } else {
-                LogitSampler::<B>::new(result)
-                    .top_k(cli.sample_top_k.into())
-                    .top_prob(cli.sample_top_p.into())
-                    .temperature(cli.sample_temp.into())
-                    .get()
-                    .into()
-            }
-            .try_into()?;
+            let result_rank = model.apply(&tok_indexes, &logit_sampler)?;
 
             durations.push(start_time.elapsed());
 

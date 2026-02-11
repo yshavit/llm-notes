@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let _ = CUDA.deref(); // force initialization before loading; this just makes the loading eprintln's show up first.
-    simpllm_core::run::run_main::<CandleBackend>()
+    simpllm::run_main::<CandleBackend>()
 }
 
 static CUDA: LazyLock<Device> = LazyLock::new(|| {

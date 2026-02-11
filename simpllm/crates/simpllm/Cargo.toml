@@ -1,0 +1,11 @@
+[package]
+name = "simpllm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+simpllm-core = { path = "../../simpllm-core" }
+gpt2weights = { path = "../../crates/gpt2weights" }
+clap = { workspace = true }
+ratatui = "0.30"
+crossterm = "0.29.0"

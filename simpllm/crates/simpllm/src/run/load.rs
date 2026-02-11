@@ -1,7 +1,7 @@
-use crate::llm::ModelLoader;
-use crate::tensor::{LayerNorm, Tensor, TensorBackend};
-use crate::transformer::{Attention, Ffn, TransformerBlock};
-use gpt2weights::{HParams, ModelPath, ModelShape, NormOffsets, Offsets, load_metadata};
+use gpt2weights::{load_metadata, HParams, ModelPath, ModelShape, NormOffsets, Offsets};
+use simpllm_core::llm::ModelLoader;
+use simpllm_core::tensor::{LayerNorm, Tensor, TensorBackend};
+use simpllm_core::transformer::{Attention, Ffn, TransformerBlock};
 use std::error::Error;
 use std::fs;
 

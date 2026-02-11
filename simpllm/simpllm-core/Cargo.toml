@@ -3,23 +3,10 @@ name = "simpllm-core"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "simpllm"
-path = "src/main.rs"
-
 [dependencies]
-# loading the tensors
-gpt2weights = { path = "../crates/gpt2weights" }
-# for sampling logits
-rand = "0.10.0"
-# multithreading
-rayon = "1.11.0"
-
-# config and TUI stuff
-serde_json = { workspace = true }
-clap = { workspace = true }
-ratatui = "0.30"
-crossterm = "0.29.0"
+rand = "0.10.0" # for sampling logits
+rayon = "1.11.0" # multithreading
+serde_json = { workspace = true } # config and TUI stuff
 
 [dev-dependencies]
 approx = "0.5"

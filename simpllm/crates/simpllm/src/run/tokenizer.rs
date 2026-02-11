@@ -1,5 +1,5 @@
-use crate::bpe::Tokenizer;
-use gpt2weights::{FileNames, ModelPath, read_nicely};
+use gpt2weights::{read_nicely, FileNames, ModelPath};
+use simpllm_core::bpe::Tokenizer;
 use std::error::Error;
 
 pub fn load_tokenizer(path: &ModelPath, file_names: &FileNames) -> Result<Tokenizer, Box<dyn Error>> {

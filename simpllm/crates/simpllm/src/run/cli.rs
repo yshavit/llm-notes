@@ -1,4 +1,4 @@
-use crate::run::OptionalNum;
+use crate::run::optional_num::OptionalNum;
 use clap::Parser;
 use gpt2weights::Gpt2Size;
 

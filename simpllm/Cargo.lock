@@ -872,6 +872,7 @@ version = "0.1.0"
 dependencies = [
  "candle-core",
  "candle-nn",
+ "simpllm",
  "simpllm-core",
 ]
 
@@ -3073,15 +3074,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "simpllm"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "crossterm",
+ "gpt2weights",
+ "ratatui",
+ "simpllm-core",
+]
+
+[[package]]
 name = "simpllm-core"
 version = "0.1.0"
 dependencies = [
  "approx",
- "clap",
- "crossterm",
- "gpt2weights",
  "rand 0.10.0",
- "ratatui",
  "rayon",
  "serde_json",
  "tiktoken-rs",

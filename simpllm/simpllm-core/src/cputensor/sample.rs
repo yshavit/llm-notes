@@ -2,17 +2,15 @@ use crate::cputensor::softmax;
 use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use std::cmp::Ordering;
 
-pub struct LogitSampler<B: TensorBackend> {
-    logits: Matrix<B>,
+pub struct LogitSampler {
     top_k: Option<usize>,
     top_p: Option<f32>,
     temperature: Option<f32>,
 }
 
-impl<B: TensorBackend> LogitSampler<B> {
-    pub fn new(logits: Matrix<B>) -> Self {
+impl LogitSampler {
+    pub fn new() -> Self {
         Self {
-            logits,
             top_k: None,
             top_p: None,
             temperature: None,
@@ -34,9 +32,9 @@ impl<B: TensorBackend> LogitSampler<B> {
         self
     }
 
-    pub fn get(self) -> usize {
-        let last_logit = self.logits.num_rows() - 1;
-        self.logits.extract_row([last_logit, 0], |row| {
+    pub fn get<B: TensorBackend>(&self, logits: Matrix<B>) -> usize {
+        let last_logit = logits.num_rows() - 1;
+        logits.extract_row([last_logit, 0], |row| {
             if let Some(use_top_k) = self.top_k {
                 top_k(row, use_top_k);
             }

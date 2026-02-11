@@ -1,4 +1,5 @@
 use crate::bpe::Rank;
+use crate::cputensor::LogitSampler;
 use crate::tensor::{LayerNorm, Matrix, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::TransformerBlock;
 use std::fmt::{Display, Formatter};
@@ -26,7 +27,7 @@ impl<B: TensorBackend> ModelLoader<B> {
 }
 
 impl<B: TensorBackend> Model<B> {
-    pub fn apply(&self, seq: &Vec<Rank>) -> Result<Matrix<B>, InferenceError> {
+    pub fn apply(&self, seq: &Vec<Rank>, logit_sampler: &Option<LogitSampler>) -> Result<Rank, InferenceError> {
         let mut x = self.embed_inputs(seq)?;
 
         for transformer in &self.fwd.layers {
@@ -37,7 +38,22 @@ impl<B: TensorBackend> Model<B> {
 
         let unembedding = x.matmul(&self.tok_unembed);
 
-        Ok(unembedding)
+        let inferred_rank = match logit_sampler {
+            Some(logit_sampler) => logit_sampler.get::<B>(unembedding),
+            None => {
+                // no sampling; just take argmax
+                unembedding.with_row([unembedding.num_rows() - 1, 0], |row| {
+                    // argmax
+                    row.iter()
+                        .enumerate()
+                        .reduce(|acc, e| if e.1 > acc.1 { e } else { acc })
+                        .map(|r| r.0)
+                        .unwrap_or(0)
+                })
+            }
+        };
+
+        Ok(inferred_rank.into())
     }
 
     pub fn eos(&self) -> usize {
