@@ -8,10 +8,15 @@ name = "simpllm"
 path = "src/main.rs"
 
 [dependencies]
+# loading the tensors
 gpt2weights = { path = "../gpt2weights" }
-serde_json = { workspace = true }
+# for sampling logits
 rand = "0.10.0"
+# multithreading
 rayon = "1.11.0"
+
+# config and TUI stuff
+serde_json = { workspace = true }
 clap = { workspace = true }
 ratatui = "0.30"
 crossterm = "0.29.0"
