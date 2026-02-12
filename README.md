@@ -8,7 +8,7 @@ See it at <https://yshavit.github.io/llm-notes/>
 
 [TODO-badge]: https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/yshavit/llm-notes/automation/badge-data/todo-count.json&query=$.todos&label=Remaining%20TODOs&color=orange
 
-[TODO-search]: https://github.com/search?q=todo%20repo%3Ayshavit%2Fllm-notes%20path%3A*.md%20path%3Abook&type=Code&ref=advsearch&l&l
+[TODO-search]: https://github.com/search?q=todo+repo%3Ayshavit%2Fllm-notes+%28path%3A*.md+path%3Abook%29+OR+path%3Asimpllm%29&type=code&ref=advsearch
 
 ## License
 

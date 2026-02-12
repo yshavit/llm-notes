@@ -19,7 +19,9 @@ jobs:
       - name: Count TODOs
         id: count
         run: |
-          count=$(cd book && grep -r "TODO" --include="*.md" . | wc -l)
+          md_count=$(cd book && grep -r "TODO" --include="*.md" . | wc -l)
+          rs_count=$(cd simpllm && grep -ir "TODO" . | wc -l)
+          count=$(( $md_count + $rs_count ))
           echo "Found $count TODOs"
           echo "count=$count" >> $GITHUB_OUTPUT
 
