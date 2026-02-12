@@ -255,7 +255,6 @@ async fn download_file(url: &str, output_path: &PathBuf, check: bool) -> Result<
             println!("{}: file already exists", output_path.display());
             return Ok(());
         }
-        // TODO: Implement MD5 checksum verification for check mode
         println!("{}: file already exists", output_path.display());
         return Ok(());
     }

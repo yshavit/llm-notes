@@ -144,23 +144,24 @@ impl<const R: usize> CpuTensor<R> {
             f(0, &mut self.data);
             return;
         }
-        if self.strides == Self::contiguous_strides(self.shape) {
-            assert_eq!(base_indexes[R - 2], 0);
-            let start_idx = self.data_offset(base_indexes);
-            let chunk_num_rows = self.shape[R - 2];
-            let chunk_num_cols = self.shape[R - 1];
-            let slice_len = chunk_num_cols * chunk_num_rows;
-            let data_slice = &mut self.data[start_idx..(start_idx + slice_len)];
-            data_slice
-                .par_chunks_exact_mut(chunk_num_cols)
-                .enumerate()
-                .for_each(|(idx, chunk)| {
-                    assert_eq!(chunk.len(), chunk_num_cols, "internal error in mut_rows");
-                    f(idx, chunk);
-                })
-        } else {
-            todo!("transposed mut_rows not supported");
+
+        if self.strides != Self::contiguous_strides(self.shape) {
+            // not strictly necessary, but we don't ever hit this code branch, so it's fine if it's not optimized :-)
+            self.make_self_contiguous()
         }
+        assert_eq!(base_indexes[R - 2], 0);
+        let start_idx = self.data_offset(base_indexes);
+        let chunk_num_rows = self.shape[R - 2];
+        let chunk_num_cols = self.shape[R - 1];
+        let slice_len = chunk_num_cols * chunk_num_rows;
+        let data_slice = &mut self.data[start_idx..(start_idx + slice_len)];
+        data_slice
+            .par_chunks_exact_mut(chunk_num_cols)
+            .enumerate()
+            .for_each(|(idx, chunk)| {
+                assert_eq!(chunk.len(), chunk_num_cols, "internal error in mut_rows");
+                f(idx, chunk);
+            })
     }
 
     pub(super) fn multiply_scalar(&mut self, factor: f32) {
@@ -200,8 +201,13 @@ impl<const R: usize> CpuTensor<R> {
     }
 
     pub(super) fn contiguous(mut self) -> Self {
+        self.make_self_contiguous();
+        self
+    }
+
+    fn make_self_contiguous(&mut self) {
         if self.strides == Self::contiguous_strides(self.shape) {
-            return self;
+            return;
         }
         let mut new_data = vec![0.0; self.shape.num_elements()];
         let chunk_sizes = self.data.len() / self.shape[0];
@@ -224,7 +230,6 @@ impl<const R: usize> CpuTensor<R> {
 
         self.data = new_data;
         self.strides = Self::contiguous_strides(self.shape);
-        self
     }
 
     pub(super) fn flat_f32(&self) -> Cow<'_, [f32]> {
