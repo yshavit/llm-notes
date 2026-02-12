@@ -16,10 +16,10 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     fn transposed(self, dim0: usize, dim1: usize) -> Self;
     fn contiguous(self) -> Self;
 
+    fn flat_f32(&self) -> Cow<'_, [f32]>;
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X;
     fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice);
 
-    fn flat_f32(&self) -> Cow<'_, [f32]>;
     fn gelu(self) -> Self;
     fn softmax(self) -> Self;
 

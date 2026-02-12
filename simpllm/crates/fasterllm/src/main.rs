@@ -132,20 +132,8 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
     }
 
-    fn matmul(&self, other: &Self) -> Self {
-        let lhs = if self.t.is_contiguous() {
-            self.t.clone()
-        } else {
-            self.t.contiguous().unwrap()
-        };
-        let rhs = if other.t.is_contiguous() {
-            other.t.clone()
-        } else {
-            other.t.contiguous().unwrap()
-        };
-        Self {
-            t: lhs.matmul(&rhs).unwrap(),
-        }
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
+        TensorSlice::flat_f32(self)
     }
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
@@ -188,10 +176,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         self.t = self.t.slice_assign(&slice_params, &values).unwrap();
     }
 
-    fn flat_f32(&self) -> Cow<'_, [f32]> {
-        TensorSlice::flat_f32(self)
-    }
-
     fn gelu(self) -> Self {
         Self {
             t: self.t.gelu().unwrap(),
@@ -203,6 +187,22 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         let softmax_tensor = candle_nn::ops::softmax_last_dim(&cpu_tensor).unwrap();
         Self {
             t: softmax_tensor.to_device(self.t.device()).unwrap(),
+        }
+    }
+
+    fn matmul(&self, other: &Self) -> Self {
+        let lhs = if self.t.is_contiguous() {
+            self.t.clone()
+        } else {
+            self.t.contiguous().unwrap()
+        };
+        let rhs = if other.t.is_contiguous() {
+            other.t.clone()
+        } else {
+            other.t.contiguous().unwrap()
+        };
+        Self {
+            t: lhs.matmul(&rhs).unwrap(),
         }
     }
 

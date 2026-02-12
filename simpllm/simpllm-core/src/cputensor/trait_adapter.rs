@@ -40,8 +40,8 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
         self.contiguous()
     }
 
-    fn matmul(&self, other: &Self) -> Self {
-        matmul_batched(self, other)
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
+        self.flat_f32()
     }
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
@@ -52,16 +52,16 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
         self.set_row(indices, values)
     }
 
-    fn flat_f32(&self) -> Cow<'_, [f32]> {
-        self.flat_f32()
-    }
-
     fn gelu(self) -> Self {
         self.gelu()
     }
 
     fn softmax(self) -> Self {
         self.softmax()
+    }
+
+    fn matmul(&self, other: &Self) -> Self {
+        matmul_batched(self, other)
     }
 
     fn multiply_scalar(&mut self, factor: f32) {
