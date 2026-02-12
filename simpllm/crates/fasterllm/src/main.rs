@@ -63,7 +63,7 @@ impl TensorBackend for CandleBackend {
         // use where_cond to 0s on the bottom (== 1, the true condition) and -inf on the top
         let mask = ones_triangle.where_cond(&zeros_row, &neg_inf_row).unwrap();
 
-        CandleTensor { c_tensor: mask }
+        CandleTensor { t: mask }
     }
 }
 
@@ -71,23 +71,22 @@ impl LayerNorm for CandleLayerNorm {
     type B = CandleBackend;
 
     fn new(scale: Vector<Self::B>, bias: Vector<Self::B>, epsilon: f32) -> Self {
-        let scale = scale.c_tensor.to_device(&Device::Cpu).unwrap();
-        let bias = bias.c_tensor.to_device(&Device::Cpu).unwrap();
-        let candle_layer_norm = candle_nn::LayerNorm::new(scale, bias, epsilon.into());
-        Self(candle_layer_norm)
+        let scale = scale.t.to_device(&Device::Cpu).unwrap();
+        let bias = bias.t.to_device(&Device::Cpu).unwrap();
+        Self(candle_nn::LayerNorm::new(scale, bias, epsilon.into()))
     }
 
     fn apply(&self, input: &Matrix<Self::B>) -> Matrix<Self::B> {
-        let input_on_cpu = input.c_tensor.to_device(&Device::Cpu).unwrap();
+        let input_on_cpu = input.t.to_device(&Device::Cpu).unwrap();
         let mut result = self.0.forward(&input_on_cpu).unwrap();
         result = result.to_device(&CUDA).unwrap();
-        CandleTensor { c_tensor: result }
+        CandleTensor { t: result }
     }
 }
 
 #[derive(Clone, Debug)]
 struct CandleTensor<const R: usize> {
-    c_tensor: candle_core::Tensor,
+    t: candle_core::Tensor,
 }
 
 impl<const R: usize> Tensor<R> for CandleTensor<R> {
@@ -95,84 +94,79 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Slice = candle_core::Tensor;
 
     fn new(shape: impl Into<Shape<R>>) -> Self {
-        let shape: Shape<R> = shape.into();
-        let candle_shape: Vec<usize> = shape.iter().copied().collect();
-        let c_tensor =
-            candle_core::Tensor::zeros(candle_shape, DType::F32, &CUDA).expect("couldn't create candle tensor");
-        Self { c_tensor }
+        let candle_shape: Vec<usize> = shape.into().to_vec();
+        Self {
+            t: candle_core::Tensor::zeros(candle_shape, DType::F32, &CUDA).unwrap(),
+        }
     }
 
     fn shape(&self) -> Shape<R> {
-        let dims = self.c_tensor.dims();
-        let array: [usize; R] = dims.try_into().expect("shape rank mismatch");
-        Shape::from(array)
+        Shape::new(self.t.dims().try_into().unwrap())
     }
 
     fn reset_values(&mut self, values: &[f32]) {
-        self.c_tensor = candle_core::Tensor::from_slice(values, self.c_tensor.shape(), self.c_tensor.device())
-            .expect("couldn't create new tensor");
+        self.t = candle_core::Tensor::from_slice(values, self.t.shape(), self.t.device()).unwrap();
     }
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
-        let shape: Shape<R2> = new_shape.into();
-        let candle_shape: Vec<usize> = shape.iter().copied().collect();
-        let c_tensor = self.c_tensor.reshape(candle_shape).expect("couldn't reshape tensor");
-        CandleTensor { c_tensor }
+        let candle_shape: Vec<usize> = new_shape.into().to_vec();
+        CandleTensor {
+            t: self.t.reshape(candle_shape).unwrap(),
+        }
     }
 
     fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S] {
-        let chunks = self.c_tensor.chunk(S, dim).expect("couldn't split tensor");
-        let array: [candle_core::Tensor; S] = chunks.try_into().expect("split size mismatch");
-        array.map(|c_tensor| CandleTensor { c_tensor })
+        let chunks = self.t.chunk(S, dim).unwrap();
+        let array: [candle_core::Tensor; S] = chunks.try_into().unwrap();
+        array.map(|c_tensor| CandleTensor { t: c_tensor })
     }
 
     fn transposed(self, dim0: usize, dim1: usize) -> Self {
-        let c_tensor = self.c_tensor.transpose(dim0, dim1).expect("couldn't transpose tensor");
-        Self { c_tensor }
+        Self {
+            t: self.t.transpose(dim0, dim1).unwrap(),
+        }
     }
 
     fn contiguous(self) -> Self {
-        let c_tensor = self.c_tensor.contiguous().expect("couldn't make tensor contiguous");
-        Self { c_tensor }
+        Self {
+            t: self.t.contiguous().unwrap(),
+        }
     }
 
     fn matmul(&self, other: &Self) -> Self {
-        let lhs = if self.c_tensor.is_contiguous() {
-            self.c_tensor.clone()
+        let lhs = if self.t.is_contiguous() {
+            self.t.clone()
         } else {
-            self.c_tensor.contiguous().expect("couldn't make lhs contiguous")
+            self.t.contiguous().unwrap()
         };
-        let rhs = if other.c_tensor.is_contiguous() {
-            other.c_tensor.clone()
+        let rhs = if other.t.is_contiguous() {
+            other.t.clone()
         } else {
-            other.c_tensor.contiguous().expect("couldn't make rhs contiguous")
+            other.t.contiguous().unwrap()
         };
-        let c_tensor = lhs.matmul(&rhs).expect("couldn't perform matmul");
-        Self { c_tensor }
+        Self {
+            t: lhs.matmul(&rhs).unwrap(),
+        }
     }
 
     fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
-        let mut tensor = self.c_tensor.clone();
+        let mut tensor = self.t.clone();
         for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            tensor = tensor.narrow(i, idx, 1).expect("couldn't narrow tensor");
+            tensor = tensor.narrow(i, idx, 1).unwrap();
         }
-        tensor = tensor
-            .narrow(R - 1, indices[R - 1], self.shape()[R - 1])
-            .expect("couldn't narrow tensor");
-        let flat = tensor.flatten_all().expect("couldn't flatten tensor");
-        let vec = flat.to_vec1::<f32>().expect("couldn't convert to vec");
+        tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
+        let flat = tensor.flatten_all().unwrap();
+        let vec = flat.to_vec1::<f32>().unwrap();
         f(&vec)
     }
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
-        let mut tensor = self.c_tensor.clone();
+        let mut tensor = self.t.clone();
         for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            tensor = tensor.narrow(i, idx, 1).expect("couldn't narrow tensor");
+            tensor = tensor.narrow(i, idx, 1).unwrap();
         }
-        tensor = tensor
-            .narrow(R - 1, indices[R - 1], self.shape()[R - 1])
-            .expect("couldn't narrow tensor");
-        let flat = tensor.flatten_all().expect("couldn't flatten tensor");
+        tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
+        let flat = tensor.flatten_all().unwrap();
         f(&flat)
     }
 
@@ -198,70 +192,59 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
 
         let values = if v_dims.len() != R {
-            values
-                .reshape(target_shape)
-                .expect("couldn't reshape values for slice assignment")
+            values.reshape(target_shape).unwrap()
         } else {
             values.clone()
         };
 
-        self.c_tensor = self
-            .c_tensor
-            .slice_assign(&slice_params, &values)
-            .expect("couldn't assign slice");
+        self.t = self.t.slice_assign(&slice_params, &values).unwrap();
     }
 
     fn extract_row<X>(self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
-        let mut tensor = self.c_tensor.clone();
+        let mut tensor = self.t.clone();
         for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            tensor = tensor.narrow(i, idx, 1).expect("couldn't narrow tensor");
+            tensor = tensor.narrow(i, idx, 1).unwrap();
         }
-        tensor = tensor
-            .narrow(R - 1, indices[R - 1], self.shape()[R - 1])
-            .expect("couldn't narrow tensor");
-        let flat = tensor.flatten_all().expect("couldn't flatten tensor");
-        let mut vec = flat.to_vec1::<f32>().expect("couldn't convert to vec");
+        tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
+        let flat = tensor.flatten_all().unwrap();
+        let mut vec = flat.to_vec1::<f32>().unwrap();
         f(&mut vec)
     }
 
     fn flat_f32(&self) -> Cow<'_, [f32]> {
-        let flat = self.c_tensor.flatten_all().expect("couldn't flatten tensor");
-        let vec = flat.to_vec1::<f32>().expect("couldn't convert to vec");
+        let vec = self.t.flatten_all().unwrap().to_vec1::<f32>().unwrap();
         Cow::Owned(vec)
     }
 
     fn gelu(self) -> Self {
-        let c_tensor = self.c_tensor.gelu().expect("couldn't apply gelu");
-        Self { c_tensor }
+        Self {
+            t: self.t.gelu().unwrap(),
+        }
     }
 
     fn softmax(self) -> Self {
-        let cpu_tensor = self.c_tensor.to_device(&Device::Cpu).expect("couldn't move to CPU");
-        let softmax_tensor = candle_nn::ops::softmax_last_dim(&cpu_tensor).expect("couldn't apply softmax");
-        let c_tensor = softmax_tensor
-            .to_device(self.c_tensor.device())
-            .expect("couldn't move back to CUDA");
-        Self { c_tensor }
+        let cpu_tensor = self.t.to_device(&Device::Cpu).unwrap();
+        let softmax_tensor = candle_nn::ops::softmax_last_dim(&cpu_tensor).unwrap();
+        Self {
+            t: softmax_tensor.to_device(self.t.device()).unwrap(),
+        }
     }
 
     fn multiply_scalar(&mut self, factor: f32) {
-        self.c_tensor = self.c_tensor.affine(factor.into(), 0.0).unwrap();
+        self.t = self.t.affine(factor.into(), 0.0).unwrap();
     }
 
     fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
-        let c_tensor = self
-            .c_tensor
-            .broadcast_add(&other.c_tensor)
-            .expect("couldn't add tensors");
-        Self { c_tensor }
+        Self {
+            t: self.t.broadcast_add(&other.t).unwrap(),
+        }
     }
 
     fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
         let shape = self.shape();
         let mut row_shape = vec![1; R - 1];
         row_shape.push(shape[R - 1]);
-        let row_tensor = candle_core::Tensor::from_slice(values, row_shape, self.c_tensor.device())
-            .expect("couldn't create tensor from slice");
+        let row_tensor = candle_core::Tensor::from_slice(values, row_shape, self.t.device()).unwrap();
 
         let mut slice_params = vec![];
         for &idx in indices.iter().take(R - 1) {
@@ -269,9 +252,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
         slice_params.push(indices[R - 1]..indices[R - 1] + shape[R - 1]);
 
-        self.c_tensor = self
-            .c_tensor
-            .slice_assign(&slice_params, &row_tensor)
-            .expect("couldn't assign slice");
+        self.t = self.t.slice_assign(&slice_params, &row_tensor).unwrap();
     }
 }
