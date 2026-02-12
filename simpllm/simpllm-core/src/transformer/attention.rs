@@ -47,9 +47,9 @@ impl<B: TensorBackend> Attention<B> {
         // TODO in practice, these are brought in as a single matrix that's the three of these concatenated.
         // each are (h, n, d/h)
         let [queries, keys, values] = {
-            let mut combined = input.matmul(&self.w_qkv.weights());
+            let mut combined = input.matmul(self.w_qkv.weights());
             // Combined is (N x 3d). Add the biases before reshaping.
-            combined = combined.add(&self.w_qkv.bias());
+            combined = combined.add(self.w_qkv.bias());
 
             let split = combined.split::<3>(1);
             split.map(|m| {
@@ -199,22 +199,22 @@ mod tests {
 
         let output = attention.apply(&tokens);
 
-        let expected = vec![
+        let expected = [
             [
-                0.011457345448434353,
-                0.011363562196493149,
-                0.011271310970187187,
-                0.011180554516613483,
-                0.011091256514191628,
-                0.011003383435308933,
+                0.011_457_345,
+                0.011_363_562,
+                0.011_271_311,
+                0.011_180_554_5,
+                0.011_091_256_5,
+                0.011_003_383,
             ],
             [
-                0.029986323788762093,
-                0.02973994053900242,
-                0.029497595503926277,
-                0.029259195551276207,
-                0.02902464009821415,
-                0.02879383973777294,
+                0.029_986_324,
+                0.029_739_94,
+                0.029_497_596,
+                0.029_259_196,
+                0.029_024_64,
+                0.028_793_84,
             ],
         ];
 

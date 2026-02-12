@@ -38,7 +38,7 @@ impl<const R: usize> From<[usize; R]> for Shape<R> {
 impl<const R: usize> Shape<R> {
     pub fn new(dimensions: [usize; R]) -> Self {
         let result = Self(dimensions);
-        assert!(R != 0 && !result.iter().any(|i| *i == 0), "illegal shape: {result}");
+        assert!(R != 0 && !result.contains(&0), "illegal shape: {result}");
         result
     }
 
@@ -57,7 +57,7 @@ impl<const R: usize> Debug for Shape<R> {
             return Ok(());
         }
 
-        while let Some(dim) = dim_iter.next() {
+        for dim in dim_iter {
             write!(f, "x{dim}")?;
         }
         Ok(())

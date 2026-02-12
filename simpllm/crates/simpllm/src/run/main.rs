@@ -9,7 +9,7 @@ use gpt2weights::ModelPath;
 use simpllm_core::cputensor::LogitSampler;
 use simpllm_core::tensor::TensorBackend;
 use std::error::Error;
-use std::io::{stdin, stdout, Write};
+use std::io::{Write, stdin, stdout};
 use std::time::{Duration, Instant};
 
 pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
@@ -34,7 +34,7 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
         None
     } else {
         Some(
-            LogitSampler::new()
+            LogitSampler::default()
                 .top_k(cli.sample_top_k.into())
                 .top_prob(cli.sample_top_p.into())
                 .temperature(cli.sample_temp.into()),
@@ -58,19 +58,19 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
         print!("\x1b[1A\r");
         let _ = stdout().flush();
 
-        let mut tok_indexes = tokenizer.encode(&line);
+        let mut tok_indexes = tokenizer.encode(line);
         let mut durations = Vec::new();
         let mut remaining = cli.generate_limit;
         let mut generated = line.as_bytes().to_vec();
         let mut ui = Ui::new()?;
         loop {
-            if event::poll(Duration::from_millis(0))? {
-                if let Event::Key(key) = event::read()? {
-                    if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
-                        generated.extend("\x1b[3;35m<user canceled inference>\x1b[0m".as_bytes());
-                        break;
-                    }
-                }
+            if event::poll(Duration::from_millis(0))?
+                && let Event::Key(key) = event::read()?
+                && key.code == KeyCode::Char('c')
+                && key.modifiers.contains(KeyModifiers::CONTROL)
+            {
+                generated.extend("\x1b[3;35m<user canceled inference>\x1b[0m".as_bytes());
+                break;
             }
 
             match remaining.as_mut() {

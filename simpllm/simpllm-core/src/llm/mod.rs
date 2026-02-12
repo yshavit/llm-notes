@@ -1,3 +1,3 @@
-mod llm;
+mod model;
 
-pub use llm::*;
+pub use model::*;

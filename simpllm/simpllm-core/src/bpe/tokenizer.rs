@@ -56,7 +56,7 @@ impl Tokenizer {
         let as_bytes = text.as_bytes();
         // Now, convert each one of those bytes to its encoded form. We construct a fresh bytes_to_unicode, because
         let mut encoded: Vec<String> = as_bytes
-            .into_iter()
+            .iter()
             .map(|&b| self.bytes_to_unicode[b as usize])
             .map(String::from)
             .collect();
@@ -115,7 +115,7 @@ impl Tokenizer {
                             .map(|c| {
                                 self.unicode_to_bytes
                                     .get(&c)
-                                    .map(|b| *b)
+                                    .copied()
                                     .ok_or_else(|| format!("char lookup: {c}"))
                             })
                             .collect();
@@ -143,12 +143,11 @@ impl Tokenizer {
     fn find_match(text: &[String], rule: &MergeRule) -> Option<usize> {
         let mut text_iter = text.iter().enumerate().peekable();
         while let Some((idx, word)) = text_iter.next() {
-            if word == &rule.0 {
-                if let Some((_, next_word)) = text_iter.peek() {
-                    if next_word == &&rule.1 {
-                        return Some(idx);
-                    }
-                }
+            if word == &rule.0
+                && let Some((_, next_word)) = text_iter.peek()
+                && next_word == &&rule.1
+            {
+                return Some(idx);
             }
         }
         None

@@ -18,9 +18,9 @@ impl crate::tensor::LayerNorm for CpuLayerNorm {
         let mut data = input.flat_f32().into_owned();
         data.chunks_exact_mut(input.num_cols()).for_each(|row| {
             let Stats { mean, variance } = row.iter().copied().into();
-            for col_idx in 0..row.len() {
-                let normalized = (row[col_idx] - mean) / (variance + self.epsilon).sqrt();
-                row[col_idx] = (normalized * self.scale.get([col_idx])) + self.bias.get([col_idx]);
+            for (col_idx, cell) in row.iter_mut().enumerate() {
+                let normalized = (*cell - mean) / (variance + self.epsilon).sqrt();
+                *cell = (normalized * self.scale.get([col_idx])) + self.bias.get([col_idx]);
             }
         });
         CpuTensor::new_with_data(input.shape(), data)

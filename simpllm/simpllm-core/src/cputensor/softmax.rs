@@ -4,7 +4,7 @@ pub fn softmax(vals: &mut [f32]) {
     }
     let exps_sums: f32 = vals.iter().sum();
     for v in vals.iter_mut() {
-        *v = *v / exps_sums;
+        *v /= exps_sums;
     }
 }
 

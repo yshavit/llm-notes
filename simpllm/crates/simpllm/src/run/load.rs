@@ -23,7 +23,7 @@ pub fn load_model<B: TensorBackend>(path: &ModelPath) -> Result<(ModelLoader<B>,
     eprint!("{} layers [ ", h_params.n_layer);
     for layer_idx in 0..h_params.n_layer {
         eprint!("{} ", layer_idx + 1);
-        let transformer = load_transformer(&tensor_data, layer_idx, &shape, &h_params)?;
+        let transformer = load_transformer(&tensor_data, layer_idx, &shape, h_params)?;
         layers.push(transformer);
     }
 

@@ -27,7 +27,7 @@ impl<B: TensorBackend> ModelLoader<B> {
 }
 
 impl<B: TensorBackend> Model<B> {
-    pub fn apply(&self, seq: &Vec<Rank>, logit_sampler: &Option<LogitSampler>) -> Result<Rank, InferenceError> {
+    pub fn apply(&self, seq: &[Rank], logit_sampler: &Option<LogitSampler>) -> Result<Rank, InferenceError> {
         let mut x = self.embed_inputs(seq)?;
 
         for transformer in &self.fwd.layers {
@@ -74,13 +74,13 @@ impl<B: TensorBackend> Model<B> {
         self.fwd.pos_embed.num_rows()
     }
 
-    fn embed_inputs(&self, seq: &Vec<Rank>) -> Result<Matrix<B>, InferenceError> {
+    fn embed_inputs(&self, seq: &[Rank]) -> Result<Matrix<B>, InferenceError> {
         if seq.len() > self.max_seq_len() {
             return Err(InferenceError::MaxSeq);
         }
         let mut tok_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
         let mut pos_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
-        for (seq_idx, &seq_tok) in seq.into_iter().enumerate() {
+        for (seq_idx, &seq_tok) in seq.iter().enumerate() {
             // copy the right token embedding to tok_embeddings
             self.fwd.tok_embed.slice_row([seq_tok.rank(), 0], |tok_embed| {
                 tok_embeddings.set_slice([seq_idx, 0], tok_embed);

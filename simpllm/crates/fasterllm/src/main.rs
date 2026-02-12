@@ -1,5 +1,4 @@
 use candle_core::{DType, Device, Module};
-use candle_nn;
 use simpllm_core::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, TensorSlice, Vector};
 use std::borrow::Cow;
 use std::error::Error;
@@ -14,9 +13,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 static CUDA: LazyLock<Device> = LazyLock::new(|| {
     if candle_core::utils::cuda_is_available() {
         Device::new_cuda(0)
-            .map(|d| {
+            .inspect(|_| {
                 eprintln!("CUDA initialized");
-                d
             })
             .unwrap_or_else(|err| {
                 eprintln!("Error initializing CUDA: {err}");
@@ -25,9 +23,8 @@ static CUDA: LazyLock<Device> = LazyLock::new(|| {
             })
     } else if candle_core::utils::metal_is_available() {
         Device::new_metal(0)
-            .map(|d| {
+            .inspect(|_| {
                 eprintln!("Metal initialized");
-                d
             })
             .unwrap_or_else(|err| {
                 eprintln!("Error initializing Metal: {err}");

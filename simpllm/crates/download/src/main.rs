@@ -60,7 +60,7 @@ struct Args {
     check_download: bool,
 }
 
-const ENCODINGS_TXT: &'static str = "encodings.txt";
+const ENCODINGS_TXT: &str = "encodings.txt";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -237,7 +237,7 @@ async fn download_files(model_path: &ModelPath, check: bool) -> Result<()> {
 
     for model_file in HfModelFiles::iter().map(HfModelFiles::file_name) {
         let download_url = format!("{}/{}/resolve/main/{}", HF_BASE_URL, repo, model_file);
-        let out_file = PathBuf::from(model_path.path(model_file));
+        let out_file = model_path.path(model_file);
 
         download_file(&download_url, &out_file, check)
             .await

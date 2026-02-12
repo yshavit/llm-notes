@@ -165,7 +165,7 @@ impl<const R: usize> CpuTensor<R> {
 
     pub(super) fn multiply_scalar(&mut self, factor: f32) {
         for v in &mut self.data {
-            *v = *v * factor;
+            *v *= factor;
         }
     }
 
@@ -213,8 +213,8 @@ impl<const R: usize> CpuTensor<R> {
             .for_each(|(row_idx, row)| {
                 let mut start_at = [0; R];
                 start_at[0] = row_idx;
-                let mut index_iter = self_shape.iter_indices_starting_at(start_at).enumerate();
-                while let Some((data_idx, tensor_idx)) = index_iter.next() {
+                let index_iter = self_shape.iter_indices_starting_at(start_at).enumerate();
+                for (data_idx, tensor_idx) in index_iter {
                     if tensor_idx[0] > row_idx {
                         break;
                     }
@@ -281,8 +281,8 @@ impl<const R: usize> CpuTensor<R> {
             let stride: usize = (0..R - 1).map(|i| self.strides[i] * self.shape[i]).sum();
             let mut data = vec![0.; read_len];
             let mut offset = read_start;
-            for idx in 0..data.len() {
-                data[idx] = self.data[offset];
+            for datum in &mut data {
+                *datum = self.data[offset];
                 offset += stride;
             }
             f(&mut data)
@@ -590,10 +590,10 @@ mod tests {
             check_row(&m, 1, [5., 6., 7., 8.]);
             check_row(&m, 2, [9., 10., 11., 12.]);
 
-            m.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            m.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v *= 10.));
             check_row(&m, 1, [50., 60., 70., 80.]);
             // sub-row
-            m.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            m.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v *= 10.));
             check_row(&m, 1, [50., 600., 700., 800.]);
         }
 
@@ -639,10 +639,10 @@ mod tests {
             check_row(&transposed, 2, [0., 0., 0.]);
             check_row(&transposed, 3, [0., 0., 0.]);
 
-            transposed.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            transposed.mut_row([1, 0], |data| data.iter_mut().for_each(|v| *v *= 10.));
             check_row(&transposed, 1, [10., 20., 30.]);
             // sub-row
-            transposed.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v = *v * 10.));
+            transposed.mut_row([1, 1], |data| data.iter_mut().for_each(|v| *v *= 10.));
             check_row(&transposed, 1, [10., 200., 300.]);
         }
 

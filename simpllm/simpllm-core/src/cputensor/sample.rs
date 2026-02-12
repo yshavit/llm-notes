@@ -2,6 +2,7 @@ use crate::cputensor::softmax;
 use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, TensorSlice};
 use std::cmp::Ordering;
 
+#[derive(Default)]
 pub struct LogitSampler {
     top_k: Option<usize>,
     top_p: Option<f32>,
@@ -9,14 +10,6 @@ pub struct LogitSampler {
 }
 
 impl LogitSampler {
-    pub fn new() -> Self {
-        Self {
-            top_k: None,
-            top_p: None,
-            temperature: None,
-        }
-    }
-
     pub fn top_k(mut self, k: Option<usize>) -> Self {
         self.top_k = k;
         self
@@ -50,14 +43,14 @@ impl LogitSampler {
     }
 }
 
-fn multinomial_sample(mut logits: &mut [f32]) -> usize {
-    softmax(&mut logits);
+fn multinomial_sample(logits: &mut [f32]) -> usize {
+    softmax(logits);
 
     let target_cumulative: f32 = rand::random();
 
     let mut cumulative = 0.0;
     let last_idx = logits.len() - 1;
-    for (idx, value) in logits.into_iter().enumerate() {
+    for (idx, value) in logits.iter_mut().enumerate() {
         cumulative += *value;
         if target_cumulative < cumulative {
             return idx;
@@ -107,7 +100,7 @@ mod test {
     fn test_multinomial_sampled_index_distribution() {
         // Get logits that add up to 100, so they're just percents. That's not needed for correctness,
         // but it makes the test more obvious.
-        let logits = vec![15.0, 40.0, 10.0, 25.0, 10.0];
+        let logits = [15.0, 40.0, 10.0, 25.0, 10.0];
 
         const NUM_SAMPLES: usize = 100_000;
         const TOLERANCE_PERCENT: f32 = 0.03;
@@ -138,11 +131,11 @@ mod test {
         for i in 0..logits.len() {
             let actual = actual_counts[i];
             let expected = expected_counts[i];
-            let diff = (actual - expected).abs() as usize;
+            let diff = (actual - expected).unsigned_abs() as usize;
             if diff > tolerance {
                 // print all of both, for easier debugging
                 assert_eq!(actual_counts, expected_counts, "logit samples");
-                assert!(false, "test failed"); // just to be sure!
+                panic!("test failed"); // just to be sure!
             }
         }
     }

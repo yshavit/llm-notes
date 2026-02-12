@@ -66,9 +66,8 @@ fn matmul<'a, const A: usize, const B: usize, const C: usize>(
         // cache lines to predict our reads.
         for a_col in 0..a.num_cols() {
             let a_val = a.get(row_idx, a_col);
-            for b_col in 0..b.num_cols() {
-                // also out-col
-                row_vals[b_col] += a_val * b.get(a_col, b_col);
+            for (b_col, row_val) in row_vals.iter_mut().enumerate() {
+                *row_val += a_val * b.get(a_col, b_col);
             }
         }
     });
@@ -281,10 +280,10 @@ mod tests {
         CpuBackend::new_matrix(R, C)
     }
 
-    impl<const R: usize, const C: usize> Into<CpuTensor<2>> for [[f32; C]; R] {
-        fn into(self) -> CpuTensor<2> {
+    impl<const R: usize, const C: usize> From<[[f32; C]; R]> for CpuTensor<2> {
+        fn from(values: [[f32; C]; R]) -> Self {
             let mut m = CpuBackend::new_matrix(R, C);
-            for (row_idx, row_vals) in self.iter().enumerate() {
+            for (row_idx, row_vals) in values.iter().enumerate() {
                 m.set_row([row_idx, 0], row_vals);
             }
             m
