@@ -239,7 +239,7 @@ mod tests {
 
     static TOKENIZER: LazyLock<Result<Tokenizer, String>> = LazyLock::new(|| {
         let vocab_bpe = include_str!("test_assets/vocab.bpe");
-        let encoder_json = include_str!("test_assets/encoder.json");
+        let encoder_json = include_str!("test_assets/encodings.txt");
         Tokenizer::parse_vocab(vocab_bpe.as_bytes(), encoder_json.as_bytes()).map_err(|e| format!("{e}"))
     });
 
