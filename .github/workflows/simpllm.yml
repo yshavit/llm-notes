@@ -1,0 +1,45 @@
+name: simpllm
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "simpllm/**"
+      - ".github/workflows/simpllm.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "simpllm/**"
+      - ".github/workflows/simpllm-ci.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Check and Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update rust
+        run: rustup update stable
+      - name: install Clippy
+        run: rustup component add clippy
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Cargo Check
+        run: cargo check --workspace --all-targets
+      - name: Cargo Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        run: rustup update stable
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --workspace
