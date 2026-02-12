@@ -1,5 +1,5 @@
 use crate::cputensor::softmax;
-use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, TensorSlice};
 use std::cmp::Ordering;
 
 pub struct LogitSampler {
@@ -34,17 +34,18 @@ impl LogitSampler {
 
     pub fn get<B: TensorBackend>(&self, logits: Matrix<B>) -> usize {
         let last_logit = logits.num_rows() - 1;
-        logits.extract_row([last_logit, 0], |row| {
+        logits.slice_row([last_logit, 0], |row| {
+            let mut row = row.flat_f32().to_vec();
             if let Some(use_top_k) = self.top_k {
-                top_k(row, use_top_k);
+                top_k(&mut row, use_top_k);
             }
             if let Some(use_top_p) = self.top_p {
-                top_prob(row, use_top_p);
+                top_prob(&mut row, use_top_p);
             }
             if let Some(temp) = self.temperature {
                 row.iter_mut().for_each(|v| *v /= temp);
             }
-            multinomial_sample(row)
+            multinomial_sample(&mut row)
         })
     }
 }

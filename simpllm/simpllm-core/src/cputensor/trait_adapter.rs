@@ -1,6 +1,12 @@
 use crate::cputensor::matmul::matmul_batched;
-use crate::tensor::{Shape, TensorBackend};
+use crate::tensor::{Shape, TensorBackend, TensorSlice};
 use std::borrow::Cow;
+
+impl TensorSlice for [f32] {
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
+        Cow::from(self)
+    }
+}
 
 impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
     type Backend = crate::cputensor::CpuBackend;
@@ -46,10 +52,6 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
         self.set_row(indices, values)
     }
 
-    fn extract_row<X>(mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
-        self.mut_row(indices, f)
-    }
-
     fn flat_f32(&self) -> Cow<'_, [f32]> {
         self.flat_f32()
     }
@@ -68,9 +70,5 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
 
     fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
         self.add_tensor(other)
-    }
-
-    fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
-        self.set_row(indices, values)
     }
 }

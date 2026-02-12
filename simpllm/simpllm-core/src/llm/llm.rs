@@ -1,6 +1,6 @@
 use crate::bpe::Rank;
 use crate::cputensor::LogitSampler;
-use crate::tensor::{LayerNorm, Matrix, Tensor, Tensor2D, TensorBackend};
+use crate::tensor::{LayerNorm, Matrix, Tensor, Tensor2D, TensorBackend, TensorSlice};
 use crate::transformer::TransformerBlock;
 use std::fmt::{Display, Formatter};
 
@@ -43,9 +43,10 @@ impl<B: TensorBackend> Model<B> {
             None => {
                 // no sampling; just take argmax
                 let last_logit = unembedding.num_rows() - 1;
-                unembedding.extract_row([last_logit, 0], |row| {
+                unembedding.slice_row([last_logit, 0], |row| {
                     // argmax
-                    row.iter()
+                    row.flat_f32()
+                        .iter()
                         .enumerate()
                         .reduce(|acc, e| if e.1 > acc.1 { e } else { acc })
                         .map(|r| r.0)

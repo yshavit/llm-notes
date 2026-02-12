@@ -1,6 +1,6 @@
 use candle_core::{DType, Device, Module};
 use candle_nn;
-use simpllm_core::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, Vector};
+use simpllm_core::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, TensorSlice, Vector};
 use std::borrow::Cow;
 use std::error::Error;
 use std::ops::Deref;
@@ -91,7 +91,7 @@ struct CandleTensor<const R: usize> {
 
 impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Backend = CandleBackend;
-    type Slice = candle_core::Tensor;
+    type Slice = CandleTensor<R>;
 
     fn zeros(shape: impl Into<Shape<R>>) -> Self {
         Self {
@@ -155,12 +155,12 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
         tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
         let flat = tensor.flatten_all().unwrap();
-        f(&flat)
+        f(&CandleTensor { t: flat })
     }
 
     fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice) {
         let mut slice_params = vec![];
-        let v_dims = values.dims();
+        let v_dims = values.t.dims();
         let mut target_shape = vec![];
 
         // The input `values` is expected to represent a slice that starts at `indices`.
@@ -180,28 +180,16 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
 
         let values = if v_dims.len() != R {
-            values.reshape(target_shape).unwrap()
+            values.t.reshape(target_shape).unwrap()
         } else {
-            values.clone()
+            values.t.clone()
         };
 
         self.t = self.t.slice_assign(&slice_params, &values).unwrap();
     }
 
-    fn extract_row<X>(self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
-        let mut tensor = self.t.clone();
-        for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            tensor = tensor.narrow(i, idx, 1).unwrap();
-        }
-        tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
-        let flat = tensor.flatten_all().unwrap();
-        let mut vec = flat.to_vec1::<f32>().unwrap();
-        f(&mut vec)
-    }
-
     fn flat_f32(&self) -> Cow<'_, [f32]> {
-        let vec = self.t.flatten_all().unwrap().to_vec1::<f32>().unwrap();
-        Cow::Owned(vec)
+        TensorSlice::flat_f32(self)
     }
 
     fn gelu(self) -> Self {
@@ -227,19 +215,10 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
             t: self.t.broadcast_add(&other.t).unwrap(),
         }
     }
+}
 
-    fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
-        let shape = self.shape();
-        let mut row_shape = vec![1; R - 1];
-        row_shape.push(shape[R - 1]);
-        let row_tensor = candle_core::Tensor::from_slice(values, row_shape, self.t.device()).unwrap();
-
-        let mut slice_params = vec![];
-        for &idx in indices.iter().take(R - 1) {
-            slice_params.push(idx..idx + 1);
-        }
-        slice_params.push(indices[R - 1]..indices[R - 1] + shape[R - 1]);
-
-        self.t = self.t.slice_assign(&slice_params, &row_tensor).unwrap();
+impl<const R: usize> TensorSlice for CandleTensor<R> {
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
+        Cow::Owned(self.t.flatten_all().unwrap().to_vec1::<f32>().unwrap())
     }
 }
