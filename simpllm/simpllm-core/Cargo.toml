@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 rand = "0.10.0" # for sampling logits
 rayon = "1.11.0" # multithreading
-serde_json = { workspace = true } # config and TUI stuff
 
 [dev-dependencies]
-approx = "0.5"
-tiktoken-rs = "0.9.1"
+# for unit tests:
+approx = "0.5" # asserts for floats
+tiktoken-rs = "0.9.1" # reference implementation of BPE tokenizer, to compare against

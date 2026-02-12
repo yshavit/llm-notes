@@ -7,8 +7,10 @@ use gpt2weights::{
 use indicatif::{ProgressBar, ProgressStyle};
 use memmap2::MmapOptions;
 use safetensors::{Dtype, SafeTensors};
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
+use std::io::{BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -58,6 +60,8 @@ struct Args {
     check_download: bool,
 }
 
+const ENCODINGS_TXT: &'static str = "encodings.txt";
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -73,6 +77,8 @@ async fn main() -> Result<()> {
         .map_err(|e| anyhow!("while reading {}: {e}", HfModelFiles::Config.file_name()))?;
     let h_params: HParams = serde_json::from_reader(hf_config_stream)?;
 
+    rewrite_encodings(&model_path, ENCODINGS_TXT)?;
+
     let ms = ModelShape {
         transformer: transformer_shapes,
         h_params,
@@ -80,7 +86,7 @@ async fn main() -> Result<()> {
         file_names: FileNames {
             tensors: HfModelFiles::Tensors.file_name().to_string(),
             bpe_merges: HfModelFiles::BpeMerges.file_name().to_string(),
-            bpe_encodings: HfModelFiles::BpeEncoding.file_name().to_string(),
+            bpe_encodings: ENCODINGS_TXT.to_string(),
         },
     };
 
@@ -88,6 +94,37 @@ async fn main() -> Result<()> {
     let out_path = model_path.path(SIMPLLM_METADATA_FILE);
     fs::write(&out_path, ms_bytes)?;
     println!("wrote {}", out_path.display());
+
+    Ok(())
+}
+
+fn rewrite_encodings(path: &ModelPath, file_name: &str) -> Result<()> {
+    let file = File::open(path.path(HfModelFiles::BpeEncoding.file_name()))?;
+    let file_reader = BufReader::new(file);
+    let tok_to_id: HashMap<String, u16> = serde_json::from_reader(file_reader)?;
+
+    let mut tok_vec = vec![None; tok_to_id.len()];
+    for (tok, id) in tok_to_id {
+        if tok.contains(['\n', '\r']) {
+            anyhow::bail!("invalid tok: {tok:?}");
+        }
+        match tok_vec.get_mut(id as usize) {
+            None => anyhow::bail!("out of range: {tok:?} => {id} to vec of len {}", tok_vec.len()),
+            Some(Some(prev)) => anyhow::bail!("{tok:?} => {id} conflicts with existing {prev:?}"),
+            Some(entry) => *entry = Some(tok),
+        }
+    }
+    let tok_vec: Result<Vec<_>> = tok_vec
+        .into_iter()
+        .enumerate()
+        .map(|(idx, maybe_tok)| maybe_tok.ok_or_else(|| anyhow!("no item at index {idx}")))
+        .collect();
+    let tok_vec = tok_vec?;
+
+    let mut out_file = BufWriter::new(File::create(path.path(file_name))?);
+    for tok in tok_vec {
+        writeln!(&mut out_file, "{tok}")?;
+    }
 
     Ok(())
 }

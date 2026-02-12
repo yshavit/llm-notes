@@ -22,11 +22,16 @@ pub struct Tokenizer {
 struct MergeRule(String, String);
 
 impl Tokenizer {
-    pub fn parse_vocab(merge_rules: impl Read, tok_to_id: impl Read) -> Result<Self, Box<dyn Error>> {
+    pub fn parse_vocab(merge_rules: impl Read, tok_encoding_lines: impl Read) -> Result<Self, Box<dyn Error>> {
         let merge_rules = Self::parse_merge_rules(merge_rules)?;
 
-        let tok_to_id: HashMap<String, u16> = serde_json::from_reader(tok_to_id)?;
-        let id_to_tok = Self::build_id_to_tok(&tok_to_id)?;
+        let id_to_tok: Vec<_> = BufReader::new(tok_encoding_lines).lines().collect::<Result<_, _>>()?;
+        let tok_to_id: HashMap<String, u16> = HashMap::from_iter(
+            id_to_tok
+                .iter()
+                .enumerate()
+                .map(|(idx, tok)| (tok.to_string(), idx as u16)),
+        );
 
         let bytes_to_unicode = Self::bytes_to_unicode();
         let unicode_to_bytes = bytes_to_unicode
@@ -147,22 +152,6 @@ impl Tokenizer {
             }
         }
         None
-    }
-
-    fn build_id_to_tok(tok_to_id: &HashMap<String, u16>) -> Result<Vec<String>, Box<dyn Error>> {
-        let mut with_optionals: Vec<Option<String>> = vec![None; tok_to_id.len()];
-        for (tok, &id) in tok_to_id {
-            let idx = id as usize;
-            match with_optionals[idx] {
-                None => with_optionals[idx] = Some(tok.to_string()),
-                Some(_) => return Err(format!("duplicate entry at {idx}").into()),
-            }
-        }
-        with_optionals
-            .into_iter()
-            .enumerate()
-            .map(|(i, opt)| opt.ok_or_else(|| format!("no token at index {}", i).into()))
-            .collect()
     }
 
     fn parse_merge_rules(vocab_file: impl Read) -> Result<Vec<MergeRule>, Box<dyn Error>> {

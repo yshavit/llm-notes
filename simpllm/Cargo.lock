@@ -3091,7 +3091,6 @@ dependencies = [
  "approx",
  "rand 0.10.0",
  "rayon",
- "serde_json",
  "tiktoken-rs",
 ]
 
