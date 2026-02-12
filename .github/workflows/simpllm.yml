@@ -29,8 +29,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Cargo Check
         run: cargo check --workspace --all-targets
+        working-directory: simpllm
       - name: Cargo Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+        working-directory: simpllm
 
   test:
     name: Unit Tests
@@ -43,3 +45,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --workspace
+        working-directory: simpllm
