@@ -19,7 +19,7 @@ pub struct Model<B: TensorBackend> {
 
 impl<B: TensorBackend> ModelLoader<B> {
     pub fn initialize(self) -> Model<B> {
-        let mut tok_embed = B::Tensor::new(self.tok_embed.shape());
+        let mut tok_embed = B::Tensor::zeros(self.tok_embed.shape());
         tok_embed.reset_values(&self.tok_embed.flat_f32());
         let tok_unembed = tok_embed.transposed(0, 1).contiguous();
         Model { fwd: self, tok_unembed }
@@ -42,7 +42,8 @@ impl<B: TensorBackend> Model<B> {
             Some(logit_sampler) => logit_sampler.get::<B>(unembedding),
             None => {
                 // no sampling; just take argmax
-                unembedding.with_row([unembedding.num_rows() - 1, 0], |row| {
+                let last_logit = unembedding.num_rows() - 1;
+                unembedding.extract_row([last_logit, 0], |row| {
                     // argmax
                     row.iter()
                         .enumerate()

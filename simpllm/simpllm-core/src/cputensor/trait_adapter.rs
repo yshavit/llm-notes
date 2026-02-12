@@ -6,7 +6,7 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
     type Backend = crate::cputensor::CpuBackend;
     type Slice = [f32];
 
-    fn new(shape: impl Into<Shape<R>>) -> Self {
+    fn zeros(shape: impl Into<Shape<R>>) -> Self {
         super::CpuTensor::new(shape)
     }
 
@@ -36,10 +36,6 @@ impl<const R: usize> crate::tensor::Tensor<R> for super::CpuTensor<R> {
 
     fn matmul(&self, other: &Self) -> Self {
         matmul_batched(self, other)
-    }
-
-    fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
-        self.with_row(indices, f)
     }
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {

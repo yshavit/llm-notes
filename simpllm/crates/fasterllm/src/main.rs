@@ -93,10 +93,9 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Backend = CandleBackend;
     type Slice = candle_core::Tensor;
 
-    fn new(shape: impl Into<Shape<R>>) -> Self {
-        let candle_shape: Vec<usize> = shape.into().to_vec();
+    fn zeros(shape: impl Into<Shape<R>>) -> Self {
         Self {
-            t: candle_core::Tensor::zeros(candle_shape, DType::F32, &CUDA).unwrap(),
+            t: candle_core::Tensor::zeros(shape.into().to_vec(), DType::F32, &CUDA).unwrap(),
         }
     }
 
@@ -147,17 +146,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         Self {
             t: lhs.matmul(&rhs).unwrap(),
         }
-    }
-
-    fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
-        let mut tensor = self.t.clone();
-        for (i, &idx) in indices.iter().enumerate().take(R - 1) {
-            tensor = tensor.narrow(i, idx, 1).unwrap();
-        }
-        tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
-        let flat = tensor.flatten_all().unwrap();
-        let vec = flat.to_vec1::<f32>().unwrap();
-        f(&vec)
     }
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {

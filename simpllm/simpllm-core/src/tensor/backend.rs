@@ -8,11 +8,11 @@ pub trait TensorBackend: Sized {
     fn lower_triangle(n: usize) -> Self::Tensor<2>;
 
     fn new_matrix(rows: usize, cols: usize) -> Self::Tensor<2> {
-        Self::Tensor::new([rows, cols])
+        Self::Tensor::zeros([rows, cols])
     }
 
     fn new_vector(size: usize) -> Self::Tensor<1> {
-        Self::Tensor::new([size])
+        Self::Tensor::zeros([size])
     }
 }
 

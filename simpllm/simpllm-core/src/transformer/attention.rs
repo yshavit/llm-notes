@@ -189,7 +189,7 @@ mod tests {
         let zero_bias_o = CpuBackend::new_vector(embedding_dim);
         attention.o_mut().set(&o_weights, &zero_bias_o);
 
-        let mut tokens = CpuTensor::new([embedding_dim * n_tokens]);
+        let mut tokens = CpuTensor::zeros([embedding_dim * n_tokens]);
         tokens.reset_values(
             &(0..(n_tokens * embedding_dim))
                 .map(|i| (i + 1) as f32)
@@ -219,10 +219,7 @@ mod tests {
         ];
 
         assert_eq!(output.num_rows(), expected.len());
-        let mut actual_as_vec = Vec::new();
-        for row in 0..output.num_rows() {
-            actual_as_vec.push(output.with_row([row, 0], |r| Vec::from(r)))
-        }
+        let actual_as_vec: Vec<Vec<f32>> = output.flat_f32().chunks_exact(embedding_dim).map(Vec::from).collect();
         for row in 0..expected.len() {
             assert_f32_slice!(&actual_as_vec[row], &expected[row]);
         }

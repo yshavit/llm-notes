@@ -6,7 +6,7 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     type Backend: TensorBackend;
     type Slice: ?Sized;
 
-    fn new(shape: impl Into<Shape<R>>) -> Self;
+    fn zeros(shape: impl Into<Shape<R>>) -> Self;
     fn shape(&self) -> Shape<R>;
 
     fn reset_values(&mut self, values: &[f32]);
@@ -16,8 +16,6 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     fn transposed(self, dim0: usize, dim1: usize) -> Self;
     fn contiguous(self) -> Self;
     fn matmul(&self, other: &Self) -> Self;
-
-    fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X;
 
     fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X;
     fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice);

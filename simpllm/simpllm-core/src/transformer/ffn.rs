@@ -154,7 +154,7 @@ pub mod tests {
     fn count_up<const R: usize>(shape: [usize; R]) -> <crate::cputensor::CpuBackend as TensorBackend>::Tensor<R> {
         let shape = Shape::from(shape);
         let vals: Vec<_> = (0..shape.num_elements()).map(|i| (i + 1) as f32).collect();
-        let mut t = <crate::cputensor::CpuBackend as TensorBackend>::Tensor::new(shape);
+        let mut t = <crate::cputensor::CpuBackend as TensorBackend>::Tensor::zeros(shape);
         t.reset_values(&vals);
         t
     }

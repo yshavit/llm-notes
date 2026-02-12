@@ -1,4 +1,4 @@
-use gpt2weights::{load_metadata, HParams, ModelPath, ModelShape, NormOffsets, Offsets};
+use gpt2weights::{HParams, ModelPath, ModelShape, NormOffsets, Offsets, load_metadata};
 use simpllm_core::llm::ModelLoader;
 use simpllm_core::tensor::{LayerNorm, Tensor, TensorBackend};
 use simpllm_core::transformer::{Attention, Ffn, TransformerBlock};
@@ -117,7 +117,7 @@ fn load_tensor<B: TensorBackend, const R: usize>(
 }
 
 fn populate_tensor<B: TensorBackend, const R: usize>(size: [usize; R], vals: &[f32]) -> B::Tensor<R> {
-    let mut t = B::Tensor::new(size);
+    let mut t = B::Tensor::zeros(size);
     t.reset_values(vals);
     t
 }
