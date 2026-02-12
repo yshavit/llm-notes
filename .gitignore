@@ -2,7 +2,9 @@
 *.bkp
 *.dtmp
 *.sha1
+/simpllm/data
 /spell
 /venv
+__pycache__/
 _build
 _plugin
