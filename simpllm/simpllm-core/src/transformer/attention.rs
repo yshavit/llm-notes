@@ -47,9 +47,9 @@ impl<B: TensorBackend> Attention<B> {
         // TODO in practice, these are brought in as a single matrix that's the three of these concatenated.
         // each are (h, n, d/h)
         let [queries, keys, values] = {
-            let mut combined = input.matmul(self.w_qkv.weights());
+            let combined = input.matmul(self.w_qkv.weights()).add(self.w_qkv.bias());
+
             // Combined is (N x 3d). Add the biases before reshaping.
-            combined = combined.add(self.w_qkv.bias());
 
             let split = combined.split::<3>(1);
             split.map(|m| {
@@ -76,8 +76,8 @@ impl<B: TensorBackend> Attention<B> {
         // reshape
         let attn = attn.contiguous().reshape([n, d]);
 
-        let output = attn.matmul(self.w_o.weights());
-        output.add(self.w_o.bias())
+        // apply the weights
+        attn.matmul(self.w_o.weights()).add(self.w_o.bias())
     }
 }
 

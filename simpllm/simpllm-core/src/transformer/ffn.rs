@@ -2,14 +2,14 @@ use crate::tensor::{Matrix, Shape, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
 pub struct Ffn<B: TensorBackend> {
-    layers_transforms: Vec<LayerTransform<B>>,
+    layers_transforms: Vec<MatrixAndBias<B>>,
 }
 
 impl<B: TensorBackend> Ffn<B> {
     pub fn new(mut in_dim: usize, hidden_layer_dims: &[usize], out_dim: usize) -> Self {
         let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
         for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&out_dim)) {
-            layers.push(LayerTransform::new(in_dim, out_dim));
+            layers.push(MatrixAndBias::new(in_dim, out_dim));
             in_dim = out_dim;
         }
         Self {
@@ -18,15 +18,15 @@ impl<B: TensorBackend> Ffn<B> {
     }
 
     fn in_dims(&self) -> usize {
-        self.layers_transforms[0].mab.in_dims()
+        self.layers_transforms[0].in_dims()
     }
 
     fn out_dims(&self) -> usize {
-        self.layers_transforms[self.layers_transforms.len() - 1].mab.out_dims()
+        self.layers_transforms[self.layers_transforms.len() - 1].out_dims()
     }
 
     pub fn layer_mut(&mut self, layer: usize) -> &'_ mut MatrixAndBias<B> {
-        &mut self.layers_transforms[layer].mab
+        &mut self.layers_transforms[layer]
     }
 
     pub fn apply_matrix(&self, input: Matrix<B>) -> Matrix<B> {
@@ -42,32 +42,15 @@ impl<B: TensorBackend> Ffn<B> {
         let n_rows = input.num_rows();
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
-            assert_eq!(input.shape(), Shape::new([n_rows, transform.mab.in_dims()]));
-            let mut output = transform.apply(&input);
-            assert_eq!(output.shape(), Shape::new([n_rows, transform.mab.out_dims()]));
+            assert_eq!(input.shape(), Shape::new([n_rows, transform.in_dims()]));
+            let mut output = input.matmul(transform.weights()).add(transform.bias());
+            assert_eq!(output.shape(), Shape::new([n_rows, transform.out_dims()]));
             if transforms.peek().is_some() {
                 output = output.gelu();
             }
             input = output;
         }
         input
-    }
-}
-
-struct LayerTransform<B: TensorBackend> {
-    mab: MatrixAndBias<B>,
-}
-
-impl<B: TensorBackend> LayerTransform<B> {
-    fn new(in_dims: usize, out_dims: usize) -> Self {
-        Self {
-            mab: MatrixAndBias::new(in_dims, out_dims),
-        }
-    }
-
-    fn apply(&self, inputs: &Matrix<B>) -> Matrix<B> {
-        let activations = inputs.matmul(self.mab.weights());
-        activations.add(self.mab.bias())
     }
 }
 
@@ -135,9 +118,9 @@ pub mod tests {
 
         let mut ffn: Ffn<CpuBackend> = Ffn::new(5, &[7], 6);
         for transform in &mut ffn.layers_transforms {
-            transform.mab.set(
-                &count_up([transform.mab.in_dims(), transform.mab.out_dims()]),
-                &count_up([transform.mab.out_dims()]),
+            transform.set(
+                &count_up([transform.in_dims(), transform.out_dims()]),
+                &count_up([transform.out_dims()]),
             );
         }
 
