@@ -1,13 +1,12 @@
 pub mod gelu;
 mod matmul;
 pub mod norm;
-mod sample;
 pub mod softmax;
 mod tensor;
 mod trait_adapter;
 
+pub use crate::llm::sample::LogitSampler;
 use crate::tensor::Tensor;
-pub use sample::LogitSampler;
 pub use softmax::*;
 pub use tensor::*;
 
