@@ -236,6 +236,36 @@ mod tests {
     use super::*;
     use std::sync::LazyLock;
 
+    /// Makes two checks:
+    ///
+    /// 1. A round trip of string -> token IDs -> string; should result in the original string.
+    /// 2. A comparison against [tiktoken-rs].
+    ///
+    /// [tiktoken_rs]: https://crates.io/crates/tiktoken-rs
+    fn check(original_text: &str) {
+        // round trip on my tokenizer
+        let my_encoded_ranks: Vec<_> = {
+            let my_tokenizer = TOKENIZER.as_ref().unwrap();
+            let my_encoded = my_tokenizer.encode(original_text);
+
+            let rank_to_string: String = my_tokenizer.decode(&my_encoded);
+            assert_eq!(rank_to_string, original_text, "at round trip check");
+
+            // return as usize
+            my_encoded.iter().map(Rank::rank).collect()
+        };
+
+        // compare against tiktoken
+        {
+            let tiktoken_encoded: Vec<_> = tiktoken_rs::r50k_base_singleton()
+                .encode_with_special_tokens(original_text)
+                .into_iter()
+                .map(|r| r as usize)
+                .collect();
+            assert_eq!(my_encoded_ranks, tiktoken_encoded, "at check against tiktoken");
+        }
+    }
+
     static TOKENIZER: LazyLock<Result<Tokenizer, String>> = LazyLock::new(|| {
         let vocab_bpe = include_str!("test_assets/vocab.bpe");
         let encoder_json = include_str!("test_assets/encodings.txt");
@@ -330,29 +360,5 @@ mod tests {
             and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest \
             of him, waved about helplessly as he looked.",
         );
-    }
-
-    fn check(original_text: &str) {
-        // round trip on my tokenizer
-        let my_encoded_ranks: Vec<_> = {
-            let my_tokenizer = TOKENIZER.as_ref().unwrap();
-            let my_encoded = my_tokenizer.encode(original_text);
-
-            let rank_to_string: String = my_tokenizer.decode(&my_encoded);
-            assert_eq!(rank_to_string, original_text, "at round trip check");
-
-            // return as usize
-            my_encoded.iter().map(Rank::rank).collect()
-        };
-
-        // compare against tiktoken
-        {
-            let tiktoken_encoded: Vec<_> = tiktoken_rs::r50k_base_singleton()
-                .encode_with_special_tokens(original_text)
-                .into_iter()
-                .map(|r| r as usize)
-                .collect();
-            assert_eq!(my_encoded_ranks, tiktoken_encoded, "at check against tiktoken");
-        }
     }
 }

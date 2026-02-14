@@ -1,5 +1,8 @@
 # simpllm-core
 
+The meat of the project! A fully from-scratch implementation of an LLM. The only two external dependencies (not counting
+for tests) are [`rand`] for sampling logits, and [`rayon`] for parellel processing (for matrix math).
+
 - [`bpe`](src/bpe): An implementation of a [byte-pair encoding][bpe] tokenizer.
 - [`tensor`](src/tensor): Traits for tensor implementations.
 - [`cputensor`](src/cputensor): The only implementation of the `tensor` traits — in this crate, anyway (see
@@ -11,3 +14,7 @@
 [bpe]: https://en.wikipedia.org/wiki/Byte-pair_encoding
 
 [`fasterllm`]: ../crates/fasterllm
+
+[`rand`]: https://crates.io/crates/rand
+
+[`rayon`]: https://crates.io/crates/rayon
