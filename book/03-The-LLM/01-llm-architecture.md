@@ -9,26 +9,14 @@ In the previous chapter, I gave a very high-level overview of how LLMs work. In 
 
 ## How I organize my thinking about LLMs
 
-I find it useful to think about LLMs in three hierarchical perspectives:
+I mentioned in the introduction that I think of the pedagogy of LLMs in three perspectives:
 
-1. The fundamental concepts
-2. Algebraic reformulations of those concepts
-3. The actual implementation
-
-This book will primarily focus on the first two perspectives, and ignore the third altogether. For implementation, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
-
-:::{note} This is not standard terminology
-The way I break down these perspectives --- and in particular, the separation between fundamental concepts and algebraic reformulations --- isn't standard. Most texts combine the concepts and algebraic formulations, which makes for a more streamlined description, but one that I find harder to follow.
-
-If you read other materials on LLMs, just be aware that they'll likely combine perspectives 1 and 2 into just a single "here's what's going on".
+:::{embed} #pedagogical-hierarchy
 :::
-
-[Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
-[Hugging Face's course]: https://huggingface.co/learn/llm-course/chapter1/1
 
 ### Conceptual perspective
 
-In the first perspective (the conceptual perspective) data follows through the LLM in the form of vectors. In particular, we'll often work with vectors of vectors, like $[ [1, 2, 3], [4, 5, 6] ]$. To transform these vectors, we'll often use matrices.
+In the first perspective (the conceptual perspective) data follows through the LLM in the form of vectors. In particular, we'll often work with vectors of vectors, like $\begin{bmatrix}\small\,\begin{bmatrix}1 \; 2 \; 3\end{bmatrix}\;\begin{bmatrix}4 \; 5 \; 6\end{bmatrix}\,\end{bmatrix}$. To transform these vectors, we'll often use matrices.
 
 ### Algebraic reformulations
 

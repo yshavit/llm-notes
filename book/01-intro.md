@@ -29,12 +29,34 @@ Following that colloquial usage, this book will use "LLM" and "GPT" interchangea
 
 ### Parts in the journey
 
+I find it useful to think about LLMs in three hierarchical perspectives:
+
+(pedagogical-hierarchy)=
+
+1. The fundamental concepts
+2. Algebraic reformulations of those concepts
+3. The actual implementation
+
+This book will primarily focus on the first two perspectives. It leaves the third essentially untouched, though I wrote [an implementation of a GPT-2 LLM][implementation] based on this book. (Let me know if you'd like me to tie this implementation more closely to the book!)
+
+For more implementation details, you should refer to resources like [Sebastian Raschka's _Build a Large Language Model (From Scratch)_][Raschka] or [Hugging Face's course] (which I haven't read, but I hear good things about).
+
+:::{note} This is not standard terminology
+The way I break down these perspectives --- and in particular, the separation between fundamental concepts and algebraic reformulations --- isn't standard. Most texts combine the concepts and algebraic formulations, which makes for a more streamlined description, but one that I find harder to follow.
+
+If you read other materials on LLMs, just be aware that they'll likely combine perspectives 1 and 2 into just a single "here's what's going on".
+:::
+
 The book is organized into four parts:
 
 1. **Introduction** (you are here), which includes a very high level overview of LLMs and a quick refresher on vectors and matrices
 2. **The LLM**, which will walk you through the architecture of an LLM from 0 to 60
 3. **Training**, which will discuss how an LLM learns the values that drive that architecture
 4. **Further reading**, which will talk about modern improvements to the LLM, as well as other, related ML technologies.
+
+[implementation]: https://github.com/yshavit/llm-notes/tree/main/simpllm
+[Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
+[Hugging Face's course]: https://huggingface.co/learn/llm-course/chapter1/1
 
 ### This book is meant to be read front-to-back
 
@@ -75,5 +97,4 @@ That said, this book _will_ be getting into the specific math behind LLMs, so th
 
 The source for this book is on [my GitHub][gh]. Please feel free to suggest corrections there, especially if I got something factually wrong.
 
-[Raschka]: https://www.manning.com/books/build-a-large-language-model-from-scratch
 [gh]: https://github.com/yshavit/llm-notes
