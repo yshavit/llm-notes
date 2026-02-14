@@ -27,6 +27,15 @@ Following that colloquial usage, this book will use "LLM" and "GPT" interchangea
 
 ## Organization
 
+### Parts in the journey
+
+The book is organized into four parts:
+
+1. **Introduction** (you are here), which includes a very high level overview of LLMs and a quick refresher on vectors and matrices
+2. **The LLM**, which will walk you through the architecture of an LLM from 0 to 60
+3. **Training**, which will discuss how an LLM learns the values that drive that architecture
+4. **Further reading**, which will talk about modern improvements to the LLM, as well as other, related ML technologies.
+
 ### This book is meant to be read front-to-back
 
 The driving principle behind this book's organization is that you should be able to read it front-to-back. This means:
@@ -38,15 +47,6 @@ The driving principle behind this book's organization is that you should be able
 That said, I'll sometimes need to tease ahead to topics that I'll discuss in detail later. When I do, I'll try to give just enough context to make the current thing I'm explaining make sense. I'll provide cross-reference links where relevant, but you don't need to click through to them.
 
 (Of course, human learning being the way it is, you may still need to refer back to a section you've already read to remind yourself of it. Basically: yes to having to flipping back, no to having to flipping ahead.)
-
-### Parts in the journey
-
-The book is organized into four parts:
-
-1. **Introduction** (you are here), which includes a very high level overview of LLMs and a quick refresher on vectors and matrices
-2. **The LLM**, which will walk you through the architecture of an LLM from 0 to 60
-3. **Training**, which will discuss how an LLM learns the values that drive that architecture
-4. **Further reading**, which will talk about modern improvements to the LLM, as well as other, related ML technologies.
 
 ### Callouts
 
