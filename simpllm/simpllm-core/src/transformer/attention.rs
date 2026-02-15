@@ -5,7 +5,6 @@ pub struct Attention<B: TensorBackend> {
     embedding_dim: usize,
     num_heads: usize,
 
-    // TODO need to update the book to include that these all have bias!
     w_qkv: MatrixAndBias<B>,
     w_o: MatrixAndBias<B>,
 }

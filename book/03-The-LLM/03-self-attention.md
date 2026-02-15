@@ -224,19 +224,20 @@ For each token within the input, we'll focus on that token and do a bunch of cal
 
 With that query token in mind, we'll look at each token in the input, treating each one in turn as a {dfn}`key token`.
 
-1. First, calculate the query token's {dfn}`query vector`, using $W_q$.
+1. First, calculate the query token's {dfn}`query vector`, using $W_q$ and a bias called $b_q$ (more in this below).
 2. Then calculate {dfn}`attention scores` for each key token. These are scalars that tell us how much the query token should care about each key token. There is one per key token. To calculate these scores:
-    1. Use $W_k$ to calculate the {dfn}`key vector` per key.
+    1. Use $W_k$ to calculate the {dfn}`key vector` per key. We'll also add a bias, called $b_k$, just as we did for the query vector.
     2. Take the dot product of the query and key vectors to get the attention score for each key.
 3. Next, normalize these attention scores into {dfn}`attention weights` (still one scalar per key token).
 4. Next, compute {dfn}`value vectors` for each key, weighted by their respective attention weights:
-    1. Use $W_v$ to transform each key into a $\delta$-vector
+    1. Use $W_v$ and a $b_v$ bias to transform each key into a $\delta$-vector
     2. Multiply each of those $\delta$-vectors by its respective attention weight to compute the weighted value vectors, again one per key.
 5. Finally, sum the weighted values to get the {dfn}`context vector`, which is the output for this query token. Since this is the sum of $\delta$-vectors, it is also a $\delta$-vector.
 
 :::{aside}
 
 - **$W_q$, $W_k$, $W_v$**: learned parameter matrices; each has size $d \times \delta$, where $d$ and $\delta$ are both hyperparameters, and typically $d = \delta$
+- $b_q$, $b_k$, $b_v$: learned parameter vectors, each $\delta$ elements.
 - {dfn}`query, key, value vectors`: $\delta$-sized vector activations based on the input embeddings and the weight matrices
 - {dfn}`attention score, attention weights`: scalar activations based on the query and key vectors
 - {dfn}`weighted values`: $\delta$-sized vector activations based on the attention weights and input embeddings
@@ -259,7 +260,7 @@ Again, all of that work is just for a single query token. We'll repeat it for ea
 
 Let's walk through the specifics.
 
-### $W_q$ → query vector
+### $W_q$ and $b_q$ → query vector
 
 ::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-query
@@ -277,14 +278,23 @@ This just transforms the query token by the weight matrix $W_q$:
 
 - We start with the query token's input embedding, which is a vector of size $d$
 - We have the query weight matrix $W_q$, which is $d \times \delta$
-- We just multiply them together, and the result is a vector of size $\delta$:
+- We multiply them together, and the result is a vector of size $\delta$:
   $$
   \underbrace{query\ token}_{1 \times d} \cdot \underbrace{W_q}_{d \times \delta} = \underbrace{query\ vector}_{1 \times \delta}
   $$
+- We add the bias $b_q$. This is a vector of size $\delta$, so we just add the two vectors' corresponding elements.
 
 That's it!
 
-### Query vector and $W_k$ → attention scores
+Why the bias? We can think of the query vector as analogous to a linear function:
+
+$$
+\text{query vector} = XW_q + b_q \Longleftrightarrow ax + b
+$$
+
+Just as you'd need the $b$ coefficient to match data to a linear function in standard Cartesian math, you need $b_q$ to match the input to the query vector.
+
+### Query vector, $W_k$ and $b_k$ → attention scores
 
 ::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-score
@@ -300,7 +310,7 @@ That's it!
 
 This step happens for each key token (that is, each embedding in the input vector).
 
-First, we'll calculate the key vector for each key token. This is a $\delta$-sized vector. Similar to how we calculated the query vector, this is just $key\ embedding \cdot W_k$.
+First, we'll calculate the key vector for each key token. This is a $\delta$-sized vector. Similar to how we calculated the query vector, this is just $key\ embedding \cdot W_k + b_k$.
 
 Now we have two $\delta$-sized vectors: the query (from the previous step) and the key. We compute their dot-product-math to combine them into a scalar.
 
@@ -375,7 +385,7 @@ attention weights
 : Normalized values that represent the percentage of attention that each token gets. These are all between 0 and 1, and they sum to 1.
 :::
 
-### $W_v$ → weighted value vectors
+### $W_v$ and $b_v$ → weighted value vectors
 
 ::::{aside}
 :::{drawio} images/attention/llm-flow-self-attention-weighted-value
@@ -390,7 +400,7 @@ attention weights
 
 All of the work until now has been to calculate the attention weights, which are an $n$-sized vector of scalars that answer the first component of attention: "for each input A, how much does it care about input B?" Now we'll answer the second component: how should input B express its information?
 
-We'll start with familiar ground, by turning our $d$-sized key embeddings into $\delta$-sized vectors by multiplying them by a weight matrix. This time we'll use the $W_v$ weight matrix, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
+We'll start with familiar ground, by turning our $d$-sized key embeddings into $\delta$-sized vectors by multiplying them by a weight matrix. This time we'll use the $W_v$ weight matrix and $b_v$ bias, and the result is a {dfn}`value vector`. As with the key vector, we have one such value vector per input token.
 
 From here, we calculate intermediate "weighted values" by multiplying each value vector by its corresponding attention weight. For example, let's say:
 
@@ -402,8 +412,8 @@ In this case, the weighted value vector for input 4 is:
 $$
 \begin{align}
   & 0.27 \cdot [6.2, 1.4, 7.9] \\
-= & [(0.27 \cdot 6.2), (0.27 \cdot 1.4), (0.27 \cdot 7.9)] \\
-= & [1.67, 0.378, 2.13]
+= \; & [(0.27 \cdot 6.2), (0.27 \cdot 1.4), (0.27 \cdot 7.9)] \\
+= \; & [1.67, 0.378, 2.13]
 \end{align}
 $$
 
@@ -456,7 +466,7 @@ When I wrote above that there's only one each of $W_q$, $W_k$, and $W_v$, that w
 
 The problem is that a single attention head can get somewhat myopic, focusing primarily on just one aspect of the input tokens. For example, a head may end up focusing just on semantic interactions between tokens, or just on their grammatical relationships. (The actual relationships it learns are more abstract than that, but I'm "translating" the properties it learns into more intuitive relationships).
 
-To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices. Each one of these heads acts independently, finding its own relationship to learn.
+To solve this, LLMs actually use multiple heads, each with their own $W_q$ / $W_k$, / $W_v$ matrices and biases. Each one of these heads acts independently, finding its own relationship to learn.
 
 In this {dfn}`multi-head` arrangement, each head's output has $\frac{\delta}{h}$ dimensions, where $\delta$ is the attention layer output's dimensionality (as we've been using it all along) and $h$ is the number of heads. For example, if we want the attention output to have 720 dimensions, and we want 12 heads (these are both hyperparameters the model designer picks), each head would have dimensionality 60. This then determines how big each head's weight matrices are: each will be $d \times \frac{\delta}{h}$.
 
@@ -474,11 +484,11 @@ You may be thinking that it seems odd to just concatenate matrices that don't ne
 
 (w-o-projection)=
 
-To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"). This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
+To solve that problem, multi-head models introduce one more matrix, $W_o$ (for "output"), along with its bias. This is a $\delta \times \delta$ learned matrix that encodes how to combine all the heads into a single, appropriately blended result.
 
 $$
 \underbrace{concatenated\ heads}_{n \times \delta}
-\cdot \underbrace{W_o}_{\delta \times \delta}
+\cdot \underbrace{W_o}_{\delta \times \delta} + b_o
 = \underbrace{layer\ output}_{n \times \delta}
 $$
 
