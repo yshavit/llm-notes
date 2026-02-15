@@ -1,6 +1,6 @@
 # Self-attention
 
-:::{status} 2
+:::{status} 1
 :::
 
 ## What and _why_ is self-attention?
@@ -454,6 +454,24 @@ We then repeat this for each of the $n$ inputs, treating each as the query token
 :alt: attention weights combine with values to form the context vector
 :::
 
+## Causal attention
+
+In all of the above, we've been calculating the full $n \times n$ attention grid, as we saw above:
+
+:::{drawio} images/attention/attention-weights-houston
+:alt: the full n times n attention grid
+:::
+
+The problem is that at inference, we're going to be predicting one token at a time. This means that when we predict token, we won't yet know the tokens after it --- and thus can't know how they'll attend to it:
+
+:::{drawio} images/attention/causal-attention-grid
+:alt: The same n times n grid as before, but with the top-right crossed out to show that we don't know those pairs.
+:::
+
+To account for this, we'll fill the top-right portion of the attention scores with $-\infty$, right before applying softmax. When we apply softmax to each row, the $-\infty$ will turn to 0, and they'll be disregarded as we normalize the rest of the values.
+
+This triangle of $-\infty$s is called the {dfn}`causal attention mask`.
+
 ## Real-world improvements
 
 The above covers the fundamental aspects of how self-attention works, but there are several crucial ways that it's augmented in real-world LLMs. Don't worry: the hardest part is behind us. Still, it's important to know about these if you want to understand how real LLMs work.
@@ -510,13 +528,13 @@ As I mentioned in the previous chapter, modern LLMs don't add positional encodin
 
 For now, I'll just mention that this exists. I'll describe it more in {ref}`beyond-the-toy-llm`.
 
-### Causal masking and dropout
+### Dropout
 
-There are two more concepts important to self-attention: causal masking (also known as "causal attention") and dropout.
+There's one more aspect of attention, which is something called dropout.
 
-These aren't a part of the attention architecture: they're only applied at training. As such, I'm going to put them off until the later chapters on training.
+This aren't a part of the attention's fundamental architecture: it's only applied at training. As such, I'm going to put it off until the later chapters on training.
 
-If you haven't heard about these yet, you can forget I mentioned them for now. I only bring them up in case you're also using another resource (another book, or asking an LLM questions) and it mentions them. They're often taught as part of attention, but I think they're best held off until we give training its full treatment.
+If you haven't heard about dropout yet, you can forget I mentioned it. I only bring them up in case you're also using another resource (another book, or asking an LLM questions) and it mentions it. It's often taught as part of attention, but I think they're best held off until we give training its full treatment.
 
 ## "The context is full"
 

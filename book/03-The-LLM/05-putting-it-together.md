@@ -1,6 +1,6 @@
 # Putting it all together
 
-:::{status} 2
+:::{status} 1
 :::
 
 ## Overview
@@ -282,3 +282,33 @@ At this point, we've covered all the major components of inference! Some of the 
 Pause for a moment! This is a nice milestone! You now basically understand how LLM inference works.
 
 The next chapter will just describe some algebraic reformulations we can apply to make this translate better to optimized hardware. At that point, you'll understand not just the overall architecture and information flow, but the actual math that describes it.
+
+## TODO: KV caching
+
+::::{note} Previously in the attention bit, but really belongs here
+
+In all of the above, we've been calculating the full $n \times n$ attention grid, as we saw above:
+
+:::{drawio} images/attention/attention-weights-houston
+:alt: the full n times n attention grid
+:::
+
+This grid introduces a big performance problem: it grows as the square of the input size. If we needed to recompute it from scratch on every round of inference, the time it takes to compute each token would take longer and longer.
+
+To solve this, LLMs cache the raw key vectors and (pre-weighting) value vectors. That way, to generate the next token, we just need to calculate the key and value vectors for the latest embedding, and stack that with the previous ones before calculating attention scores and weighted values:
+
+:::{drawio} images/attention/causal-attention-kv-caching
+:alt: To infer on "Houston we have", we use cached keys and values for "Houston" and "we".
+:::
+
+(We don't cache the query vector, because it's only used to generate each token's weighted values; the next token will use the cached key and value vectors, and its own query vector for the attention scores.)
+
+This means we can build the $n \times n$ grid incrementally, one row at a time. Crucially, it also means that at inference time, the attention layer can only consider the tokens that are already known:
+
+:::{drawio} images/attention/causal-attention-grid
+:alt: The same n times n grid as before, but with the top-right crossed out to show that we don't know those pairs.
+:::
+
+When we work through the LLM's training later, we'll need to account for this via something called a `dfn`{causal attention mask}. If you're also using other resources (other books, or asking LLMs for help), they'll probably mention causal masking; but for now, it's only important to know that this KV caching happens, and that training will have to account for it.
+
+::::
