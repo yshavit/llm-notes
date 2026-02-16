@@ -41,7 +41,7 @@ impl<B: TensorBackend> TransformerBlock<B> {
         let attn_and_residual = attn.add(&input);
 
         let pre_ffn_norm = self.ffn_norm.apply(&attn_and_residual);
-        let ffn = self.ffn.apply_matrix(pre_ffn_norm);
+        let ffn = self.ffn.apply(pre_ffn_norm);
         ffn.add(&attn_and_residual)
     }
 }

@@ -604,7 +604,22 @@ $$
 \text{Layer} = \text{Activation}( XW + B )
 $$
 
-To create the FFN, we just apply each layer serially.
+To create the full FFN, we just apply each layer serially.
+
+One crucial optimization we can make is to do all of the tokens' $XB$ calculation at once. Remember that $X$ is a $1 \times d_{in}$ matrix, corresponding to a single token in the prompt. If we consider the whole prompt, this is an $n \times d_{in}$ matrix:
+
+$$
+\begin{bmatrix}
+X_{1,\,1} & X_{1,\,2} & \dots  & X_{1,\,d_{in}} \\
+X_{2,\,1} & X_{2,\,2} & \dots  & X_{2,\,d_{in}} \\
+\vdots   & \vdots   & \ddots & \vdots \\
+X_{n,\,1} & X_{n,\,2} & \dots  & X_{n,\,d_{in}} \\
+\end{bmatrix}
+$$
+
+If we multiply this by the $d_{in} \times d_{out}$ matrix $W$, the result will have $n$ rows, each corresponding to one row from the input $X$, and representing that row multiplied by the weight matrix $W$.
+
+We still need to conceptually loop over each of those rows to add $B$, and then over every value to apply the activation function. GPUs can handle both of those efficiently, though.
 
 ### Normalization
 

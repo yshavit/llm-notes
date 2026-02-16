@@ -21,24 +21,12 @@ impl<B: TensorBackend> Ffn<B> {
         self.layers_transforms[0].in_dims()
     }
 
-    fn out_dims(&self) -> usize {
-        self.layers_transforms[self.layers_transforms.len() - 1].out_dims()
-    }
-
     pub fn layer_mut(&mut self, layer: usize) -> &'_ mut MatrixAndBias<B> {
         &mut self.layers_transforms[layer]
     }
 
-    pub fn apply_matrix(&self, input: Matrix<B>) -> Matrix<B> {
-        assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
-        assert_eq!(input.num_cols(), self.out_dims(), "output dimensions");
-
-        // TODO in the book, I talk about this being a 1xD matrix, and then applied separately to each row.
-        //   But it can (and should!) be done as an RxD matrix, as done here
-        self.apply(input)
-    }
-
     pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
+        assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         let n_rows = input.num_rows();
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
