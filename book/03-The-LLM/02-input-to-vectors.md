@@ -30,6 +30,10 @@ I actually won't cover the tokenization algorithm itself, because it's not reall
 
 The important thing to remember is that it's not actually looking at words, but sub-words and punctuation: "we'll retry!" parsed as {keyboard}`we` {keyboard}`'ll` {keyboard}`ret` {keyboard}`ry` {keyboard}`!` in GPT-3, for example.
 
+:::{note} TODO
+I should add a description of the tokenization here
+:::
+
 ## Token embeddings
 
 All of the tokens our model knows about form its vocabulary, and each one is associated with a vector called the {dfn}`token embedding`. This embedding's values are learned parameters that encode what the LLM knows about that token. The size of each vector is a hyperparameter denoted $d$.
