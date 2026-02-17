@@ -22,6 +22,10 @@ Until now, we've been able to mostly get by with just understanding the shapes o
 If you don't remember how these work, you may want to review the earlier chapter on [vector and matrix math](#matrix-math-details).
 :::
 
+:::{note} TODO
+I need to change $T$ to $X$
+:::
+
 ## The architecture's conceptual shape
 
 Before we dive into the algebraic reformulations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations. I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
@@ -352,9 +356,9 @@ This is the canonical representation of attention, and is somewhat famous within
 
 This means we've now turned the all of the attention calculation --- a logically multiple-nested loop --- into a few matrix multiplications and a bit of parallelizable manipulation:
 
-1. $Q = TW_q$
-2. $K = TW_k$
-3. $V = TW_v$
+1. $Q = TW_q + b_q$
+2. $K = TW_k + b_k$
+3. $V = TW_v + b_v$
 4. $\text{attention scores} = QK^T$
 5. divide these by $\sqrt{d}$
 6. apply softmax to each row to get $A$, the attention weight matrix
@@ -470,6 +474,59 @@ $$
 In this figure, each "side" of the attention represents the output from one head, sized $n \times \frac{d}{h}$. The concatenated heads form a single, $n \times d$ matrix.
 
 If you recall, the last step in the multi-head process was to [multiply the output by a $W_o$ matrix](#w-o-projection). This is just a $d \times d$ matrix, so there's nothing special to do here: we just apply the matrix multiplication.
+
+#### Combined QKV matrix
+
+In the above (and back in our original chapter on attention), we treated the $W_q$, $W_k$, and $W_v$ weight matrices as three separate matrices. To calculate the query, key, and value matrices, we did:
+
+1. $Q = TW_q + b_q$
+2. $K = TW_k + b_k$
+3. $V = TW_v + b_v$
+
+In practice, these are usually concatenated into one matrix, $W_{qkv}$:
+
+$$
+W_{qkv} = \begin{bmatrix}
+q & q & q & \cdots & k & k & k & \cdots & v & v & v & \\
+q & q & q & \cdots & k & k & k & \cdots & v & v & v & \\
+q & q & q & \cdots & k & k & k & \cdots & v & v & v & \\
+\end{bmatrix}
+$$
+
+(Note that for brevity, I'm being a bit informal in my notation here: in particular, I'm writing the various $q_{i,j}$ values as just $q$, and similarly for $k$ and $v$). We apply matrix multiplication and addition to this:
+
+$$
+TW_{qkv} = \begin{bmatrix}
+T_1q + b_q & \cdots & T_1k + b_k & \cdots T_1v + b_v \\
+T_2q + b_q & \cdots & T_2k + b_k & \cdots T_2v + b_v \\
+T_3q + b_q & \cdots & T_3k + b_k & \cdots T_3v + b_v \\
+\end{bmatrix}
+$$
+
+... and then just split the matrix into three slices:
+
+$$
+W, K, V =
+\begin{bmatrix}
+T_1q + b_q & \cdots \\
+T_2q + b_q & \cdots \\
+T_3q + b_q & \cdots \\
+\end{bmatrix}
+,
+\begin{bmatrix}
+T_1k + b_k & \cdots \\
+T_2k + b_k & \cdots \\
+T_3k + b_k & \cdots \\
+\end{bmatrix}
+,
+\begin{bmatrix}
+T_1v + b_v & \cdots \\
+T_2v + b_v & \cdots \\
+T_3v + b_v & \cdots \\
+\end{bmatrix}
+$$
+
+This lets us to do all three matrix multiplications ($W$, $K$, and $V$) in a single operation. GPUs have some fixed overhead in any given matrix multiplication, so this optimization just amortizes that overhead across all three matrices.
 
 #### Implementation details
 
