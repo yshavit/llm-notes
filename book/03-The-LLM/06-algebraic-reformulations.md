@@ -235,9 +235,9 @@ Just to belabor the point: we've turned all of the nested looping in steps 1 →
 
 (scale-and-softmax-matrix)=
 
-#### Scale and softmax
+#### Causal attention, scale, and softmax
 
-Next, we just need to scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 1.3 above.
+Next, we just need to apply the causal mask, scale each element in the attention scores by dividing it by $\sqrt{d}$, and then apply softmax. This corresponds to step 1.3 above.
 
 $$
 \text{attention weights} = A = \text{softmax}\left( \frac{QK^T}{\sqrt{d}} \right)
@@ -245,10 +245,21 @@ $$
 
 Note:
 
+- To apply softmax, you can create an $n \times n$ matrix with 0s in the bottom-left and $-\infty$ in the top right:
+
+  $$
+  \begin{bmatrix}
+  0 & -\infty & -\infty \\
+  0 & 0 & -\infty \\
+  0 & 0 & 0
+  \end{bmatrix}
+  $$
+
+  Then, just add this to the attention scores matrix.
 - Dividing a matrix by a scalar ($\sqrt{d}$) just divides each of its cells by that scalar.
 - Softmax operates on vectors. When we apply it to a matrix, this really just means to applying it to each row in that vector. Each of those rows will have softmax calculated independently, but GPUs can parallelize the work efficiently across those rows.
 
-Neither the scalar division nor softmax changes the dimensions of the matrix, so it's still $n \times n$.
+None of these operations change the dimensions of the matrix, so it's still $n \times n$.
 
 #### Context matrix
 
@@ -527,6 +538,135 @@ T_3v + b_v & \cdots \\
 $$
 
 This lets us to do all three matrix multiplications ($W$, $K$, and $V$) in a single operation. GPUs have some fixed overhead in any given matrix multiplication, so this optimization just amortizes that overhead across all three matrices.
+
+#### KV caching
+
+In all of the above, we've been calculating the full $n \times d$ attention for an input $n$ tokens. When we process the user's initial prompt, this is great. But as we generate tokens, we can calculate attention incrementally.
+
+For example, let's say the user entered {keyboard}`The` {keyboard}`quick` {keyboard}`brown` {keyboard}`fox`. This prompt is 4 tokens, so our attention is $4 \times d$. We generate the next token, {keyboard}`jumps`, and then loop back for another round of inference. The naive, full-attention calculation I've been describing so far would require a $5 \times d$ attention, for {keyboard}`The` {keyboard}`quick` {keyboard}`brown` {keyboard}`fox` {keyboard}`jumps`. We can short-circuit much of this calculation.
+
+Let's take a quick review of everything we did above. To make things concrete, I'll pick $d = 2$, and we'll look at a 3-sequence input ($n = 3$).
+
+First, we calculate $Q$, $K$, $V$. These are all $n \times d$ matrices (the products of the $n \times d$ input and the $d \times d$ weight matrices):
+
+$$
+% Q
+\begin{bmatrix}
+Q_{1,1} & Q_{1,2} \\
+Q_{2,1} & Q_{2,2} \\
+Q_{3,1} & Q_{3,2}
+\end{bmatrix}
+\quad
+% K
+\begin{bmatrix}
+K_{1,1} & K_{1,2} \\
+K_{2,1} & K_{2,2} \\
+K_{3,1} & K_{3,2}
+\end{bmatrix}
+\quad
+% V
+\begin{bmatrix}
+V_{1,1} & V_{1,2} \\
+V_{2,1} & V_{2,2} \\
+V_{3,1} & V_{3,2}
+\end{bmatrix}
+$$
+
+Next, we'll calculate $A' = QK^T$, which an $n \times n$ matrix:
+
+$$
+\begin{align}
+A' = QK^T
+& =
+  \begin{bmatrix}
+    Q_{1,1} & Q_{1,2} \\
+    Q_{2,1} & Q_{2,2} \\
+    Q_{3,1} & Q_{3,2}
+  \end{bmatrix}
+  \begin{bmatrix}
+    K_{1,1} & K_{2,1} & K_{3,1} \\
+    K_{1,2} & K_{2,2} & K_{3,2}
+  \end{bmatrix} \\[1.5em]
+& =
+\begin{bmatrix}
+  Q_{1,\star} K_{{1,\star}}
+    & Q_{1,\star} K_{{2,\star}}
+    & Q_{1,\star} K_{{3,\star}} \\
+  Q_{2,\star} K_{{1,\star}}
+    & Q_{2,\star} K_{{2,\star}}
+    & Q_{2,\star} K_{{3,\star}} \\
+  Q_{3,\star} K_{{1,\star}}
+    & Q_{3,\star} K_{{2,\star}}
+    & Q_{3,\star} K_{{3,\star}}
+\end{bmatrix}
+\end{align}
+$$
+
+(Note that I'm using informal, nonstandard notation here: $M_{1,\star}$ to represent row 1 of $M$, and $M_{\star,1}$ to represent column 1. Also, for simplicity, I'm omitting causal attention, scaling, and softmax --- we don't need them right now. That means $A'$ isn't quite the $A$ we've been using above.)
+
+Finally, we calculate $A'V$, which is $n \times d$:
+
+$$
+A'V = \begin{bmatrix}
+A'_{1,\star}V_{\star,1} & A'_{1,\star}V_{\star,2} \\[0.5em]
+A'_{2,\star}V_{\star,1} & A'_{2,\star}V_{\star,2} \\[0.5em]
+A'_{3,\star}V_{\star,1} & A'_{3,\star}V_{\star,2}
+\end{bmatrix}
+$$
+
+Remember that when our round of inference is done, we're only going to [use the last logit](#using-last-logit), which will be derived just from the last row of this attention (after passing it through various FFNs and other transformer blocks). So, let's focus on the last row of $AV$.
+
+$$
+(A'V)_3 =
+\begin{bmatrix}
+A_{3,\star}V_{\star,1} & A_{3,\star}V_{\star,2}
+\end{bmatrix}
+$$
+
+As a reminder, $A_3$ is:
+
+$$
+\begin{bmatrix}
+  Q_{3,\star} K_{{1,\star}}
+    & Q_{3,\star} K_{{2,\star}}
+    & Q_{3,\star} K_{{3,\star}}
+\end{bmatrix}
+$$
+
+This means that $(A'V)_3$ contains:
+
+- all of $K$'s data ($K_{n,\star}$ for every token $n$)
+- all of $V$'s data ($V_{\star,d}$ for every dimension $d$)
+- only the $Q_{3,\star}$ row
+
+So far, this is just a reshash of everything we've already seen. Here's where it gets interesting! We can make some observations:
+
+- Each row $n$ in $K$ is independently calculated, based on the $W_k$ weights and the $n$th token's embedding. In other words, each token stays within its row in $K$.
+- This means we can cache $K$ at every round of inference. In the next round, we don't need to calculate all of $K$ from scratch: the cache gives us the first $n-1$ rows. All we need to calculate is the $n$th row.
+- Similarly for $V$.
+- For $Q$, we don't need the first $n-1$ rows at all: all we need is the $n$th row.
+
+We do still need to build the full $K$ and $V$ matrices; we just don't need to compute most of them, since all but the last row are cached. For $Q$, we don't even need to build the full matrix.
+
+Also, since we're now only computing the last row of attention, we don't need to account for causal attention. Remember that the attention mask [only zeroed out weights for rows before the last row](#causal-attention-grid); the last row is unaffected, and that's the only one we're generating.
+
+Putting it all together, we have essentially the same attention formula as before, but tweaked to only generate the last row:
+
+$$
+\text{Attention}(Q_n, K, V) = \text{softmax}\left( \frac{Q_nK^T}{\sqrt{d/h}} \right)V
+$$
+
+- $Q_n$ is a $1 \times d$ matrix, derived from just the most recent token (a $1 \times d$ embedding) and the $W_q$ weights
+- $K$ is constructed by taking the cached $K$ --- an $(n-1) \times d$ matrix -- and appending the $1 \times d$ matrix that's the most recent token multiplied by $W_k$.
+- $V$ is similarly constructed
+
+So:
+
+- $Q_nK^T$ is $(1 \times d) (d \times n) = (1 \times n)$
+- softmax and scaling maintain these dimensions
+- $AV$ is $(1 \times n)(n \times d) = (1 \times d)$
+
+And there we have it! We've calculated just the last row in attention, which will then snake through the FFN and other transformer blocks to produce a single logit, the next prediction.
 
 #### Implementation details
 

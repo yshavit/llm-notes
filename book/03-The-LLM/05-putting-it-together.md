@@ -41,6 +41,7 @@ Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary.
 :alt: A single logit,
 :::
 
+(using-last-logit)=
 To predict the input's next token, we just need to look at the last logit --- that is, the one that makes a prediction for the last input token --- and pick the token with the highest value. That's the one we'll append to the input and loop back again.
 
 :::{drawio} images/transformer/smallest-llm-logits-zoom

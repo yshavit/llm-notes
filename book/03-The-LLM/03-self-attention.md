@@ -454,7 +454,7 @@ We then repeat this for each of the $n$ inputs, treating each as the query token
 :alt: attention weights combine with values to form the context vector
 :::
 
-## Causal attention
+## Causal attention mask
 
 In all of the above, we've been calculating the full $n \times n$ attention grid, as we saw above:
 
@@ -464,6 +464,7 @@ In all of the above, we've been calculating the full $n \times n$ attention grid
 
 The problem is that at inference, we're going to be predicting one token at a time. This means that when we predict token, we won't yet know the tokens after it --- and thus can't know how they'll attend to it:
 
+(causal-attention-grid)=
 :::{drawio} images/attention/causal-attention-grid
 :alt: The same n times n grid as before, but with the top-right crossed out to show that we don't know those pairs.
 :::
