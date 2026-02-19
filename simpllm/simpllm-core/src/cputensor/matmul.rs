@@ -1,4 +1,5 @@
 use crate::cputensor::tensor::{CpuTensor, MatrixView, MatrixViewMut};
+use crate::tensor::Tensor;
 
 pub fn matmul_batched<const R: usize>(a: &CpuTensor<R>, b: &CpuTensor<R>) -> CpuTensor<R> {
     let a_shape = a.shape();
@@ -166,31 +167,31 @@ mod tests {
         fn check_matmul_batched_3() {
             let mut a = CpuTensor::new([2, 3, 4]);
             // Batch 0: values are 1BRC (tensor 1, batch, row, col)
-            a.set_row([0, 0, 0], &[1000., 1001., 1002., 1003.]);
-            a.set_row([0, 1, 0], &[1010., 1011., 1012., 1013.]);
-            a.set_row([0, 2, 0], &[1020., 1021., 1022., 1023.]);
+            a.set_slice([0, 0, 0], &[1000., 1001., 1002., 1003.]);
+            a.set_slice([0, 1, 0], &[1010., 1011., 1012., 1013.]);
+            a.set_slice([0, 2, 0], &[1020., 1021., 1022., 1023.]);
             // Batch 1
-            a.set_row([1, 0, 0], &[1100., 1101., 1102., 1103.]);
-            a.set_row([1, 1, 0], &[1110., 1111., 1112., 1113.]);
-            a.set_row([1, 2, 0], &[1120., 1121., 1122., 1123.]);
+            a.set_slice([1, 0, 0], &[1100., 1101., 1102., 1103.]);
+            a.set_slice([1, 1, 0], &[1110., 1111., 1112., 1113.]);
+            a.set_slice([1, 2, 0], &[1120., 1121., 1122., 1123.]);
 
             let mut b = CpuTensor::new([2, 4, 5]);
             // Batch 0: values are 2BRC (tensor 2, batch, row, col)
-            b.set_row([0, 0, 0], &[2000., 2001., 2002., 2003., 2004.]);
-            b.set_row([0, 1, 0], &[2010., 2011., 2012., 2013., 2014.]);
-            b.set_row([0, 2, 0], &[2020., 2021., 2022., 2023., 2024.]);
-            b.set_row([0, 3, 0], &[2030., 2031., 2032., 2033., 2034.]);
+            b.set_slice([0, 0, 0], &[2000., 2001., 2002., 2003., 2004.]);
+            b.set_slice([0, 1, 0], &[2010., 2011., 2012., 2013., 2014.]);
+            b.set_slice([0, 2, 0], &[2020., 2021., 2022., 2023., 2024.]);
+            b.set_slice([0, 3, 0], &[2030., 2031., 2032., 2033., 2034.]);
             // Batch 1
-            b.set_row([1, 0, 0], &[2100., 2101., 2102., 2103., 2104.]);
-            b.set_row([1, 1, 0], &[2110., 2111., 2112., 2113., 2114.]);
-            b.set_row([1, 2, 0], &[2120., 2121., 2122., 2123., 2124.]);
-            b.set_row([1, 3, 0], &[2130., 2131., 2132., 2133., 2134.]);
+            b.set_slice([1, 0, 0], &[2100., 2101., 2102., 2103., 2104.]);
+            b.set_slice([1, 1, 0], &[2110., 2111., 2112., 2113., 2114.]);
+            b.set_slice([1, 2, 0], &[2120., 2121., 2122., 2123., 2124.]);
+            b.set_slice([1, 3, 0], &[2130., 2131., 2132., 2133., 2134.]);
 
             let out = matmul_batched(&a, &b);
 
             let mut expected: CpuTensor<3> = CpuTensor::new([2, 3, 5]);
             // Batch 0, row 0: [1000., 1001., 1002., 1003.] × b
-            expected.set_row(
+            expected.set_slice(
                 [0, 0, 0],
                 &[
                     (1000. * 2000.) + (1001. * 2010.) + (1002. * 2020.) + (1003. * 2030.),
@@ -201,7 +202,7 @@ mod tests {
                 ],
             );
             // Batch 0, row 1: [1010., 1011., 1012., 1013.] × b
-            expected.set_row(
+            expected.set_slice(
                 [0, 1, 0],
                 &[
                     (1010. * 2000.) + (1011. * 2010.) + (1012. * 2020.) + (1013. * 2030.),
@@ -212,7 +213,7 @@ mod tests {
                 ],
             );
             // Batch 0, row 2: [1020., 1021., 1022., 1023.] × b
-            expected.set_row(
+            expected.set_slice(
                 [0, 2, 0],
                 &[
                     (1020. * 2000.) + (1021. * 2010.) + (1022. * 2020.) + (1023. * 2030.),
@@ -223,7 +224,7 @@ mod tests {
                 ],
             );
             // Batch 1, row 0: [1100., 1101., 1102., 1103.] × b
-            expected.set_row(
+            expected.set_slice(
                 [1, 0, 0],
                 &[
                     (1100. * 2100.) + (1101. * 2110.) + (1102. * 2120.) + (1103. * 2130.),
@@ -234,7 +235,7 @@ mod tests {
                 ],
             );
             // Batch 1, row 1: [1110., 1111., 1112., 1113.] × b
-            expected.set_row(
+            expected.set_slice(
                 [1, 1, 0],
                 &[
                     (1110. * 2100.) + (1111. * 2110.) + (1112. * 2120.) + (1113. * 2130.),
@@ -245,7 +246,7 @@ mod tests {
                 ],
             );
             // Batch 1, row 2: [1120., 1121., 1122., 1123.] × b
-            expected.set_row(
+            expected.set_slice(
                 [1, 2, 0],
                 &[
                     (1120. * 2100.) + (1121. * 2110.) + (1122. * 2120.) + (1123. * 2130.),
@@ -284,7 +285,7 @@ mod tests {
         fn from(values: [[f32; C]; R]) -> Self {
             let mut m = CpuBackend::new_matrix(R, C);
             for (row_idx, row_vals) in values.iter().enumerate() {
-                m.set_row([row_idx, 0], row_vals);
+                m.set_slice([row_idx, 0], row_vals);
             }
             m
         }

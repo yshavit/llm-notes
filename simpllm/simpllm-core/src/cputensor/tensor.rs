@@ -1,6 +1,7 @@
 use crate::cputensor::gelu::gelu;
+use crate::cputensor::matmul::matmul_batched;
 use crate::cputensor::softmax;
-use crate::tensor::Shape;
+use crate::tensor::{Shape, Tensor, TensorBackend, TensorSlice};
 use rayon::prelude::*;
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter};
@@ -48,18 +49,174 @@ impl<const R: usize> CpuTensor<R> {
         strides.into()
     }
 
-    pub(super) fn shape(&self) -> Shape<R> {
+    fn data_offset(&self, indices: [usize; R]) -> usize {
+        let mut offset = 0;
+        for i in 0..R {
+            assert!(
+                indices[i] < self.shape[i],
+                "index out of range: can't get {indices:?} on {} tensor",
+                self.shape
+            );
+            offset += self.strides[i] * indices[i]
+        }
+        offset
+    }
+
+    pub(super) fn get(&self, indices: [usize; R]) -> f32 {
+        self.data[self.data_offset(indices)]
+    }
+
+    /// Performs an action on a row and returns the result.
+    ///
+    /// The row indices work similarly to [`Self::set_row`].
+    ///
+    /// The row is provided as a borrowed slice for efficiency: if it's possible to read it directly from the tensor's
+    /// underlying data, then this method will do that.
+    pub(super) fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
+        let read_start = self.data_offset(indices);
+        let read_len = self.shape[R - 1] - indices[R - 1];
+
+        if self.strides[R - 1] == 1 {
+            // Row-major format; we can just memcpy
+            let data = &mut self.data[read_start..read_start + read_len];
+            f(data)
+        } else {
+            let mut data = vec![0.; read_len];
+            self.slice_row(indices, |row| data.copy_from_slice(row));
+            let result = f(&mut data);
+            // now, write it back
+            self.set_slice(indices, &data);
+            result
+        }
+    }
+
+    fn mut_rows_at_batch(&mut self, base_indexes: [usize; R], f: impl Fn(usize, &mut [f32]) + Sync) {
+        assert_eq!(base_indexes[R - 1], 0);
+        if R == 1 {
+            f(0, &mut self.data);
+            return;
+        }
+
+        if self.strides != Self::contiguous_strides(self.shape) {
+            // not strictly necessary, but we don't ever hit this code branch, so it's fine if it's not optimized :-)
+            self.make_self_contiguous()
+        }
+        assert_eq!(base_indexes[R - 2], 0);
+        let start_idx = self.data_offset(base_indexes);
+        let chunk_num_rows = self.shape[R - 2];
+        let chunk_num_cols = self.shape[R - 1];
+        let slice_len = chunk_num_cols * chunk_num_rows;
+        let data_slice = &mut self.data[start_idx..(start_idx + slice_len)];
+        data_slice
+            .par_chunks_exact_mut(chunk_num_cols)
+            .enumerate()
+            .for_each(|(idx, chunk)| {
+                assert_eq!(chunk.len(), chunk_num_cols, "internal error in mut_rows");
+                f(idx, chunk);
+            })
+    }
+
+    fn make_self_contiguous(&mut self) {
+        if self.strides == Self::contiguous_strides(self.shape) {
+            return;
+        }
+        let mut new_data = vec![0.0; self.shape.num_elements()];
+        let chunk_sizes = self.data.len() / self.shape[0];
+
+        let self_shape = self.shape;
+        new_data
+            .par_chunks_exact_mut(chunk_sizes)
+            .enumerate()
+            .for_each(|(row_idx, row)| {
+                let mut start_at = [0; R];
+                start_at[0] = row_idx;
+                let index_iter = self_shape.iter_indices_starting_at(start_at).enumerate();
+                for (data_idx, tensor_idx) in index_iter {
+                    if tensor_idx[0] > row_idx {
+                        break;
+                    }
+                    row[data_idx] = self.get(tensor_idx);
+                }
+            });
+
+        self.data = new_data;
+        self.strides = Self::contiguous_strides(self.shape);
+    }
+
+    /// Returns a matrix slice of this tensor.
+    ///
+    /// The tensor must be at least rank 2. The batch is actually `R-2`, with the last two indices of this tensor being
+    /// the ones that the [`MatrixView`] will represent. (Rust doesn't let us specify a type of `R-2`.) As such, the
+    /// last two elements of `batch` must be `0`.
+    pub(super) fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<'_, R> {
+        assert!(R >= 2, "cannot take matrix slice on vectors");
+        assert!(
+            batch[R - 1] == 0 && batch[R - 2] == 0,
+            "invalid batch {batch:?} into {} tensor",
+            self.shape
+        );
+        MatrixView::new(self, batch)
+    }
+
+    pub(super) fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<'_, R> {
+        assert!(R >= 2, "cannot take matrix slice on vectors");
+        assert!(
+            batch[R - 1] == 0 && batch[R - 2] == 0,
+            "invalid batch {batch:?} into {} tensor",
+            self.shape
+        );
+        MatrixViewMut::new(self, batch)
+    }
+}
+
+impl TensorSlice for [f32] {
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
+        Cow::from(self)
+    }
+}
+
+impl<const R: usize> Tensor<R> for CpuTensor<R> {
+    type Backend = crate::cputensor::CpuBackend;
+    type Slice = [f32];
+
+    fn zeros(shape: impl Into<Shape<R>>) -> Self {
+        CpuTensor::new(shape)
+    }
+
+    fn shape(&self) -> Shape<R> {
         self.shape
     }
 
-    pub(super) fn reset_values(&mut self, values: &[f32]) {
+    fn reset_values(&mut self, values: &[f32]) {
         assert_eq!(self.shape.num_elements(), values.len());
         // reset to be contiguous
         self.strides = Self::contiguous_strides(self.shape);
         self.data.copy_from_slice(values);
     }
 
-    pub(super) fn split<const S: usize>(self, dim: usize) -> [CpuTensor<R>; S] {
+    fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
+        assert_eq!(
+            self.strides,
+            Self::contiguous_strides(self.shape),
+            "can only shape contiguous tensors"
+        );
+        let new_shape = new_shape.into();
+        assert_eq!(
+            self.shape.num_elements(),
+            new_shape.num_elements(),
+            "can't reshape {} into {}",
+            self.shape,
+            new_shape
+        );
+
+        CpuTensor {
+            data: self.data,
+            shape: new_shape,
+            strides: CpuTensor::contiguous_strides(new_shape),
+        }
+    }
+
+    fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S] {
         assert!(dim < R, "split dimension {dim} must be < rank {R}");
 
         let orig_dim_size = self.shape[dim];
@@ -97,142 +254,18 @@ impl<const R: usize> CpuTensor<R> {
         split_tensors
     }
 
-    fn data_offset(&self, indices: [usize; R]) -> usize {
-        let mut offset = 0;
-        for i in 0..R {
-            assert!(
-                indices[i] < self.shape[i],
-                "index out of range: can't get {indices:?} on {} tensor",
-                self.shape
-            );
-            offset += self.strides[i] * indices[i]
-        }
-        offset
-    }
-
-    pub(super) fn get(&self, indices: [usize; R]) -> f32 {
-        self.data[self.data_offset(indices)]
-    }
-
-    /// Performs an action on a row and returns the result.
-    ///
-    /// The row indices work similarly to [`Self::set_row`].
-    ///
-    /// The row is provided as a borrowed slice for efficiency: if it's possible to read it directly from the tensor's
-    /// underlying data, then this method will do that.
-    pub(super) fn mut_row<X>(&mut self, indices: [usize; R], f: impl FnOnce(&mut [f32]) -> X) -> X {
-        let read_start = self.data_offset(indices);
-        let read_len = self.shape[R - 1] - indices[R - 1];
-
-        if self.strides[R - 1] == 1 {
-            // Row-major format; we can just memcpy
-            let data = &mut self.data[read_start..read_start + read_len];
-            f(data)
-        } else {
-            let mut data = vec![0.; read_len];
-            self.with_row(indices, |row| data.copy_from_slice(row));
-            let result = f(&mut data);
-            // now, write it back
-            self.set_row(indices, &data);
-            result
-        }
-    }
-
-    fn mut_rows_at_batch(&mut self, base_indexes: [usize; R], f: impl Fn(usize, &mut [f32]) + Sync) {
-        assert_eq!(base_indexes[R - 1], 0);
-        if R == 1 {
-            f(0, &mut self.data);
-            return;
-        }
-
-        if self.strides != Self::contiguous_strides(self.shape) {
-            // not strictly necessary, but we don't ever hit this code branch, so it's fine if it's not optimized :-)
-            self.make_self_contiguous()
-        }
-        assert_eq!(base_indexes[R - 2], 0);
-        let start_idx = self.data_offset(base_indexes);
-        let chunk_num_rows = self.shape[R - 2];
-        let chunk_num_cols = self.shape[R - 1];
-        let slice_len = chunk_num_cols * chunk_num_rows;
-        let data_slice = &mut self.data[start_idx..(start_idx + slice_len)];
-        data_slice
-            .par_chunks_exact_mut(chunk_num_cols)
-            .enumerate()
-            .for_each(|(idx, chunk)| {
-                assert_eq!(chunk.len(), chunk_num_cols, "internal error in mut_rows");
-                f(idx, chunk);
-            })
-    }
-
-    pub(super) fn multiply_scalar(&mut self, factor: f32) {
-        for v in &mut self.data {
-            *v *= factor;
-        }
-    }
-
-    pub(super) fn add_tensor<const R2: usize>(mut self, other: &CpuTensor<R2>) -> Self {
-        assert!(
-            R2 <= R && self.shape[R - R2..] == other.shape[..],
-            "can't add broadcasted {} into {}",
-            other.shape,
-            self.shape
-        );
-
-        // Fast path: same rank and strides - simple element-wise addition
-        if R == R2 && self.strides.as_ref() == other.strides.as_ref() {
-            other.data.iter().enumerate().for_each(|(i, v)| self.data[i] += v);
-            return self;
-        }
-
-        // Iterate through the "other" matrix's rows
-        for other_batch in other.shape.iter_indices().skipping_dims_at(R2 - 1) {
-            other.with_row(other_batch, |other_row| {
-                // iterate over self's batch indices (the ones to be broadcast against)
-                for mut self_batch in self.shape.iter_indices().skipping_dims_at(R - R2) {
-                    self_batch[R - R2..].copy_from_slice(&other_batch);
-
-                    self.mut_row(self_batch, |self_row| {
-                        self_row.iter_mut().enumerate().for_each(|(j, v)| *v += other_row[j])
-                    })
-                }
-            });
-        }
+    fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
+        self.shape.swap(dim0, dim1);
+        self.strides.swap(dim0, dim1);
         self
     }
 
-    pub(super) fn contiguous(mut self) -> Self {
+    fn contiguous(mut self) -> Self {
         self.make_self_contiguous();
         self
     }
 
-    fn make_self_contiguous(&mut self) {
-        if self.strides == Self::contiguous_strides(self.shape) {
-            return;
-        }
-        let mut new_data = vec![0.0; self.shape.num_elements()];
-        let chunk_sizes = self.data.len() / self.shape[0];
-
-        let self_shape = self.shape;
-        new_data
-            .par_chunks_exact_mut(chunk_sizes)
-            .enumerate()
-            .for_each(|(row_idx, row)| {
-                let mut start_at = [0; R];
-                start_at[0] = row_idx;
-                let index_iter = self_shape.iter_indices_starting_at(start_at).enumerate();
-                for (data_idx, tensor_idx) in index_iter {
-                    if tensor_idx[0] > row_idx {
-                        break;
-                    }
-                    row[data_idx] = self.get(tensor_idx);
-                }
-            });
-
-        self.data = new_data;
-        self.strides = Self::contiguous_strides(self.shape);
-    }
-
-    pub(super) fn flat_f32(&self) -> Cow<'_, [f32]> {
+    fn flat_f32(&self) -> Cow<'_, [f32]> {
         if self.strides == Self::contiguous_strides(self.shape) {
             Cow::from(&self.data)
         } else {
@@ -240,41 +273,7 @@ impl<const R: usize> CpuTensor<R> {
         }
     }
 
-    pub(super) fn gelu(mut self) -> Self {
-        self.data.iter_mut().for_each(|x| *x = gelu(*x));
-        self
-    }
-
-    pub(super) fn softmax(mut self) -> Self {
-        for batches in self.shape.iter_indices().skipping_dims_at(R - 1) {
-            self.mut_row(batches, softmax)
-        }
-        self
-    }
-
-    pub(super) fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> CpuTensor<R2> {
-        assert_eq!(
-            self.strides,
-            Self::contiguous_strides(self.shape),
-            "can only shape contiguous tensors"
-        );
-        let new_shape = new_shape.into();
-        assert_eq!(
-            self.shape.num_elements(),
-            new_shape.num_elements(),
-            "can't reshape {} into {}",
-            self.shape,
-            new_shape
-        );
-
-        CpuTensor {
-            data: self.data,
-            shape: new_shape,
-            strides: CpuTensor::contiguous_strides(new_shape),
-        }
-    }
-
-    pub(super) fn with_row<X>(&self, indices: [usize; R], f: impl FnOnce(&[f32]) -> X) -> X {
+    fn slice_row<X>(&self, indices: [usize; R], f: impl FnOnce(&Self::Slice) -> X) -> X {
         let read_start = self.data_offset(indices);
         let read_len = self.shape[R - 1] - indices[R - 1];
 
@@ -294,41 +293,10 @@ impl<const R: usize> CpuTensor<R> {
         }
     }
 
-    pub(super) fn transposed(mut self, dim0: usize, dim1: usize) -> Self {
-        self.shape.swap(dim0, dim1);
-        self.strides.swap(dim0, dim1);
-        self
-    }
-
-    /// Returns a matrix slice of this tensor.
-    ///
-    /// The tensor must be at least rank 2. The batch is actually `R-2`, with the last two indices of this tensor being
-    /// the ones that the [`MatrixView`] will represent. (Rust doesn't let us specify a type of `R-2`.) As such, the
-    /// last two elements of `batch` must be `0`.
-    pub(super) fn matrix_slice(&self, batch: [usize; R]) -> MatrixView<'_, R> {
-        assert!(R >= 2, "cannot take matrix slice on vectors");
-        assert!(
-            batch[R - 1] == 0 && batch[R - 2] == 0,
-            "invalid batch {batch:?} into {} tensor",
-            self.shape
-        );
-        MatrixView::new(self, batch)
-    }
-
-    pub(super) fn matrix_slice_mut(&mut self, batch: [usize; R]) -> MatrixViewMut<'_, R> {
-        assert!(R >= 2, "cannot take matrix slice on vectors");
-        assert!(
-            batch[R - 1] == 0 && batch[R - 2] == 0,
-            "invalid batch {batch:?} into {} tensor",
-            self.shape
-        );
-        MatrixViewMut::new(self, batch)
-    }
-
     /// Sets all or part of a row's values. The first `R-1` indices specify an offset into the tensor, and the last
     /// index specifies an offset into the row. That offset + `values.len()` must be less than the last index's
     /// dimensionality.
-    pub(super) fn set_row(&mut self, indices: [usize; R], values: &[f32]) {
+    fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice) {
         let write_start = self.data_offset(indices);
         let row_offset = indices[R - 1];
         assert!(
@@ -350,6 +318,58 @@ impl<const R: usize> CpuTensor<R> {
                 offset += stride;
             }
         }
+    }
+
+    fn gelu(mut self) -> Self {
+        self.data.iter_mut().for_each(|x| *x = gelu(*x));
+        self
+    }
+
+    fn softmax(mut self) -> Self {
+        for batches in self.shape.iter_indices().skipping_dims_at(R - 1) {
+            self.mut_row(batches, softmax)
+        }
+        self
+    }
+
+    fn matmul(&self, other: &Self) -> Self {
+        matmul_batched(self, other)
+    }
+
+    fn multiply_scalar(&mut self, factor: f32) {
+        for v in &mut self.data {
+            *v *= factor;
+        }
+    }
+
+    fn add<const R2: usize>(mut self, other: &CpuTensor<R2>) -> Self {
+        assert!(
+            R2 <= R && self.shape[R - R2..] == other.shape[..],
+            "can't add broadcasted {} into {}",
+            other.shape,
+            self.shape
+        );
+
+        // Fast path: same rank and strides - simple element-wise addition
+        if R == R2 && self.strides.as_ref() == other.strides.as_ref() {
+            other.data.iter().enumerate().for_each(|(i, v)| self.data[i] += v);
+            return self;
+        }
+
+        // Iterate through the "other" matrix's rows
+        for other_batch in other.shape.iter_indices().skipping_dims_at(R2 - 1) {
+            other.slice_row(other_batch, |other_row| {
+                // iterate over self's batch indices (the ones to be broadcast against)
+                for mut self_batch in self.shape.iter_indices().skipping_dims_at(R - R2) {
+                    self_batch[R - R2..].copy_from_slice(&other_batch);
+
+                    self.mut_row(self_batch, |self_row| {
+                        self_row.iter_mut().enumerate().for_each(|(j, v)| *v += other_row[j])
+                    })
+                }
+            });
+        }
+        self
     }
 }
 
@@ -587,9 +607,9 @@ mod tests {
         fn data_round_trip() {
             let mut m = CpuBackend::new_matrix(3, 4);
 
-            m.set_row([0, 0], &[1., 2., 3., 4.]);
-            m.set_row([1, 0], &[5., 6., 7., 8.]);
-            m.set_row([2, 0], &[9., 10., 11., 12.]);
+            m.set_slice([0, 0], &[1., 2., 3., 4.]);
+            m.set_slice([1, 0], &[5., 6., 7., 8.]);
+            m.set_slice([2, 0], &[9., 10., 11., 12.]);
 
             check_row(&m, 0, [1., 2., 3., 4.]);
             check_row(&m, 1, [5., 6., 7., 8.]);
@@ -606,16 +626,16 @@ mod tests {
         #[should_panic = "can't write to index [0, 0] of 3x4 matrix with slice length 6"]
         fn row_mut_set_all_bounds() {
             let mut m = CpuBackend::new_matrix(3, 4);
-            m.set_row([0, 0], &[1., 2., 3., 4., 5., 6.]);
+            m.set_slice([0, 0], &[1., 2., 3., 4., 5., 6.]);
         }
 
         #[test]
         fn transposition() {
             let mut m = CpuBackend::new_matrix(3, 4);
 
-            m.set_row([0, 0], &[1., 2., 3., 4.]);
-            m.set_row([1, 0], &[5., 6., 7., 8.]);
-            m.set_row([2, 0], &[9., 10., 11., 12.]);
+            m.set_slice([0, 0], &[1., 2., 3., 4.]);
+            m.set_slice([1, 0], &[5., 6., 7., 8.]);
+            m.set_slice([2, 0], &[9., 10., 11., 12.]);
 
             let transposed = m.transposed(0, 1);
             assert_eq!(transposed.shape(), Shape::new([4, 3]));
@@ -637,7 +657,7 @@ mod tests {
 
             let mut transposed = m.transposed(0, 1);
             let values = &[1., 2., 3.];
-            transposed.set_row([1, 0], values);
+            transposed.set_slice([1, 0], values);
 
             check_row(&transposed, 0, [0., 0., 0.]);
             check_row(&transposed, 1, [1., 2., 3.]);
@@ -680,10 +700,10 @@ mod tests {
             let mut t = Tensor3::new(Shape::new([2, 3, 4]));
 
             // Set values in different "slices"
-            t.set_row([0, 0, 0], &[1., 2., 3., 4.]);
-            t.set_row([0, 1, 0], &[5., 6., 7., 8.]);
-            t.set_row([1, 0, 0], &[9., 10., 11., 12.]);
-            t.set_row([1, 2, 0], &[13., 14., 15., 16.]);
+            t.set_slice([0, 0, 0], &[1., 2., 3., 4.]);
+            t.set_slice([0, 1, 0], &[5., 6., 7., 8.]);
+            t.set_slice([1, 0, 0], &[9., 10., 11., 12.]);
+            t.set_slice([1, 2, 0], &[13., 14., 15., 16.]);
 
             // Verify they're in the right places
             assert_eq!(t.get([0, 0, 0]), 1.);
@@ -700,7 +720,7 @@ mod tests {
         fn set_row() {
             let mut t = Tensor3::new(Shape::new([2, 3, 4]));
 
-            t.set_row([0, 1, 0], &[10., 20., 30., 40.]);
+            t.set_slice([0, 1, 0], &[10., 20., 30., 40.]);
 
             // Check the row we set
             assert_eq!(t.get([0, 1, 0]), 10.);
@@ -719,12 +739,12 @@ mod tests {
             let mut t = Tensor3::new(Shape::new([2, 3, 4]));
 
             // Fill with distinct values
-            t.set_row([0, 0, 0], &[1., 2., 3., 4.]);
-            t.set_row([0, 1, 0], &[5., 6., 7., 8.]);
-            t.set_row([0, 2, 0], &[9., 10., 11., 12.]);
-            t.set_row([1, 0, 0], &[13., 14., 15., 16.]);
-            t.set_row([1, 1, 0], &[17., 18., 19., 20.]);
-            t.set_row([1, 2, 0], &[21., 22., 23., 24.]);
+            t.set_slice([0, 0, 0], &[1., 2., 3., 4.]);
+            t.set_slice([0, 1, 0], &[5., 6., 7., 8.]);
+            t.set_slice([0, 2, 0], &[9., 10., 11., 12.]);
+            t.set_slice([1, 0, 0], &[13., 14., 15., 16.]);
+            t.set_slice([1, 1, 0], &[17., 18., 19., 20.]);
+            t.set_slice([1, 2, 0], &[21., 22., 23., 24.]);
 
             let transposed = t.transposed(0, 1);
             assert_eq!(transposed.shape(), Shape::new([3, 2, 4]));
@@ -783,8 +803,8 @@ mod tests {
             // use pretty-print to check values
 
             let mut original = CpuBackend::new_matrix(2, 6);
-            original.set_row([0, 0], &[01., 02., 03., 04., 05., 06.]);
-            original.set_row([1, 0], &[07., 08., 09., 10., 11., 12.]);
+            original.set_slice([0, 0], &[01., 02., 03., 04., 05., 06.]);
+            original.set_slice([1, 0], &[07., 08., 09., 10., 11., 12.]);
             assert_eq!(
                 format!("{original}"),
                 [
@@ -1052,7 +1072,7 @@ mod tests {
         fn pretty_vector() {
             let mut m = CpuTensor::new([4]);
 
-            m.set_row([0], &[1., 2., 3., 4.]);
+            m.set_slice([0], &[1., 2., 3., 4.]);
 
             let pretty = format!("{m}");
             assert_eq!(pretty, "| 1 | 2 | 3 | 4 |");
@@ -1062,9 +1082,9 @@ mod tests {
         fn pretty_matrix() {
             let mut m = CpuBackend::new_matrix(3, 4);
 
-            m.set_row([0, 0], &[1., 2., 3., 4.]);
-            m.set_row([1, 0], &[5., 6., 7., 8.]);
-            m.set_row([2, 0], &[9., 10., 11., 12.]);
+            m.set_slice([0, 0], &[1., 2., 3., 4.]);
+            m.set_slice([1, 0], &[5., 6., 7., 8.]);
+            m.set_slice([2, 0], &[9., 10., 11., 12.]);
 
             let pretty = format!("{m}");
 
@@ -1084,21 +1104,21 @@ mod tests {
         fn pretty_tensor_3() {
             let mut m = CpuTensor::new([3, 4, 2]);
 
-            m.set_row([0, 0, 0], &[1., 2.]);
-            m.set_row([1, 0, 0], &[3., 4.]);
-            m.set_row([2, 0, 0], &[5., 6.]);
+            m.set_slice([0, 0, 0], &[1., 2.]);
+            m.set_slice([1, 0, 0], &[3., 4.]);
+            m.set_slice([2, 0, 0], &[5., 6.]);
 
-            m.set_row([0, 1, 0], &[7., 8.]);
-            m.set_row([1, 1, 0], &[9., 10.]);
-            m.set_row([2, 1, 0], &[11., 12.]);
+            m.set_slice([0, 1, 0], &[7., 8.]);
+            m.set_slice([1, 1, 0], &[9., 10.]);
+            m.set_slice([2, 1, 0], &[11., 12.]);
 
-            m.set_row([0, 2, 0], &[13., 14.]);
-            m.set_row([1, 2, 0], &[15., 16.]);
-            m.set_row([2, 2, 0], &[17., 18.]);
+            m.set_slice([0, 2, 0], &[13., 14.]);
+            m.set_slice([1, 2, 0], &[15., 16.]);
+            m.set_slice([2, 2, 0], &[17., 18.]);
 
-            m.set_row([0, 3, 0], &[19., 20.]);
-            m.set_row([1, 3, 0], &[21., 22.]);
-            m.set_row([2, 3, 0], &[23., 24.]);
+            m.set_slice([0, 3, 0], &[19., 20.]);
+            m.set_slice([1, 3, 0], &[21., 22.]);
+            m.set_slice([2, 3, 0], &[23., 24.]);
 
             let pretty = format!("{m}");
 
@@ -1120,8 +1140,8 @@ mod tests {
         fn pretty_tensor_3_batch_is_1() {
             let mut m = CpuTensor::new([1, 2, 2]);
 
-            m.set_row([0, 0, 0], &[1., 2.]);
-            m.set_row([0, 1, 0], &[3., 4.]);
+            m.set_slice([0, 0, 0], &[1., 2.]);
+            m.set_slice([0, 1, 0], &[3., 4.]);
             let pretty = format!("{m}");
 
             assert_eq!(

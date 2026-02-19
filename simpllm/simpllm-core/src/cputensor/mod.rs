@@ -3,7 +3,6 @@ mod matmul;
 pub mod norm;
 pub mod softmax;
 mod tensor;
-mod trait_adapter;
 
 pub use crate::llm::sample::LogitSampler;
 use crate::tensor::Tensor;
