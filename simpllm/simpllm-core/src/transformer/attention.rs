@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
+use crate::tensor::{Matrix, PrettyTensor, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
 pub struct Attention<B: TensorBackend> {
