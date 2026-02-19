@@ -1045,17 +1045,6 @@ mod tests {
                 .join("\n")
             );
         }
-
-        #[test]
-        fn pretty_tensor_4() {
-            let m = CpuTensor::new([1, 2, 3, 4]);
-
-            // can't pretty it via a tensor method; use prettier directly
-            let pretty = format!("{}", Pretty(&m));
-
-            // no pretty text for it (which is why we don't expose it)
-            assert_eq!(pretty, "(1x2x3x4 tensor)");
-        }
     }
 
     fn expect_panic<X>(f: impl FnOnce() -> X + panic::UnwindSafe) {

@@ -137,19 +137,19 @@ macro_rules! pretty_tensor {
     ($t:ident) => {
         impl Display for $t<1> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-                use crate::tensor::PrettyTensor;
+                use $crate::tensor::PrettyTensor;
                 self.pretty().fmt(f)
             }
         }
         impl Display for $t<2> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-                use crate::tensor::PrettyTensor;
+                use $crate::tensor::PrettyTensor;
                 self.pretty().fmt(f)
             }
         }
         impl Display for $t<3> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-                use crate::tensor::PrettyTensor;
+                use $crate::tensor::PrettyTensor;
                 self.pretty().fmt(f)
             }
         }
