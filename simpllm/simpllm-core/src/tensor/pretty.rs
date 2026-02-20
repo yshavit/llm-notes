@@ -1,114 +1,138 @@
 use crate::tensor::Tensor;
 use std::fmt::{Display, Formatter};
 
-pub struct Pretty<'a, const R: usize, T: Tensor<R>>(&'a T);
+pub struct Pretty<'a, const R: usize, T: Tensor<R>> {
+    tensor: &'a T,
+    col_limit: Option<usize>,
+    precision: Option<usize>,
+}
+
+impl<'a, const R: usize, T: Tensor<R>> Pretty<'a, R, T> {
+    pub fn with_col_limit(mut self, col_limit: Option<usize>) -> Self {
+        self.col_limit = col_limit;
+        self
+    }
+
+    pub fn with_precision(mut self, precision: Option<usize>) -> Self {
+        self.precision = precision;
+        self
+    }
+}
 
 impl<'a, const R: usize, T: Tensor<R>> Display for Pretty<'a, R, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let tensor = self.0;
+        let tensor = self.tensor;
         let shape = tensor.shape();
-        if R >= 4 {
-            return write!(f, "({} tensor)", shape);
-        }
-        // Turn all the values into equal-length, padded strings
-        let mut cell_strings = Vec::with_capacity(shape.num_elements());
-        let mut max_cell_len = 0;
 
-        let indices: Box<dyn Iterator<Item = [usize; R]>> = match R {
-            1 | 2 => Box::new(shape.iter_indices()),
-            3 => {
-                // Different from the standard: each visual row is a batch and then a column.
-                //
-                // Conceptually:
-                // for row in rows:
-                //   for batch in batches:
-                //      for column in columns:
-                //          yield (batch, row, column)
-                let mut batch: usize = 0;
-                let mut col: usize = 0;
-                let mut row: usize = 0;
-                let (max_batch, max_row, max_col) = (shape[0], shape[1], shape[2]);
-                Box::new(std::iter::from_fn(move || {
-                    if col >= max_col {
-                        col = 0;
-                        batch += 1;
-                    }
-                    if batch >= max_batch {
-                        batch = 0;
-                        row += 1;
-                    }
-                    if row >= max_row {
-                        None
-                    } else {
-                        let mut idx = [0; R];
-                        idx.copy_from_slice(&[batch, row, col]);
-                        col += 1;
-                        Some(idx)
-                    }
-                }))
+        let row_starts: Vec<_> = match R {
+            1 => {
+                vec![[0; R]]
             }
-
-            _ => Box::new(std::iter::empty()),
+            2 => (0..shape[0])
+                .map(|row_idx| {
+                    let mut idx = [0; R];
+                    idx[0] = row_idx;
+                    idx
+                })
+                .collect(),
+            3 => {
+                // Rows first, then batches
+                let (n_batches, n_rows) = (shape[0], shape[1]);
+                let mut indexes = Vec::with_capacity(n_batches * n_rows);
+                for row in 0..n_rows {
+                    for batch in 0..n_batches {
+                        let mut idx = [0; R];
+                        idx[0] = batch;
+                        idx[1] = row;
+                        indexes.push(idx);
+                    }
+                }
+                indexes
+            }
+            _ => {
+                return write!(f, "({} tensor)", shape);
+            }
         };
+
+        let flat_offset = |idx: [usize; R]| -> usize {
+            let mut flat_idx = 0;
+            let mut stride = 1;
+            for i in (0..R).rev() {
+                flat_idx += stride * idx[i];
+                stride *= shape[i];
+            }
+            flat_idx
+        };
+
+        #[derive(Debug)]
+        enum Cell {
+            Elem(String),
+            Ellipsis,
+            ColBreak,
+            LineBreak,
+        }
 
         let row_major_f32 = tensor.flat_f32();
-        for idx in indices {
-            let flat_idx = {
-                let mut flat_idx = 0;
-                let mut stride = 1;
-                for i in (0..R).rev() {
-                    flat_idx += stride * idx[i];
-                    stride *= shape[i];
+        let mut row_major_cells: Vec<Cell> = Vec::with_capacity(shape.num_elements());
+        for row_start in row_starts {
+            let row_offset = flat_offset(row_start);
+            // do the columns
+            for col in 0..shape[R - 1] {
+                if let Some(col_limit) = self.col_limit
+                    && col >= col_limit
+                {
+                    row_major_cells.push(Cell::Ellipsis);
+                    break;
                 }
-                flat_idx
-            };
-            let val_string = row_major_f32[flat_idx].to_string();
-            max_cell_len = max_cell_len.max(val_string.len());
-            cell_strings.push(val_string);
-        }
-        cell_strings
-            .iter_mut()
-            .for_each(|s| *s = format!("{:>width$}", s, width = max_cell_len));
-
-        // Now write them all. The cell_strings is already in row-major order, so we can just keep track of newlines.
-        let line_length = match R {
-            1 => shape[0],
-            2 => shape[1],
-            3 => shape[0] * shape[2], // each visual row is a batch and a row
-            _ => {
-                return Ok(()); // shouldn't ever get here!
+                let val = row_major_f32[row_offset + col];
+                let val_str = match self.precision {
+                    None => format!("{val}"),
+                    Some(precision) => format!("{:.p$}", val, p = precision),
+                };
+                row_major_cells.push(Cell::Elem(val_str));
             }
-        };
-        let mut batch_length = match R {
-            3 => Some((shape[2], shape[2])), // column lengths
-            _ => None,
-        };
-        let mut line_tracker = line_length; // start a newline right away
-        let mut first_line = true;
-        for s in cell_strings {
-            if line_tracker >= line_length {
-                if first_line {
-                    first_line = false;
-                    write!(f, "|")?;
-                } else {
-                    write!(f, "\n|")?;
-                }
-                line_tracker = 0;
-            }
-            if let Some((batch_tracker, batch_length)) = &mut batch_length {
-                if batch_tracker >= batch_length {
-                    if line_tracker > 0 {
-                        write!(f, "    |")?;
+            // now either a row break or line break
+            match R {
+                2 => {
+                    let (curr_row, last_row) = (row_start[0], shape[0] - 1);
+                    if curr_row < last_row {
+                        row_major_cells.push(Cell::LineBreak);
                     }
-                    *batch_tracker = 0;
                 }
-                *batch_tracker += 1;
+                3 => {
+                    let (curr_batch, last_batch) = (row_start[0], shape[0] - 1);
+                    if curr_batch < last_batch {
+                        row_major_cells.push(Cell::ColBreak);
+                    } else {
+                        let (curr_row, last_row) = (row_start[1], shape[1] - 1);
+                        if curr_row < last_row {
+                            row_major_cells.push(Cell::LineBreak);
+                        }
+                    }
+                }
+                _ => {}
             }
-            write!(f, " {s} |")?;
-            line_tracker += 1;
         }
 
-        Ok(())
+        let max_cell_len: usize = row_major_cells
+            .iter()
+            .map(|c| match c {
+                Cell::Elem(s) => s.len(),
+                _ => 0,
+            })
+            .max()
+            .unwrap_or(0);
+
+        // Now just render it!
+        for cell in row_major_cells {
+            match cell {
+                Cell::Elem(s) => write!(f, "| {:>width$} ", s, width = max_cell_len)?,
+                Cell::ColBreak => write!(f, "|    ")?,
+                Cell::LineBreak => writeln!(f, "|")?,
+                Cell::Ellipsis => write!(f, "| <...> ")?,
+            }
+        }
+        write!(f, "|")
     }
 }
 
@@ -123,7 +147,12 @@ macro_rules! prettier {
             type T = T;
 
             fn pretty(&self) -> Pretty<'_, $r, Self::T> {
-                Pretty(self)
+                const PRETTY_COLS_MAX: usize = 3;
+                Pretty {
+                    tensor: self,
+                    col_limit: Some(PRETTY_COLS_MAX),
+                    precision: None,
+                }
             }
         }
     };

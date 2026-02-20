@@ -938,6 +938,7 @@ mod tests {
 
     mod pretty {
         use super::*;
+        use crate::tensor::PrettyTensor;
 
         #[test]
         fn pretty_vector() {
@@ -945,7 +946,7 @@ mod tests {
 
             m.set_slice([0], &[1., 2., 3., 4.]);
 
-            let pretty = format!("{m}");
+            let pretty = format!("{}", m.pretty().with_col_limit(None));
             assert_eq!(pretty, "| 1 | 2 | 3 | 4 |");
         }
 
@@ -957,7 +958,7 @@ mod tests {
             m.set_slice([1, 0], &[5., 6., 7., 8.]);
             m.set_slice([2, 0], &[9., 10., 11., 12.]);
 
-            let pretty = format!("{m}");
+            let pretty = format!("{}", m.pretty().with_col_limit(None));
 
             assert_eq!(
                 pretty,
@@ -1024,6 +1025,64 @@ mod tests {
                 ]
                 .join("\n")
             );
+        }
+
+        #[test]
+        fn many_columns_1() {
+            let pretty = format!("{}", counting_tensor([5]));
+            assert_eq!(
+                pretty,
+                [
+                    //
+                    "| 1 | 2 | 3 | <...> |",
+                ]
+                .join("\n")
+            );
+        }
+
+        #[test]
+        fn many_columns_2() {
+            let pretty = format!("{}", counting_tensor([2, 5]));
+            assert_eq!(
+                pretty,
+                [
+                    // Without ellipses, it would be:
+                    //
+                    // |  1 |  2 |  3 |  4 |  5 |
+                    // |  6 |  7 |  8 |  9 | 10 |
+                    //
+                    "| 1 | 2 | 3 | <...> |",
+                    "| 6 | 7 | 8 | <...> |",
+                    // (note that the padding accounts for the shorter strings, not double-digit "10")
+                ]
+                .join("\n")
+            );
+        }
+
+        #[test]
+        fn many_columns_3() {
+            let pretty = format!("{}", counting_tensor([3, 2, 5]));
+            assert_eq!(
+                pretty,
+                [
+                    // Without ellipses, it would be:
+                    //
+                    // |  1 |  2 |  3 |  4 |  5 |    | 11 | 12 | 13 | 14 | 15 |    | 21 | 22 | 23 | 24 | 25 |
+                    // |  6 |  7 |  8 |  9 | 10 |    | 16 | 17 | 18 | 19 | 20 |    | 26 | 27 | 28 | 29 | 30 |
+                    //
+                    "|  1 |  2 |  3 | <...> |    | 11 | 12 | 13 | <...> |    | 21 | 22 | 23 | <...> |",
+                    "|  6 |  7 |  8 | <...> |    | 16 | 17 | 18 | <...> |    | 26 | 27 | 28 | <...> |"
+                ]
+                .join("\n")
+            );
+        }
+
+        fn counting_tensor<const R: usize>(shape: [usize; R]) -> CpuTensor<R> {
+            let shape: Shape<R> = shape.into();
+            CpuTensor::from_row_major(
+                shape,
+                &(1..).take(shape.num_elements()).map(|i| i as f32).collect::<Vec<_>>(),
+            )
         }
     }
 
