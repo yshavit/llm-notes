@@ -6,15 +6,17 @@ pub struct Ffn<B: TensorBackend> {
 }
 
 impl<B: TensorBackend> Ffn<B> {
-    pub fn new(mut in_dim: usize, hidden_layer_dims: &[usize], out_dim: usize) -> Self {
-        let mut layers = Vec::with_capacity(hidden_layer_dims.len() + 1);
-        for &out_dim in hidden_layer_dims.iter().chain(std::iter::once(&out_dim)) {
-            layers.push(MatrixAndBias::new(in_dim, out_dim));
-            in_dim = out_dim;
+    pub fn new(layers_transforms: Vec<MatrixAndBias<B>>) -> Self {
+        let mut layers_iter = layers_transforms.iter().enumerate();
+        let mut out_dim = {
+            let (_, first_layer) = layers_iter.next().expect("layer_transforms may not be empty");
+            first_layer.out_dims()
+        };
+        for (layer_num, layer) in layers_iter {
+            assert_eq!(layer.in_dims(), out_dim, "at layer {layer_num}");
+            out_dim = layer.out_dims();
         }
-        Self {
-            layers_transforms: layers,
-        }
+        Self { layers_transforms }
     }
 
     fn in_dims(&self) -> usize {
@@ -46,6 +48,7 @@ impl<B: TensorBackend> Ffn<B> {
 pub mod tests {
     use super::*;
     use crate::assert_f32_slice;
+    use crate::cputensor::CpuTensor;
     use crate::tensor::Shape;
 
     /// Compares against a reference pytorch implementation.
@@ -104,29 +107,25 @@ pub mod tests {
     fn compare_against_pytorch() {
         use crate::cputensor::CpuBackend;
 
-        let mut ffn: Ffn<CpuBackend> = Ffn::new(5, &[7], 6);
-        for transform in &mut ffn.layers_transforms {
-            transform.set(
-                &count_up([transform.in_dims(), transform.out_dims()]),
-                &count_up([transform.out_dims()]),
-            );
-        }
+        let layers = vec![
+            MatrixAndBias::new(count_up([5, 7]), count_up([7])),
+            MatrixAndBias::new(count_up([7, 6]), count_up([6])),
+        ];
+
+        let ffn: Ffn<CpuBackend> = Ffn::new(layers);
 
         let input = count_up([5]).reshape([1, 5]);
 
         let actual = ffn.apply(input);
 
-        let mut expect = CpuBackend::new_vector(6);
-        expect.reset_values(&[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
+        let expect = CpuTensor::from_row_major([6], &[48441.0, 50850.0, 53259.0, 55668.0, 58077.0, 60486.0]);
 
         assert_f32_slice!(actual.flat_f32().as_ref(), expect.flat_f32().as_ref());
     }
 
-    fn count_up<const R: usize>(shape: [usize; R]) -> <crate::cputensor::CpuBackend as TensorBackend>::Tensor<R> {
+    fn count_up<const R: usize>(shape: [usize; R]) -> CpuTensor<R> {
         let shape = Shape::from(shape);
         let vals: Vec<_> = (0..shape.num_elements()).map(|i| (i + 1) as f32).collect();
-        let mut t = <crate::cputensor::CpuBackend as TensorBackend>::Tensor::zeros(shape);
-        t.reset_values(&vals);
-        t
+        CpuTensor::from_row_major(shape, &vals)
     }
 }

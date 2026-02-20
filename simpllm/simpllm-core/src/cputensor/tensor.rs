@@ -18,26 +18,6 @@ pub type CpuVector = CpuTensor<1>;
 pub type CpuMatrix = CpuTensor<2>;
 
 impl<const R: usize> CpuTensor<R> {
-    pub(super) fn new<S: Into<Shape<R>>>(shape: S) -> Self {
-        assert_ne!(R, 0, "0-tensors are not allowed");
-        let shape: Shape<R> = shape.into();
-        Self {
-            data: vec![0.0; shape.num_elements()],
-            shape,
-            strides: Self::contiguous_strides(shape),
-        }
-    }
-
-    pub(super) fn new_with_data(shape: Shape<R>, data: Vec<f32>) -> CpuTensor<R> {
-        assert_ne!(R, 0, "0-tensors are not allowed");
-        assert_eq!(data.len(), shape.num_elements());
-        Self {
-            data,
-            shape,
-            strides: Self::contiguous_strides(shape),
-        }
-    }
-
     fn contiguous_strides(shape: Shape<R>) -> Shape<R> {
         let mut strides = [0; R];
         // Work backwards from the last dimension: The last dimension is contiguous by default (stride = 1), and then
@@ -180,19 +160,19 @@ impl<const R: usize> Tensor<R> for CpuTensor<R> {
     type Backend = crate::cputensor::CpuBackend;
     type Slice = [f32];
 
-    fn zeros(shape: impl Into<Shape<R>>) -> Self {
-        CpuTensor::new(shape)
+    fn from_row_major(shape: impl Into<Shape<R>>, data: &[f32]) -> Self {
+        assert_ne!(R, 0, "0-tensors are not allowed");
+        let shape: Shape<R> = shape.into();
+        let data: Vec<f32> = data.into();
+        Self {
+            data,
+            shape,
+            strides: Self::contiguous_strides(shape),
+        }
     }
 
     fn shape(&self) -> Shape<R> {
         self.shape
-    }
-
-    fn reset_values(&mut self, values: &[f32]) {
-        assert_eq!(self.shape.num_elements(), values.len());
-        // reset to be contiguous
-        self.strides = Self::contiguous_strides(self.shape);
-        self.data.copy_from_slice(values);
     }
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
@@ -230,7 +210,7 @@ impl<const R: usize> Tensor<R> for CpuTensor<R> {
             // if the last dimension is too big, trim it down
             let dim_extra = orig_dim_size - shapes.iter().map(|s| s[dim]).sum::<usize>();
             shapes[shapes.len() - 1][dim] -= dim_extra;
-            shapes.map(CpuTensor::new)
+            shapes.map(CpuTensor::zeros)
         };
         // Now copy over the slices. We'll make sure we'ere contiguous. Then we'll Iterate over batches of
         // [a, b, ..., <dim>, 0, 0, 0, ...]. For each of those, we'll take the full slice, divide it by S, and then
@@ -578,7 +558,7 @@ mod tests {
 
         #[test]
         fn shape() {
-            let t = Tensor3::new(Shape::new([2, 3, 4]));
+            let t = Tensor3::zeros(Shape::new([2, 3, 4]));
             assert_eq!(t.shape(), Shape::new([2, 3, 4]));
 
             // Spot-check that initial values are 0.0
@@ -588,7 +568,7 @@ mod tests {
 
         #[test]
         fn get_set_round_trip() {
-            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+            let mut t = Tensor3::zeros(Shape::new([2, 3, 4]));
 
             // Set values in different "slices"
             t.set_slice([0, 0, 0], &[1., 2., 3., 4.]);
@@ -609,7 +589,7 @@ mod tests {
 
         #[test]
         fn set_row() {
-            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+            let mut t = Tensor3::zeros(Shape::new([2, 3, 4]));
 
             t.set_slice([0, 1, 0], &[10., 20., 30., 40.]);
 
@@ -627,7 +607,7 @@ mod tests {
 
         #[test]
         fn transposition_dims_0_1() {
-            let mut t = Tensor3::new(Shape::new([2, 3, 4]));
+            let mut t = Tensor3::zeros(Shape::new([2, 3, 4]));
 
             // Fill with distinct values
             t.set_slice([0, 0, 0], &[1., 2., 3., 4.]);
@@ -651,7 +631,7 @@ mod tests {
         #[test]
         #[should_panic = "index out of range: can't get [2, 3, 4] on 2x3x4 tensor"]
         fn bounds_check() {
-            let t = Tensor3::new(Shape::new([2, 3, 4]));
+            let t = Tensor3::zeros(Shape::new([2, 3, 4]));
             t.get([2, 3, 4]);
         }
     }
@@ -661,7 +641,7 @@ mod tests {
 
         #[test]
         fn matrix_view_round_trip() {
-            let mut t = CpuTensor::new([4, 2, 3]);
+            let mut t = CpuTensor::zeros([4, 2, 3]);
 
             // Get the second batch (doesn't really matter which)
             let slice_indices = [1, 0, 0];
@@ -756,7 +736,7 @@ mod tests {
 
         #[test]
         fn split_on_last_dim() {
-            let mut orig = CpuTensor::new([2, 2, 6]);
+            let mut orig = CpuTensor::zeros([2, 2, 6]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -793,7 +773,7 @@ mod tests {
 
         #[test]
         fn split_on_middle_dim() {
-            let mut orig = CpuTensor::new([2, 6, 2]);
+            let mut orig = CpuTensor::zeros([2, 6, 2]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -844,7 +824,7 @@ mod tests {
 
         #[test]
         fn split_on_first_dim() {
-            let mut orig = CpuTensor::new([6, 2, 2]);
+            let mut orig = CpuTensor::zeros([6, 2, 2]);
             orig.data
                 .iter_mut()
                 .enumerate()
@@ -916,7 +896,7 @@ mod tests {
 
         #[test]
         fn broadcast() {
-            let mut a = CpuTensor::new([2, 3, 3]);
+            let mut a = CpuTensor::zeros([2, 3, 3]);
             let mut b = CpuBackend::new_matrix(3, 3);
             a.data.iter_mut().enumerate().for_each(|(n, v)| *v = (n * 100) as f32);
             b.data.iter_mut().enumerate().for_each(|(n, v)| *v = n as f32);
@@ -961,7 +941,7 @@ mod tests {
 
         #[test]
         fn pretty_vector() {
-            let mut m = CpuTensor::new([4]);
+            let mut m = CpuTensor::zeros([4]);
 
             m.set_slice([0], &[1., 2., 3., 4.]);
 
@@ -993,7 +973,7 @@ mod tests {
 
         #[test]
         fn pretty_tensor_3() {
-            let mut m = CpuTensor::new([3, 4, 2]);
+            let mut m = CpuTensor::zeros([3, 4, 2]);
 
             m.set_slice([0, 0, 0], &[1., 2.]);
             m.set_slice([1, 0, 0], &[3., 4.]);
@@ -1029,7 +1009,7 @@ mod tests {
         /// Check the fence post when there's just one batch
         #[test]
         fn pretty_tensor_3_batch_is_1() {
-            let mut m = CpuTensor::new([1, 2, 2]);
+            let mut m = CpuTensor::zeros([1, 2, 2]);
 
             m.set_slice([0, 0, 0], &[1., 2.]);
             m.set_slice([0, 1, 0], &[3., 4.]);

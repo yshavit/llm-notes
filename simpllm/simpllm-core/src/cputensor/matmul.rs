@@ -21,7 +21,7 @@ pub fn matmul_batched<const R: usize>(a: &CpuTensor<R>, b: &CpuTensor<R>) -> Cpu
 
     let mut out_shape = a_shape;
     out_shape[R - 1] = b_shape[R - 1];
-    let mut out = CpuTensor::new(out_shape);
+    let mut out = CpuTensor::zeros(out_shape);
 
     for batch_indices in a_shape.iter_indices().skipping_dims_at(R - 2) {
         let a_matrix = a.matrix_slice(batch_indices);
@@ -165,7 +165,7 @@ mod tests {
 
         #[test]
         fn check_matmul_batched_3() {
-            let mut a = CpuTensor::new([2, 3, 4]);
+            let mut a = CpuTensor::zeros([2, 3, 4]);
             // Batch 0: values are 1BRC (tensor 1, batch, row, col)
             a.set_slice([0, 0, 0], &[1000., 1001., 1002., 1003.]);
             a.set_slice([0, 1, 0], &[1010., 1011., 1012., 1013.]);
@@ -175,7 +175,7 @@ mod tests {
             a.set_slice([1, 1, 0], &[1110., 1111., 1112., 1113.]);
             a.set_slice([1, 2, 0], &[1120., 1121., 1122., 1123.]);
 
-            let mut b = CpuTensor::new([2, 4, 5]);
+            let mut b = CpuTensor::zeros([2, 4, 5]);
             // Batch 0: values are 2BRC (tensor 2, batch, row, col)
             b.set_slice([0, 0, 0], &[2000., 2001., 2002., 2003., 2004.]);
             b.set_slice([0, 1, 0], &[2010., 2011., 2012., 2013., 2014.]);
@@ -189,7 +189,7 @@ mod tests {
 
             let out = matmul_batched(&a, &b);
 
-            let mut expected: CpuTensor<3> = CpuTensor::new([2, 3, 5]);
+            let mut expected: CpuTensor<3> = CpuTensor::zeros([2, 3, 5]);
             // Batch 0, row 0: [1000., 1001., 1002., 1003.] × b
             expected.set_slice(
                 [0, 0, 0],
@@ -263,16 +263,16 @@ mod tests {
         #[test]
         #[should_panic = "can't multiply (2x3x4) by (2x3x4)"]
         fn matmul_batched_inner_dim_mismatch() {
-            let a: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
-            let b: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
+            let a: CpuTensor<3> = CpuTensor::zeros([2, 3, 4]);
+            let b: CpuTensor<3> = CpuTensor::zeros([2, 3, 4]);
             let _ = matmul_batched(&a, &b);
         }
 
         #[test]
         #[should_panic = "can't multiply (2x3x4) by (9x4x5)"]
         fn matmul_batched_batch_dim_mismatch() {
-            let a: CpuTensor<3> = CpuTensor::new([2, 3, 4]);
-            let b: CpuTensor<3> = CpuTensor::new([9, 4, 5]);
+            let a: CpuTensor<3> = CpuTensor::zeros([2, 3, 4]);
+            let b: CpuTensor<3> = CpuTensor::zeros([9, 4, 5]);
             let _ = matmul_batched(&a, &b);
         }
     }

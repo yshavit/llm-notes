@@ -19,8 +19,7 @@ pub struct Model<B: TensorBackend> {
 
 impl<B: TensorBackend> ModelLoader<B> {
     pub fn initialize(self) -> Model<B> {
-        let mut tok_embed = B::Tensor::zeros(self.tok_embed.shape());
-        tok_embed.reset_values(&self.tok_embed.flat_f32());
+        let tok_embed = B::Tensor::from_row_major(self.tok_embed.shape(), &self.tok_embed.flat_f32());
         let tok_unembed = tok_embed.transposed(0, 1).contiguous();
         Model { fwd: self, tok_unembed }
     }

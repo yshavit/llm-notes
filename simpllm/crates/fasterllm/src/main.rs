@@ -90,6 +90,12 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Backend = CandleBackend;
     type Slice = CandleTensor<R>;
 
+    fn from_row_major(shape: impl Into<Shape<R>>, data: &[f32]) -> Self {
+        Self {
+            t: candle_core::Tensor::from_slice(data, shape.into().to_vec(), &CUDA).unwrap(),
+        }
+    }
+
     fn zeros(shape: impl Into<Shape<R>>) -> Self {
         Self {
             t: candle_core::Tensor::zeros(shape.into().to_vec(), DType::F32, &CUDA).unwrap(),
@@ -98,10 +104,6 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
 
     fn shape(&self) -> Shape<R> {
         Shape::new(self.t.dims().try_into().unwrap())
-    }
-
-    fn reset_values(&mut self, values: &[f32]) {
-        self.t = candle_core::Tensor::from_slice(values, self.t.shape(), self.t.device()).unwrap();
     }
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {

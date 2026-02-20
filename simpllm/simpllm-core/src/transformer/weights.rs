@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend, Vector};
+use crate::tensor::{Matrix, Tensor2D, TensorBackend, Vector};
 
 pub struct MatrixAndBias<B: TensorBackend> {
     weights: Matrix<B>,
@@ -6,11 +6,8 @@ pub struct MatrixAndBias<B: TensorBackend> {
 }
 
 impl<B: TensorBackend> MatrixAndBias<B> {
-    pub fn new(in_dim: usize, out_dim: usize) -> Self {
-        Self {
-            weights: B::new_matrix(in_dim, out_dim),
-            bias: B::new_vector(out_dim),
-        }
+    pub fn new(weights: Matrix<B>, bias: Vector<B>) -> Self {
+        Self { weights, bias }
     }
 
     pub fn in_dims(&self) -> usize {
@@ -27,10 +24,5 @@ impl<B: TensorBackend> MatrixAndBias<B> {
 
     pub fn bias(&self) -> &Vector<B> {
         &self.bias
-    }
-
-    pub fn set(&mut self, weights: &Matrix<B>, bias: &Vector<B>) {
-        self.weights.reset_values(&weights.flat_f32());
-        self.bias.reset_values(&bias.flat_f32());
     }
 }

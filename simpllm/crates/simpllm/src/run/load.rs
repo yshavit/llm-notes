@@ -1,7 +1,7 @@
 use gpt2weights::{HParams, ModelPath, ModelShape, NormOffsets, Offsets, load_metadata};
 use simpllm_core::llm::ModelLoader;
 use simpllm_core::tensor::{LayerNorm, Tensor, TensorBackend};
-use simpllm_core::transformer::{Attention, Ffn, TransformerBlock};
+use simpllm_core::transformer::{Attention, Ffn, MatrixAndBias, TransformerBlock};
 use std::error::Error;
 use std::fs;
 
@@ -74,36 +74,37 @@ fn load_transformer<B: TensorBackend>(
     let (d, qkv_3d) = (h_params.n_embd, h_params.n_embd * 3);
     let offsets = &model_shape.tensor_offsets.transformers[layer_idx];
 
-    // attention
+    let attn = {
+        let qkv_weights = load_tensor::<B, _>([d, qkv_3d], data, offsets.attn_qkv.weight)?;
+        let qkv_bias = load_tensor::<B, _>([qkv_3d], data, offsets.attn_qkv.bias)?;
+        let qkv_mab = MatrixAndBias::new(qkv_weights, qkv_bias);
 
-    let mut attn = Attention::<B>::new(d, h_params.n_head);
+        let attn_wo = load_tensor::<B, _>([d, d], data, offsets.attn_wo.weight)?;
+        let attn_o_bias = load_tensor::<B, _>([d], data, offsets.attn_wo.bias)?;
+        let wo_mab = MatrixAndBias::new(attn_wo, attn_o_bias);
 
-    let qkv_weights = load_tensor::<B, _>([d, qkv_3d], data, offsets.attn_qkv.weight)?;
-    let qkv_bias = load_tensor::<B, _>([qkv_3d], data, offsets.attn_qkv.bias)?;
-    attn.qkv_mut().set(&qkv_weights, &qkv_bias);
-
-    let attn_wo = load_tensor::<B, _>([d, d], data, offsets.attn_wo.weight)?;
-    let attn_o_bias = load_tensor::<B, _>([d], data, offsets.attn_wo.bias)?;
-    attn.o_mut().set(&attn_wo, &attn_o_bias);
+        Attention::<B>::new(qkv_mab, wo_mab, h_params.n_head)
+    };
 
     let attn_norm = load_norm::<B>(data, offsets.before_attn_norm, d)?;
 
     // ffn
-    let hidden_d = model_shape.transformer[layer_idx].ffn_hidden_layer_embed;
-    let mut ffn = Ffn::<B>::new(d, &[hidden_d], d);
+    let ffn = {
+        let hidden_d = model_shape.transformer[layer_idx].ffn_hidden_layer_embed;
 
-    let ffn_hidden_weights = load_tensor::<B, _>([d, hidden_d], data, offsets.ffn_hidden.weight)?;
-    let ffn_hidden_bias = load_tensor::<B, _>([hidden_d], data, offsets.ffn_hidden.bias)?;
-    let ffn_output_weights = load_tensor::<B, _>([hidden_d, d], data, offsets.ffn_output.weight)?;
-    let ffn_output_bias = load_tensor::<B, _>([d], data, offsets.ffn_output.bias)?;
+        let ffn_hidden_weights = load_tensor::<B, _>([d, hidden_d], data, offsets.ffn_hidden.weight)?;
+        let ffn_hidden_bias = load_tensor::<B, _>([hidden_d], data, offsets.ffn_hidden.bias)?;
+        let ffn_output_weights = load_tensor::<B, _>([hidden_d, d], data, offsets.ffn_output.weight)?;
+        let ffn_output_bias = load_tensor::<B, _>([d], data, offsets.ffn_output.bias)?;
+
+        Ffn::<B>::new(vec![
+            MatrixAndBias::new(ffn_hidden_weights, ffn_hidden_bias),
+            MatrixAndBias::new(ffn_output_weights, ffn_output_bias),
+        ])
+    };
     let ffn_norm = load_norm::<B>(data, offsets.before_ffn_norm, d)?;
 
-    ffn.layer_mut(0).set(&ffn_hidden_weights, &ffn_hidden_bias);
-    ffn.layer_mut(1).set(&ffn_output_weights, &ffn_output_bias);
-
-    let block = TransformerBlock::new(attn_norm, attn, ffn_norm, ffn);
-
-    Ok(block)
+    Ok(TransformerBlock::new(attn_norm, attn, ffn_norm, ffn))
 }
 
 fn load_tensor<B: TensorBackend, const R: usize>(
@@ -112,14 +113,8 @@ fn load_tensor<B: TensorBackend, const R: usize>(
     offsets: Offsets,
 ) -> Result<B::Tensor<R>, Box<dyn Error>> {
     let floats = load_floats(data, offsets)?;
-    let tensor = populate_tensor::<B, _>(size, &floats);
+    let tensor = B::Tensor::from_row_major(size, &floats);
     Ok(tensor)
-}
-
-fn populate_tensor<B: TensorBackend, const R: usize>(size: [usize; R], vals: &[f32]) -> B::Tensor<R> {
-    let mut t = B::Tensor::zeros(size);
-    t.reset_values(vals);
-    t
 }
 
 fn load_floats(data: &[u8], offsets: Offsets) -> Result<Vec<f32>, Box<dyn Error>> {

@@ -6,10 +6,15 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     type Backend: TensorBackend;
     type Slice: TensorSlice + ?Sized;
 
-    fn zeros(shape: impl Into<Shape<R>>) -> Self;
-    fn shape(&self) -> Shape<R>;
+    fn from_row_major(shape: impl Into<Shape<R>>, data: &[f32]) -> Self;
 
-    fn reset_values(&mut self, values: &[f32]);
+    fn zeros(shape: impl Into<Shape<R>>) -> Self {
+        let shape: Shape<R> = shape.into();
+        let data = vec![0.0; shape.num_elements()];
+        Self::from_row_major(shape, &data)
+    }
+
+    fn shape(&self) -> Shape<R>;
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2>;
     fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S];

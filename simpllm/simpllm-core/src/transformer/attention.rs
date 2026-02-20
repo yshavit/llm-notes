@@ -2,7 +2,6 @@ use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
 pub struct Attention<B: TensorBackend> {
-    embedding_dim: usize,
     num_heads: usize,
 
     w_qkv: MatrixAndBias<B>,
@@ -11,37 +10,30 @@ pub struct Attention<B: TensorBackend> {
 
 impl<B: TensorBackend> Attention<B> {
     //noinspection RsAssertEqual -- I don't want assert_eq!, because I don't need to print the actual/expected
-    pub fn new(embedding_dim: usize, num_heads: usize) -> Self {
-        assert!(
-            (embedding_dim / num_heads) * num_heads == embedding_dim,
-            "embedding_dim ({embedding_dim}) must be a multiple of num_heads ({num_heads})"
+    pub fn new(w_qkv: MatrixAndBias<B>, w_o: MatrixAndBias<B>, num_heads: usize) -> Self {
+        let qkv_embedding_dim = w_qkv.in_dims();
+        let o_embedding_dim = w_o.in_dims();
+        assert_eq!(
+            qkv_embedding_dim, o_embedding_dim,
+            "QKV and output must have same embedding dimension"
         );
-        Self {
-            embedding_dim,
-            num_heads,
-
-            w_qkv: MatrixAndBias::new(embedding_dim, embedding_dim * 3),
-            w_o: MatrixAndBias::new(embedding_dim, embedding_dim),
-        }
+        assert_eq!(qkv_embedding_dim * 3, w_qkv.out_dims(), "QKV must be [d x 3d]");
+        Self { num_heads, w_qkv, w_o }
     }
 
-    pub fn qkv_mut(&mut self) -> &mut MatrixAndBias<B> {
-        &mut self.w_qkv
-    }
-
-    pub fn o_mut(&mut self) -> &mut MatrixAndBias<B> {
-        &mut self.w_o
+    fn embedding_dim(&self) -> usize {
+        self.w_qkv.in_dims()
     }
 
     pub fn apply(&self, input: &Matrix<B>) -> Matrix<B> {
         assert_eq!(
             input.num_cols(),
-            self.embedding_dim,
+            self.embedding_dim(),
             "expected input embedding {}, got {}",
-            self.embedding_dim,
+            self.embedding_dim(),
             input.shape(),
         );
-        let (n, d, h) = (input.num_rows(), self.embedding_dim, self.num_heads);
+        let (n, d, h) = (input.num_rows(), self.embedding_dim(), self.num_heads);
 
         // TODO in practice, these are brought in as a single matrix that's the three of these concatenated.
         // each are (h, n, d/h)
@@ -86,6 +78,7 @@ mod tests {
     use crate::cputensor::CpuTensor;
     use crate::tensor::{Tensor, Tensor2D};
     use crate::transformer::attention::Attention;
+    use crate::transformer::weights::MatrixAndBias;
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -162,38 +155,41 @@ mod tests {
     fn compare_against_pytorch() {
         use crate::cputensor::CpuBackend;
 
-        let embedding_dim = 6;
+        let embedding_dim: usize = 6;
         let n_heads = 3;
         let n_tokens = 2;
 
-        let mut attention: Attention<CpuBackend> = Attention::new(embedding_dim, n_heads);
         let weights_size = embedding_dim.pow(2);
         let mut counter_data = (1..).map(|i| 1.0 / (i as f32));
         let mut counter = |n: usize| -> Vec<f32> { counter_data.by_ref().take(n).collect::<Vec<_>>() };
 
         use crate::tensor::TensorBackend;
 
-        // PyTorch stores QKV as [3*d_model, d_model], we store as [d_model, 3*d_model]
-        // So we need to create the PyTorch layout and transpose it
-        let qkv_pytorch_layout = counter(weights_size * 3);
-        let mut qkv_weights = CpuBackend::new_matrix(embedding_dim * 3, embedding_dim);
-        qkv_weights.reset_values(&qkv_pytorch_layout);
-        let qkv_weights = qkv_weights.transposed(0, 1).contiguous();
+        let qkv_mab = {
+            // PyTorch stores QKV as [3*d_model, d_model], we store as [d_model, 3*d_model]
+            // So we need to create the PyTorch layout and transpose it
+            let qkv_weights = CpuTensor::from_row_major([embedding_dim * 3, embedding_dim], &counter(weights_size * 3))
+                .transposed(0, 1)
+                .contiguous();
+            let zero_bias_qkv = CpuBackend::new_vector(embedding_dim * 3);
+            MatrixAndBias::new(qkv_weights, zero_bias_qkv)
+        };
 
-        let zero_bias_qkv = CpuBackend::new_vector(embedding_dim * 3);
-        attention.qkv_mut().set(&qkv_weights, &zero_bias_qkv);
+        let o_mab = {
+            let o_weights = CpuTensor::from_row_major([embedding_dim, embedding_dim], &counter(weights_size));
+            let zero_bias_o = CpuBackend::new_vector(embedding_dim);
+            MatrixAndBias::new(o_weights, zero_bias_o)
+        };
 
-        let mut o_weights = CpuBackend::new_matrix(embedding_dim, embedding_dim);
-        o_weights.reset_values(&counter(weights_size));
-        let zero_bias_o = CpuBackend::new_vector(embedding_dim);
-        attention.o_mut().set(&o_weights, &zero_bias_o);
-
-        let mut tokens = CpuTensor::zeros([embedding_dim * n_tokens]);
-        tokens.reset_values(
+        let tokens = CpuTensor::from_row_major(
+            [embedding_dim * n_tokens],
             &(0..(n_tokens * embedding_dim))
                 .map(|i| (i + 1) as f32)
                 .collect::<Vec<_>>(),
         );
+
+        let attention: Attention<CpuBackend> = Attention::new(qkv_mab, o_mab, n_heads);
+
         let tokens = tokens.reshape([n_tokens, embedding_dim]);
 
         let output = attention.apply(&tokens);

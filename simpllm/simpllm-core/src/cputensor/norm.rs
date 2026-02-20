@@ -23,7 +23,7 @@ impl crate::tensor::LayerNorm for CpuLayerNorm {
                 *cell = (normalized * self.scale.get([col_idx])) + self.bias.get([col_idx]);
             }
         });
-        CpuTensor::new_with_data(input.shape(), data)
+        CpuTensor::from_row_major(input.shape(), &data)
     }
 }
 
