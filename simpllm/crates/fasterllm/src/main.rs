@@ -56,9 +56,7 @@ impl TensorBackend for CandleBackend {
         let ones_triangle = candle_core::Tensor::tril2(n, DType::U8, &CUDA).unwrap();
 
         // use where_cond to 0s on the bottom (== 1, the true condition) and -inf on the top
-        let mask = ones_triangle.where_cond(&zeros_row, &neg_inf_row).unwrap();
-
-        CandleTensor { t: mask }
+        ones_triangle.where_cond(&zeros_row, &neg_inf_row).into()
     }
 }
 
@@ -73,9 +71,8 @@ impl LayerNorm for CandleLayerNorm {
 
     fn apply(&self, input: &Matrix<Self::B>) -> Matrix<Self::B> {
         let input_on_cpu = input.t.to_device(&Device::Cpu).unwrap();
-        let mut result = self.0.forward(&input_on_cpu).unwrap();
-        result = result.to_device(&CUDA).unwrap();
-        CandleTensor { t: result }
+        let result = self.0.forward(&input_on_cpu).unwrap();
+        result.to_device(&CUDA).into()
     }
 }
 
@@ -84,20 +81,28 @@ struct CandleTensor<const R: usize> {
     t: candle_core::Tensor,
 }
 
+impl<const R: usize> From<Result<candle_core::Tensor, candle_core::Error>> for CandleTensor<R> {
+    fn from(result: Result<candle_core::Tensor, candle_core::Error>) -> Self {
+        Self { t: result.unwrap() }
+    }
+}
+
+impl<const R: usize> From<candle_core::Tensor> for CandleTensor<R> {
+    fn from(t: candle_core::Tensor) -> Self {
+        Self { t }
+    }
+}
+
 impl<const R: usize> Tensor<R> for CandleTensor<R> {
     type Backend = CandleBackend;
     type Slice = CandleTensor<R>;
 
     fn from_row_major(shape: impl Into<Shape<R>>, data: &[f32]) -> Self {
-        Self {
-            t: candle_core::Tensor::from_slice(data, shape.into().to_vec(), &CUDA).unwrap(),
-        }
+        candle_core::Tensor::from_slice(data, shape.into().to_vec(), &CUDA).into()
     }
 
     fn zeros(shape: impl Into<Shape<R>>) -> Self {
-        Self {
-            t: candle_core::Tensor::zeros(shape.into().to_vec(), DType::F32, &CUDA).unwrap(),
-        }
+        candle_core::Tensor::zeros(shape.into().to_vec(), DType::F32, &CUDA).into()
     }
 
     fn shape(&self) -> Shape<R> {
@@ -105,34 +110,26 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     }
 
     fn cat(self, other: Self) -> Self {
-        Self {
-            t: candle_core::Tensor::cat(&[self.t, other.t], 0).unwrap(),
-        }
+        candle_core::Tensor::cat(&[self.t, other.t], 0).into()
     }
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
         let candle_shape: Vec<usize> = new_shape.into().to_vec();
-        CandleTensor {
-            t: self.t.reshape(candle_shape).unwrap(),
-        }
+        self.t.reshape(candle_shape).into()
     }
 
     fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S] {
         let chunks = self.t.chunk(S, dim).unwrap();
         let array: [candle_core::Tensor; S] = chunks.try_into().unwrap();
-        array.map(|c_tensor| CandleTensor { t: c_tensor })
+        array.map(Into::into)
     }
 
     fn transposed(self, dim0: usize, dim1: usize) -> Self {
-        Self {
-            t: self.t.transpose(dim0, dim1).unwrap(),
-        }
+        self.t.transpose(dim0, dim1).into()
     }
 
     fn contiguous(self) -> Self {
-        Self {
-            t: self.t.contiguous().unwrap(),
-        }
+        self.t.contiguous().into()
     }
 
     fn flat_f32(&self) -> Cow<'_, [f32]> {
@@ -146,7 +143,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         }
         tensor = tensor.narrow(R - 1, indices[R - 1], self.shape()[R - 1]).unwrap();
         let flat = tensor.flatten_all().unwrap();
-        f(&CandleTensor { t: flat })
+        f(&flat.into())
     }
 
     fn set_slice(&mut self, indices: [usize; R], values: &Self::Slice) {
@@ -180,17 +177,13 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     }
 
     fn gelu(self) -> Self {
-        Self {
-            t: self.t.gelu().unwrap(),
-        }
+        self.t.gelu().into()
     }
 
     fn softmax(self) -> Self {
         let cpu_tensor = self.t.to_device(&Device::Cpu).unwrap();
         let softmax_tensor = candle_nn::ops::softmax_last_dim(&cpu_tensor).unwrap();
-        Self {
-            t: softmax_tensor.to_device(self.t.device()).unwrap(),
-        }
+        softmax_tensor.to_device(self.t.device()).into()
     }
 
     fn matmul(&self, other: &Self) -> Self {
@@ -204,9 +197,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
         } else {
             other.t.contiguous().unwrap()
         };
-        Self {
-            t: lhs.matmul(&rhs).unwrap(),
-        }
+        lhs.matmul(&rhs).into()
     }
 
     fn multiply_scalar(&mut self, factor: f32) {
@@ -214,9 +205,7 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
     }
 
     fn add<const R2: usize>(self, other: &<Self::Backend as TensorBackend>::Tensor<R2>) -> Self {
-        Self {
-            t: self.t.broadcast_add(&other.t).unwrap(),
-        }
+        self.t.broadcast_add(&other.t).into()
     }
 }
 
