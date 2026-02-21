@@ -676,6 +676,7 @@ mod tests {
 
     mod reshape {
         use super::*;
+        use crate::tensor::PrettyTensor;
 
         #[test]
         fn reshape_2_to_3() {
@@ -685,7 +686,7 @@ mod tests {
             original.set_slice([0, 0], &[01., 02., 03., 04., 05., 06.]);
             original.set_slice([1, 0], &[07., 08., 09., 10., 11., 12.]);
             assert_eq!(
-                format!("{original}"),
+                format!("{}", original.pretty().with_col_limit(None)),
                 [
                     //
                     "|  1 |  2 |  3 |  4 |  5 |  6 |",
@@ -696,7 +697,7 @@ mod tests {
 
             let reshaped = original.reshape([2, 2, 3]);
             assert_eq!(
-                format!("{reshaped}"),
+                format!("{}", reshaped.pretty().with_col_limit(None)),
                 [
                     //
                     "|  1 |  2 |  3 |    |  7 |  8 |  9 |",
@@ -711,7 +712,7 @@ mod tests {
 
             let back_to_orig = reshaped.reshape([2, 6]);
             assert_eq!(
-                format!("{back_to_orig}"),
+                format!("{}", back_to_orig.pretty().with_col_limit(None)),
                 [
                     //
                     "|  1 |  2 |  3 |  4 |  5 |  6 |",
@@ -741,6 +742,7 @@ mod tests {
 
     mod split {
         use super::*;
+        use crate::tensor::PrettyTensor;
 
         #[test]
         fn split_on_last_dim() {
@@ -751,7 +753,7 @@ mod tests {
                 .for_each(|(count, value)| *value = count as f32);
             // sanity check
             assert_eq!(
-                format!("{orig}"),
+                format!("{}", orig.pretty().with_col_limit(None)),
                 [
                     "|  0 |  1 |  2 |  3 |  4 |  5 |    | 12 | 13 | 14 | 15 | 16 | 17 |",
                     "|  6 |  7 |  8 |  9 | 10 | 11 |    | 18 | 19 | 20 | 21 | 22 | 23 |",
@@ -761,7 +763,7 @@ mod tests {
 
             let [split_1, split_2, split_3] = orig.split::<3>(2);
             assert_eq!(
-                format!("{}", split_1),
+                format!("{}", split_1.pretty().with_col_limit(None)),
                 [
                     // split 1
                     "|  0 |  1 |    | 12 | 13 |",
@@ -770,11 +772,11 @@ mod tests {
                 .join("\n")
             );
             assert_eq!(
-                format!("{split_2}"),
+                format!("{}", split_2.pretty().with_col_limit(None)),
                 ["|  2 |  3 |    | 14 | 15 |", "|  8 |  9 |    | 20 | 21 |",].join("\n")
             );
             assert_eq!(
-                format!("{split_3}"),
+                format!("{}", split_3.pretty().with_col_limit(None)),
                 ["|  4 |  5 |    | 16 | 17 |", "| 10 | 11 |    | 22 | 23 |",].join("\n")
             );
         }
