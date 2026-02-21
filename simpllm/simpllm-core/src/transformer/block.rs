@@ -1,4 +1,5 @@
 use crate::tensor::{LayerNorm, Matrix, Tensor, TensorBackend};
+use crate::transformer::AttentionCache;
 use crate::transformer::attention::Attention;
 use crate::transformer::ffn::Ffn;
 
@@ -35,9 +36,9 @@ impl<B: TensorBackend> TransformerBlock<B> {
         &mut self.ffn_norm
     }
 
-    pub fn apply(&self, input: Matrix<B>) -> Matrix<B> {
+    pub fn apply(&self, input: Matrix<B>, attention_cache: &mut AttentionCache<B>) -> Matrix<B> {
         let pre_attn_norm = self.attention_norm.apply(&input);
-        let attn = self.attention.apply(&pre_attn_norm);
+        let attn = self.attention.apply(&pre_attn_norm, attention_cache);
         let attn_and_residual = attn.add(&input);
 
         let pre_ffn_norm = self.ffn_norm.apply(&attn_and_residual);

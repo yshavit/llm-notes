@@ -2,11 +2,9 @@ use candle_core::{DType, Device, Module};
 use simpllm_core::tensor::{LayerNorm, Matrix, Shape, Tensor, TensorBackend, TensorSlice, Vector};
 use std::borrow::Cow;
 use std::error::Error;
-use std::ops::Deref;
 use std::sync::LazyLock;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
-    let _ = CUDA.deref(); // force initialization before loading; this just makes the loading eprintln's show up first.
     simpllm::run_main::<CandleBackend>()
 }
 
@@ -104,6 +102,12 @@ impl<const R: usize> Tensor<R> for CandleTensor<R> {
 
     fn shape(&self) -> Shape<R> {
         Shape::new(self.t.dims().try_into().unwrap())
+    }
+
+    fn cat(self, other: Self) -> Self {
+        Self {
+            t: candle_core::Tensor::cat(&[self.t, other.t], 0).unwrap(),
+        }
     }
 
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {

@@ -1,7 +1,7 @@
 use crate::bpe::Rank;
 use crate::cputensor::LogitSampler;
 use crate::tensor::{LayerNorm, Matrix, Tensor, Tensor2D, TensorBackend, TensorSlice};
-use crate::transformer::TransformerBlock;
+use crate::transformer::{AttentionCache, TransformerBlock};
 use std::fmt::{Display, Formatter};
 
 pub struct ModelLoader<B: TensorBackend> {
@@ -17,6 +17,11 @@ pub struct Model<B: TensorBackend> {
     tok_unembed: Matrix<B>,
 }
 
+pub struct InferenceContext<B: TensorBackend> {
+    attention_caches: Vec<AttentionCache<B>>,
+    token_count: usize,
+}
+
 impl<B: TensorBackend> ModelLoader<B> {
     pub fn initialize(self) -> Model<B> {
         let tok_embed = B::Tensor::from_row_major(self.tok_embed.shape(), &self.tok_embed.flat_f32());
@@ -26,11 +31,23 @@ impl<B: TensorBackend> ModelLoader<B> {
 }
 
 impl<B: TensorBackend> Model<B> {
-    pub fn apply(&self, seq: &[Rank], logit_sampler: &Option<LogitSampler>) -> Result<Rank, InferenceError> {
-        let mut x = self.embed_inputs(seq)?;
+    pub fn new_inference_context(&self) -> InferenceContext<B> {
+        InferenceContext {
+            attention_caches: (0..self.fwd.layers.len()).map(|_| AttentionCache::default()).collect(),
+            token_count: 0,
+        }
+    }
 
-        for transformer in &self.fwd.layers {
-            x = transformer.apply(x);
+    pub fn apply(
+        &self,
+        seq: &[Rank],
+        ctx: &mut InferenceContext<B>,
+        logit_sampler: &Option<LogitSampler>,
+    ) -> Result<Rank, InferenceError> {
+        let mut x = self.embed_inputs(seq, ctx.token_count)?;
+
+        for (i, transformer) in self.fwd.layers.iter().enumerate() {
+            x = transformer.apply(x, &mut ctx.attention_caches[i]);
         }
 
         x = self.fwd.final_norm.apply(&x);
@@ -53,6 +70,7 @@ impl<B: TensorBackend> Model<B> {
                 })
             }
         };
+        ctx.token_count += seq.len();
 
         Ok(inferred_rank.into())
     }
@@ -73,7 +91,7 @@ impl<B: TensorBackend> Model<B> {
         self.fwd.pos_embed.num_rows()
     }
 
-    fn embed_inputs(&self, seq: &[Rank]) -> Result<Matrix<B>, InferenceError> {
+    fn embed_inputs(&self, seq: &[Rank], pos_offset: usize) -> Result<Matrix<B>, InferenceError> {
         if seq.len() > self.max_seq_len() {
             return Err(InferenceError::MaxSeq);
         }
@@ -85,7 +103,8 @@ impl<B: TensorBackend> Model<B> {
                 tok_embeddings.set_slice([seq_idx, 0], tok_embed);
             });
             // and the right pos embedding to pos_embeddings
-            self.fwd.pos_embed.slice_row([seq_idx, 0], |pos_embed| {
+            // TODO add the gotcha of pos_offset to the book
+            self.fwd.pos_embed.slice_row([seq_idx + pos_offset, 0], |pos_embed| {
                 pos_embeddings.set_slice([seq_idx, 0], pos_embed);
             });
         }

@@ -6,6 +6,7 @@ use clap::Parser;
 use crossterm::event;
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use gpt2weights::ModelPath;
+use simpllm_core::bpe::Rank;
 use simpllm_core::cputensor::LogitSampler;
 use simpllm_core::tensor::TensorBackend;
 use std::error::Error;
@@ -62,7 +63,10 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
         let mut durations = Vec::new();
         let mut remaining = cli.generate_limit;
         let mut generated = line.as_bytes().to_vec();
+        let mut ctx = model.new_inference_context();
         let mut ui = Ui::new()?;
+        let mut infer_on: &[Rank] = &tok_indexes;
+        let mut single_rank: [Rank; 1];
         loop {
             if event::poll(Duration::from_millis(0))?
                 && let Event::Key(key) = event::read()?
@@ -83,7 +87,9 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
             }
 
             let start_time = Instant::now();
-            let result_rank = model.apply(&tok_indexes, &logit_sampler)?;
+            let result_rank = model.apply(infer_on, &mut ctx, &logit_sampler)?;
+            single_rank = [result_rank];
+            infer_on = &single_rank;
 
             durations.push(start_time.elapsed());
 

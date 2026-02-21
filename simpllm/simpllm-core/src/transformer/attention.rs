@@ -8,6 +8,40 @@ pub struct Attention<B: TensorBackend> {
     w_o: MatrixAndBias<B>,
 }
 
+pub struct AttentionCache<B: TensorBackend> {
+    keys: Option<B::Tensor<2>>,
+    values: Option<B::Tensor<2>>,
+}
+
+impl<B: TensorBackend> Default for AttentionCache<B> {
+    fn default() -> Self {
+        Self {
+            keys: None,
+            values: None,
+        }
+    }
+}
+
+impl<B: TensorBackend> AttentionCache<B> {
+    fn extend(&mut self, other: Self) -> (&B::Tensor<2>, &B::Tensor<2>) {
+        if let Some(other_keys) = other.keys {
+            self.keys = match std::mem::take(&mut self.keys) {
+                None => Some(other_keys),
+                Some(keys) => Some(keys.cat(other_keys)),
+            }
+        }
+        if let Some(other_values) = other.values {
+            self.values = match std::mem::take(&mut self.values) {
+                None => Some(other_values),
+                Some(values) => Some(values.cat(other_values)),
+            }
+        }
+        let k = self.keys.as_ref().unwrap();
+        let v = self.values.as_ref().unwrap();
+        (k, v)
+    }
+}
+
 impl<B: TensorBackend> Attention<B> {
     //noinspection RsAssertEqual -- I don't want assert_eq!, because I don't need to print the actual/expected
     pub fn new(w_qkv: MatrixAndBias<B>, w_o: MatrixAndBias<B>, num_heads: usize) -> Self {
@@ -25,7 +59,7 @@ impl<B: TensorBackend> Attention<B> {
         self.w_qkv.in_dims()
     }
 
-    pub fn apply(&self, input: &Matrix<B>) -> Matrix<B> {
+    pub fn apply(&self, input: &Matrix<B>, cache: &mut AttentionCache<B>) -> Matrix<B> {
         assert_eq!(
             input.num_cols(),
             self.embedding_dim(),
@@ -33,39 +67,47 @@ impl<B: TensorBackend> Attention<B> {
             self.embedding_dim(),
             input.shape(),
         );
-        let (n, d, h) = (input.num_rows(), self.embedding_dim(), self.num_heads);
 
-        // TODO in practice, these are brought in as a single matrix that's the three of these concatenated.
+        let (input_n, d, h) = (input.num_rows(), self.embedding_dim(), self.num_heads);
+
         // each are (h, n, d/h)
         let [queries, keys, values] = {
+            // Combined is (n x 3d). Add the biases before reshaping.
             let combined = input.matmul(self.w_qkv.weights()).add(self.w_qkv.bias());
-
-            // Combined is (N x 3d). Add the biases before reshaping.
-
-            let split = combined.split::<3>(1);
-            split.map(|m| {
-                // Each split is [n x d]. Reshape it to separate the d dimension by head, and then transpose it so the
-                // head (not seq) is the batch dimension.
-                let reshaped = m.reshape([n, h, d / h]);
-                reshaped.transposed(0, 1)
-            })
+            // Each split is [n x d].
+            combined.split::<3>(1)
         };
+        let (keys, values) = cache.extend(AttentionCache {
+            keys: Some(keys),
+            values: Some(values),
+        });
+
+        let [keys, values] = [keys, values].map(|kv| {
+            // kv is the [N x d] from above, where N is the total sequence size, including cached.
+            // Reshape it to [N x h x d/h], then transpose to [h x N x d/h]
+            let full_n = kv.shape()[0];
+            kv.clone().reshape([full_n, h, d / h]).transposed(0, 1)
+        });
+        // similarly, reshape and transpose the queries. Note that queries are [n x d], not [N x d].
+        let queries = queries.reshape([input_n, h, d / h]).transposed(0, 1);
 
         let mut a = queries.matmul(&keys.transposed(1, 2));
         // divide by sqrt(d/h), and do softmax on the last dimension (d/h)
         let dim_per_head = d / h;
         a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
 
-        // causal attention, then softmax
-        let causal_mask = B::lower_triangle(n);
-        a = a.add(&causal_mask);
+        // causal attention during prefill (but not decode); then softmax
+        if input_n > 1 {
+            let causal_mask = B::lower_triangle(input_n);
+            a = a.add(&causal_mask);
+        }
         a = a.softmax();
 
         let mut attn = a.matmul(&values);
         // transpose from (h, n, d/h) to (n, h, d/h)
         attn = attn.transposed(0, 1);
         // reshape
-        let attn = attn.contiguous().reshape([n, d]);
+        let attn = attn.contiguous().reshape([input_n, d]);
 
         // apply the weights
         attn.matmul(self.w_o.weights()).add(self.w_o.bias())
@@ -76,9 +118,9 @@ impl<B: TensorBackend> Attention<B> {
 mod tests {
     use crate::assert_f32_slice;
     use crate::cputensor::CpuTensor;
-    use crate::tensor::{Tensor, Tensor2D};
-    use crate::transformer::attention::Attention;
+    use crate::tensor::Tensor;
     use crate::transformer::weights::MatrixAndBias;
+    use crate::transformer::{Attention, AttentionCache};
 
     /// Compares against a reference pytorch implementation.
     ///
@@ -180,19 +222,22 @@ mod tests {
             let zero_bias_o = CpuBackend::new_vector(embedding_dim);
             MatrixAndBias::new(o_weights, zero_bias_o)
         };
-
-        let tokens = CpuTensor::from_row_major(
-            [embedding_dim * n_tokens],
-            &(0..(n_tokens * embedding_dim))
-                .map(|i| (i + 1) as f32)
-                .collect::<Vec<_>>(),
-        );
-
         let attention: Attention<CpuBackend> = Attention::new(qkv_mab, o_mab, n_heads);
 
-        let tokens = tokens.reshape([n_tokens, embedding_dim]);
+        let all_tokens_flat32 = (0..(n_tokens * embedding_dim))
+            .map(|i| (i + 1) as f32)
+            .collect::<Vec<_>>();
+        let tokens: Vec<_> = all_tokens_flat32
+            .chunks_exact(embedding_dim)
+            .map(|v| CpuTensor::from_row_major([1, embedding_dim], v))
+            .collect();
 
-        let output = attention.apply(&tokens);
+        let mut cache = AttentionCache::default();
+        let mut output = Vec::new();
+        for row in &tokens {
+            let one_output = attention.apply(row, &mut cache);
+            output.push(one_output)
+        }
 
         let expected = [
             [
@@ -213,10 +258,18 @@ mod tests {
             ],
         ];
 
-        assert_eq!(output.num_rows(), expected.len());
-        let actual_as_vec: Vec<Vec<f32>> = output.flat_f32().chunks_exact(embedding_dim).map(Vec::from).collect();
+        assert_eq!(output.len(), expected.len());
+        let actual_as_vec: Vec<Vec<f32>> = output.iter().map(|t| t.flat_f32().to_vec()).collect();
         for row in 0..expected.len() {
             assert_f32_slice!(&actual_as_vec[row], &expected[row]);
+        }
+
+        // Check again, this time 1-shotting the two tokens
+        let tokens = CpuTensor::from_row_major([n_tokens, embedding_dim], &all_tokens_flat32);
+        let output = attention.apply(&tokens, &mut AttentionCache::default());
+        for (row, expected) in expected.iter().enumerate() {
+            let actual_as_row = output.slice_row([row, 0], |r| r.to_vec());
+            assert_f32_slice!(&actual_as_row, expected);
         }
     }
 }

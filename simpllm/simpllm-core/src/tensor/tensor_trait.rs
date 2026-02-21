@@ -7,7 +7,6 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
     type Slice: TensorSlice + ?Sized;
 
     fn from_row_major(shape: impl Into<Shape<R>>, data: &[f32]) -> Self;
-
     fn zeros(shape: impl Into<Shape<R>>) -> Self {
         let shape: Shape<R> = shape.into();
         let data = vec![0.0; shape.num_elements()];
@@ -16,6 +15,7 @@ pub trait Tensor<const R: usize>: Sized + Clone + Send + Sync + Debug {
 
     fn shape(&self) -> Shape<R>;
 
+    fn cat(self, other: Self) -> Self;
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2>;
     fn split<const S: usize>(self, dim: usize) -> [<Self::Backend as TensorBackend>::Tensor<R>; S];
     fn transposed(self, dim0: usize, dim1: usize) -> Self;

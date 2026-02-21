@@ -175,6 +175,14 @@ impl<const R: usize> Tensor<R> for CpuTensor<R> {
         self.shape
     }
 
+    fn cat(mut self, other: Self) -> Self {
+        assert_eq!(self.shape[1..], other.shape[1..]);
+        self = self.contiguous();
+        self.data.extend(other.flat_f32().iter());
+        self.shape[0] += other.shape[0];
+        self
+    }
+
     fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
         assert_eq!(
             self.strides,
