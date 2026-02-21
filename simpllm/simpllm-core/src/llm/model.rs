@@ -92,7 +92,7 @@ impl<B: TensorBackend> Model<B> {
     }
 
     fn embed_inputs(&self, seq: &[Rank], pos_offset: usize) -> Result<Matrix<B>, InferenceError> {
-        if seq.len() > self.max_seq_len() {
+        if seq.len() + pos_offset > self.max_seq_len() {
             return Err(InferenceError::MaxSeq);
         }
         let mut tok_embeddings = B::new_matrix(seq.len(), self.token_embedding_dim());
