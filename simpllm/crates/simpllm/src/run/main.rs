@@ -21,11 +21,7 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
 
     eprint!("Loading tokenizer... ");
     let tokenizer = load_tokenizer(&model_path, &model_shape.file_names)?;
-    if tokenizer.is_eos(model.eos().into()) {
-        eprintln!("<eos> is {}", model.eos());
-    } else {
-        return Err("Error! Tokenizer and model disagreed on EOS".into());
-    }
+    eprintln!("<eos> is {}", model.eos());
 
     eprintln!();
     eprintln!("Ready!");
@@ -93,7 +89,7 @@ pub fn run_main<B: TensorBackend>() -> Result<(), Box<dyn Error>> {
 
             durations.push(start_time.elapsed());
 
-            if tokenizer.is_eos(result_rank) {
+            if result_rank == model.eos().into() {
                 break;
             }
 

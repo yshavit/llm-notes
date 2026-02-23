@@ -1,3 +1,4 @@
+use crate::bpe::gpt_tok_format::gpt2_bpe_char_to_byte;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
@@ -8,60 +9,51 @@ pub struct Rank {
     value: u16,
 }
 
+type Tok = Vec<u8>;
+
 pub struct Tokenizer {
     merge_rules: Vec<MergeRule>,
 
-    tok_to_id: HashMap<String, u16>,
-    id_to_tok: Vec<String>,
-
-    bytes_to_unicode: [char; 256],
-    unicode_to_bytes: HashMap<char, u8>,
+    tok_to_id: HashMap<Tok, u16>,
+    id_to_tok: Vec<Tok>,
 }
 
 #[derive(Debug)]
-struct MergeRule(String, String);
+struct MergeRule(Tok, Tok);
 
 impl Tokenizer {
     pub fn parse_vocab(merge_rules: impl Read, tok_encoding_lines: impl Read) -> Result<Self, Box<dyn Error>> {
-        let merge_rules = Self::parse_merge_rules(merge_rules)?;
+        let gpt2_to_byte = gpt2_bpe_char_to_byte();
+        let merge_rules = Self::parse_merge_rules(merge_rules, &gpt2_to_byte)?;
 
-        let id_to_tok: Vec<_> = BufReader::new(tok_encoding_lines).lines().collect::<Result<_, _>>()?;
-        let tok_to_id: HashMap<String, u16> = HashMap::from_iter(
+        let id_to_tok: Vec<_> = BufReader::new(tok_encoding_lines)
+            .lines()
+            .map(|gpt2_line| {
+                // convert the line from GPT-2's format to a Tok
+                gpt2_line.map(|line| line.chars().map(|ch| gpt2_to_byte[&ch]).collect::<Vec<_>>())
+            })
+            .collect::<Result<_, _>>()?;
+        let tok_to_id: HashMap<Tok, u16> = HashMap::from_iter(
             id_to_tok
                 .iter()
                 .enumerate()
-                .map(|(idx, tok)| (tok.to_string(), idx as u16)),
+                .map(|(idx, tok)| (tok.to_owned(), idx as u16)),
         );
-
-        let bytes_to_unicode = Self::bytes_to_unicode();
-        let unicode_to_bytes = bytes_to_unicode
-            .into_iter()
-            .enumerate()
-            .map(|(b, c)| (c, b as u8))
-            .collect();
 
         Ok(Self {
             merge_rules,
 
             tok_to_id,
             id_to_tok,
-
-            bytes_to_unicode,
-            unicode_to_bytes,
         })
     }
 
     pub fn encode(&self, text: &str) -> Vec<Rank> {
-        // first, convert the text to bytes
-        let as_bytes = text.as_bytes();
-        // Now, convert each one of those bytes to its encoded form. We construct a fresh bytes_to_unicode, because
-        let mut encoded: Vec<String> = as_bytes
-            .iter()
-            .map(|&b| self.bytes_to_unicode[b as usize])
-            .map(String::from)
-            .collect();
+        // First, convert the text to Toks. Each u8 in the text just gets wrapped into a single-element Vec<u8>, which
+        // is the Tok.
+        let mut encoded: Vec<Tok> = text.as_bytes().iter().map(|&b| vec![b]).collect();
 
-        // Do the merging
+        // Merge the Toks.
         let mut merge_rules = self.merge_rules.iter();
         while let Some(merge_rule) = merge_rules.next() {
             // look for matches
@@ -75,7 +67,7 @@ impl Tokenizer {
 
                         // remove the next word, and add it to this one
                         let _ = encoded.remove(index_within_full + 1);
-                        encoded[index_within_full].push_str(&merge_rule.1);
+                        encoded[index_within_full].extend(merge_rule.1.clone());
 
                         // now we'll continue searching from here (inclusive)
                         look_starting_at_idx = index_within_full;
@@ -100,31 +92,11 @@ impl Tokenizer {
     }
 
     pub fn decode_bytes(&self, ranks: &[Rank]) -> Vec<u8> {
-        let ranks_encoded = ranks.iter().map(|r| {
-            self.id_to_tok
-                .get(r.rank())
-                .ok_or_else(|| format!("rank lookup: {}", r.rank()))
-        });
-        ranks_encoded
-            .into_iter()
-            .flat_map(|enc| {
-                let enc_bytes = match enc {
-                    Ok(enc) => {
-                        let maybe_bytes: Result<Vec<u8>, String> = enc
-                            .chars()
-                            .map(|c| {
-                                self.unicode_to_bytes
-                                    .get(&c)
-                                    .copied()
-                                    .ok_or_else(|| format!("char lookup: {c}"))
-                            })
-                            .collect();
-                        maybe_bytes
-                    }
-                    Err(err) => Err(err),
-                };
-                enc_bytes.unwrap_or_else(|err| format!("<??{err}??>").into_bytes())
-            })
+        ranks
+            .iter()
+            .map(|r| self.id_to_tok.get(r.rank()).expect("rank lookup error"))
+            .flat_map(|tok| tok.iter())
+            .copied()
             .collect()
     }
 
@@ -133,14 +105,7 @@ impl Tokenizer {
         String::from_utf8_lossy(&rank_bytes).to_string()
     }
 
-    pub fn is_eos(&self, rank: Rank) -> bool {
-        self.id_to_tok
-            .get(rank.rank())
-            .map(|s| s == "<|endoftext|>")
-            .unwrap_or(false)
-    }
-
-    fn find_match(text: &[String], rule: &MergeRule) -> Option<usize> {
+    fn find_match(text: &[Tok], rule: &MergeRule) -> Option<usize> {
         let mut text_iter = text.iter().enumerate().peekable();
         while let Some((idx, word)) = text_iter.next() {
             if word == &rule.0
@@ -153,7 +118,10 @@ impl Tokenizer {
         None
     }
 
-    fn parse_merge_rules(vocab_file: impl Read) -> Result<Vec<MergeRule>, Box<dyn Error>> {
+    fn parse_merge_rules(
+        vocab_file: impl Read,
+        bpe_to_byte: &HashMap<char, u8>,
+    ) -> Result<Vec<MergeRule>, Box<dyn Error>> {
         let mut lines = BufReader::new(vocab_file).lines().enumerate();
         let Some((_, Ok(first_line))) = lines.next() else {
             return Err("couldn't read vocab.bpe".into());
@@ -168,46 +136,11 @@ impl Tokenizer {
                 let (a, b) = line
                     .split_once(" ")
                     .ok_or_else(|| format!("unexpected at {line_no} of vocab.bpe"))?;
-                Ok(MergeRule(a.to_string(), b.to_string()))
+                let a_bytes = a.chars().map(|c| bpe_to_byte[&c]).collect();
+                let b_bytes = b.chars().map(|c| bpe_to_byte[&c]).collect();
+                Ok(MergeRule(a_bytes, b_bytes))
             })
             .collect()
-    }
-
-    /// Adapted from <https://github.com/openai/gpt-2/blob/master/src/encoder.py>.
-    fn bytes_to_unicode() -> [char; 256] {
-        let mut result: [Option<char>; 256] = [None; 256];
-
-        let mut bs: Vec<u8> = Vec::new();
-        let mut cs: Vec<u32> = Vec::new();
-
-        // Printable ASCII: ! to ~
-        bs.extend(b'!'..=b'~');
-
-        // Extended range: ¡ to ¬
-        bs.extend(0xA1..=0xAC);
-
-        // Extended range: ® to ÿ
-        bs.extend(0xAE..=0xFF);
-
-        // Copy bs to cs
-        cs.extend(bs.iter().map(|&b| b as u32));
-
-        let mut n = 0;
-        for b in 0u8..=255 {
-            if !bs.contains(&b) {
-                bs.push(b);
-                cs.push(256 + n);
-                n += 1;
-            }
-        }
-
-        // Fill in the result array
-        for (b, c) in bs.into_iter().zip(cs.into_iter()) {
-            result[b as usize] = Some(char::from_u32(c).unwrap());
-        }
-
-        // Convert to [char; 256], panicking if any are None
-        result.map(|opt| opt.expect("bytes_to_unicode should map all 256 bytes"))
     }
 }
 
