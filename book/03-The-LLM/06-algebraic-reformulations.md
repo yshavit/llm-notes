@@ -22,10 +22,6 @@ Until now, we've been able to mostly get by with just understanding the shapes o
 If you don't remember how these work, you may want to review the earlier chapter on [vector and matrix math](#matrix-math-details).
 :::
 
-:::{note} TODO
-I need to change $T$ to $X$
-:::
-
 ## The architecture's conceptual shape
 
 Before we dive into the algebraic reformulations, let's take a look at the LLM's architecture once more, this time focusing on the shapes of the learned parameters and activations. I'll skip the tokenization phase, since that's effectively a preparation step that happens before the LLM itself runs.
@@ -160,12 +156,13 @@ Q & = \left. \begin{bmatrix}
 \end{align}
 $$
 
-This looks like matrix multiplication --- and it is! Specifically, the $t_{i,j}$ elements make up a $T$ matrix whose rows are the $n$ inputs and whose columns are each input's $d$ embedding dimensions; and the $w_{k,l}$ elements represent the $d \times d$ weight matrix.
+This looks like matrix multiplication --- and it is! Specifically, the $t_{i,j}$ elements make up a $X$ matrix whose rows are the $n$ inputs and whose columns are each input's $d$ embedding dimensions; and the $w_{k,l}$ elements represent the $d \times d$ weight matrix.
 
 This means we can calculate $Q$ with just one matrix multiplication:
 
 $$
-Q = \underbrace{TW_q}_{n \times d}
+Q = \underbrace{XW_q}_{n \times d} \\[1.5em]
+\scriptstyle\textit{where $X$ is the input embedding}
 $$
 
 This is really powerful! It means the first part of the nested loop (steps 1 → 1.1) can be reduced to a single matrix multiplication, which GPUs are extremely efficient at processing. We'll be doing similar things for the key and value vectors, so I'd suggest taking the time to work through the above and make sure it makes sense to you.
@@ -177,7 +174,7 @@ Now, we can move onto the raw attention scores. This corresponds to step 1.2 abo
 First, let's calculate the key matrix $K$. This is exactly the same as the query matrix $Q$, except that it uses $W_k$ instead of $W_q$. Because the progression from vectors-of-vectors to matrix is the same, I won't spell it out in full.
 
 $$
-K = \underbrace{TW_k}_{n \times d}
+K = \underbrace{XW_k}_{n \times d}
 $$
 
 Next, we'll calculate all the attention scores as a matrix. Each row will correspond to a query token, and each column will be the attention score between that query token and the corresponding key token:
@@ -228,8 +225,8 @@ $$
 
 Just to belabor the point: we've turned all of the nested looping in steps 1 → (1.1 - 1.2) into just a few matrix operations:
 
-1. $Q = TW_q$
-2. $K = TW_k$
+1. $Q = XW_q$
+2. $K = XW_k$
 3. Transpose $K$ (this doesn't even require moving any memory: it's just a bit of metadata to tell the computer to treat $i,j$ as $j,i$)
 4. $\text{attention scores} = QK^T$
 
@@ -268,7 +265,7 @@ Finally, we'll apply our weights against the value vectors, and sum the results.
 First, we'll get the value matrix $V$, similar to the above. This is step 1.4.1.
 
 $$
-V = \underbrace{TW_v}_{n \times d}
+V = \underbrace{XW_v}_{n \times d}
 $$
 
 Each row in this matrix is one value vector.
@@ -367,9 +364,9 @@ This is the canonical representation of attention, and is somewhat famous within
 
 This means we've now turned the all of the attention calculation --- a logically multiple-nested loop --- into a few matrix multiplications and a bit of parallelizable manipulation:
 
-1. $Q = TW_q + b_q$
-2. $K = TW_k + b_k$
-3. $V = TW_v + b_v$
+1. $Q = XW_q + b_q$
+2. $K = XW_k + b_k$
+3. $V = XW_v + b_v$
 4. $\text{attention scores} = QK^T$
 5. divide these by $\sqrt{d}$
 6. apply softmax to each row to get $A$, the attention weight matrix
@@ -429,7 +426,7 @@ $$
 At inference, we'll multiply the input by these matrices, just as we did in the single-head description above. So for example:
 
 $$
-Q = \underbrace{TW_q}_{(n \times d)\,(d \times d)}
+Q = \underbrace{XW_q}_{(n \times d)\,(d \times d)}
 = \underbrace{
   \begin{bmatrix}
   \alpha   & \beta  & \gamma  & \delta \\
@@ -490,9 +487,9 @@ If you recall, the last step in the multi-head process was to [multiply the outp
 
 In the above (and back in our original chapter on attention), we treated the $W_q$, $W_k$, and $W_v$ weight matrices as three separate matrices. To calculate the query, key, and value matrices, we did:
 
-1. $Q = TW_q + b_q$
-2. $K = TW_k + b_k$
-3. $V = TW_v + b_v$
+1. $Q = XW_q + b_q$
+2. $K = XW_k + b_k$
+3. $V = XW_v + b_v$
 
 In practice, these are usually concatenated into one matrix, $W_{qkv}$:
 
@@ -507,7 +504,7 @@ $$
 (Note that for brevity, I'm being a bit informal in my notation here: in particular, I'm writing the various $q_{i,j}$ values as just $q$, and similarly for $k$ and $v$). We apply matrix multiplication and addition to this:
 
 $$
-TW_{qkv} = \begin{bmatrix}
+XW_{qkv} = \begin{bmatrix}
 T_1q + b_q & \cdots & T_1k + b_k & \cdots T_1v + b_v \\
 T_2q + b_q & \cdots & T_2k + b_k & \cdots T_2v + b_v \\
 T_3q + b_q & \cdots & T_3k + b_k & \cdots T_3v + b_v \\
