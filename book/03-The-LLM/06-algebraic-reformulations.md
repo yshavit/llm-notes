@@ -668,6 +668,12 @@ So:
 
 And there we have it! We've calculated just the last row in attention, which will then snake through the FFN and other transformer blocks to produce a single logit, the next prediction.
 
+:::{warning} Beware position offsets!
+If you implement KV caching, each round of inference will only see one token. If you're not careful, this can break your [position embeddings](#position-embeddings), since every token will think it's at position 1!
+
+Just make sure to keep a count of how many tokens you've seen, so that you can use that as the position embedding index.
+:::
+
 #### Implementation details
 
 :::{note}

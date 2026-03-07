@@ -103,7 +103,6 @@ impl<B: TensorBackend> Model<B> {
                 tok_embeddings.set_slice([seq_idx, 0], tok_embed);
             });
             // and the right pos embedding to pos_embeddings
-            // TODO add the gotcha of pos_offset to the book
             self.fwd.pos_embed.slice_row([seq_idx + pos_offset, 0], |pos_embed| {
                 pos_embeddings.set_slice([seq_idx, 0], pos_embed);
             });
