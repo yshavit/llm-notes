@@ -1,3 +1,8 @@
+---
+math:
+  '\tok': '\boxed{\texttt{#1}\vphantom{X}}\;'
+  '\merge': '\; \underbrace{ \tok{#1} \tok{#2}} \;'
+---
 # Turning input text into vectors
 
 :::{status} 2
@@ -23,28 +28,133 @@ Each of these steps is pretty simple, so if you read the following and think "I 
 
 We start with the input text, which we parse into tokens --- essentially, the atoms of the input text.
 
-This doesn't involve any AI: it's basically just "a" → {keyboard}`<1>`, "aardvark" → {keyboard}`<2>`, etc.
-
 (typical-tokenization)=
-I actually won't cover the tokenization algorithm itself, because it's not really an ML/AI topic (it was originally invented for compression!). Suffice it to say that the most common form of tokenization is byte pair encoding (BPE), which basically looks for words, common sub-words like the "de" in "demystify", and punctuation. You can read more about it [on Wikipedia][bpe] if you want. OpenAI has a page that lets you see how text tokenizes: <https://platform.openai.com/tokenizer>.
+Tokenization doesn't involve "real" AI: it's basically just "a" → {keyboard}`<1>`, "aardvark" → {keyboard}`<2>`, and so on. The most common form of tokenization is byte-pair encoding (BPE), which basically looks for words, common sub-words like the "de" in "demystify", and punctuation. OpenAI has a page that lets you see how text tokenizes: <https://platform.openai.com/tokenizer>.
 
-The important thing to remember is that it's not actually looking at words, but sub-words and punctuation: "we'll retry!" parsed as {keyboard}`we` {keyboard}`'ll` {keyboard}`ret` {keyboard}`ry` {keyboard}`!` in GPT-3, for example.
+BPE isn't a true ML/API topic: it was originally invented for compression. As such, you can feel free to skip the details if you like.
 
-:::{note} TODO
-I should add a description of the tokenization here
-:::
+:::::{seealso} BPE details
+:class: dropdown
+
+BPE tokenization is relatively simple, at least in its unoptimized form. We start with two configurations:
+
+- a priority-ordered list of merge pairs (for example, $[a \; b] \rightarrow ab\,$)
+- a mapping from token to ID (for example, $ab \rightarrow 1432\,$)
+
+Both of these configurations operate on bytes, not ASCII characters or unicode (hence the term _byte_-pair encoding).
+
+These configurations are generated during the LLM's training. As with other training-related parameters, I won't discuss how they're generated; during inference, we just assume they're provided.
+
+At a high level, the BPE steps are:
+
+1. Encode the incoming text as UTF-8
+2. Merge byte sequences using the merge list
+3. Convert the resulting sequences to IDs using the token mapping
+
+Let's look at each of these. To keep things simple, I'll keep all the characters as ASCII, and represent them by their ASCII letters instead of bytes; so, '$\texttt{a}$' instead of $\texttt{0x61}$. Just remember that this is really operating on bytes, not characters.
+
+1. UTF-8 decoding
+
+   This is just what it sounds like: we encode the text to bytes using UTF-8. We then treat each byte as a 1-byte sequence:
+
+   $$
+   \text{"Hi Bob!"} \\ \downarrow \\[ 0.5em ]
+   \begin{array}{ccccccc}
+   \texttt{H} & \texttt{i} & \texttt{\char"00B7} & \texttt{B} & \texttt{o} & \texttt{b} & \texttt{!} \\
+   \texttt{(0x48} & \texttt{0x69} & \texttt{0x20} & \texttt{0x42} & \texttt{0x6f} & \texttt{0x62} & \texttt{0x21)} \\
+   \tok{H} & \tok{i} & \tok{\char"00B7} & \tok{B} & \tok{o} & \tok{b} & \tok{!} \\
+   \end{array}
+   $$
+
+2. Merge sequences:
+
+   At this point, we have a list of byte sequences (so, a list of lists). Each of the inner lists has exactly 1 element, but that's about to change.
+
+   Now, we go through the merge pairs in priority order. For each merge pair, we look for consecutive sequences that match that pair; if we find them, we merge them into a single sequence.
+
+   For example, if the merge list is:
+
+   ```text
+   [ B ]   [ o ]
+   [ H ]   [ i ]
+   [ Bo ]  [ b ]
+   ```
+
+   ...then we'll merge:
+
+   $$
+   \begin{align}
+   & \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \; \textit{merge \tok{B}\tok{o}} \\[1em]
+   & \merge{H}{i} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & -  \;\textit{merge \tok{H}\tok{i}} \\[1em]
+   & \tok{Hi} \tok{\char"00B7} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
+   & \tok{Hi} \tok{\char"00B7} \tok{Bob} \tok{!} \\
+   \end{align}
+   $$
+
+3. Finally, we'll use the token mappings to convert each of these sequences to an ID.
+
+   For example, if the token mappings are:
+
+   ```text
+   [ Hi ]  → 1
+   [ Bob ] → 2 
+   [ ! ]   → 3
+   [   ]   → 4
+   ```
+
+   Then we'll map:
+
+   $$
+   \begin{array}{cccc}
+   \tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\[0.5em]
+   \downarrow & \downarrow & \downarrow & \downarrow \\[0.5em]
+   1 & 4 & 2 & 3
+   \end{array}
+   $$
+
+The only wrinkle is that as we go through the priority list (in step 2), we may create sequences whose merge pairs we already passed. For example, imagine if the merge pairings above had had a different priority:
+
+```text
+[ Bo ] [ b ]
+[ B ] [ o ]
+[ H ] [ i ]
+```
+
+In this case, we'd do:
+
+$$
+\begin{align}
+& \tok{H} \tok{i} \tok{\char"00B7} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
+& \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}} \\[1em]
+& \merge{H}{i} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
+& \tok{Hi} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & - \;\textit{never merged \tok{Bo}\tok{o}!} \\
+\end{align}
+$$
+
+To solve this, once we find a merge pair, we start reset the merge pairs list and look from the top again:
+
+$$
+\begin{align}
+& \tok{H} \tok{i} \tok{\char"00B7} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
+& \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}; reset search} \\[1em]
+& \tok{H} \tok{i} \tok{\char"00B7} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
+& \tok{H} \tok{i} \tok{\char"00B7} \tok{Bob} \tok{!} & - \;\textit{no \tok{B}\tok{o} to merge} \\[1em]
+& \merge{H}{i} \tok{\char"00B7} \tok{Bob} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
+& \begin{array}{cccc}
+\tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\
+\downarrow & \downarrow & \downarrow & \downarrow \\
+1 & 4 & 2 & 3
+\end{array}
+\end{align}
+$$
+
+There are optimization tricks we can do to make this more efficient, but in terms of the core logic, that's it!
+
+:::::
 
 ## Token embeddings
 
-All of the tokens our model knows about form its vocabulary, and each one is associated with a vector called the {dfn}`token embedding`. This embedding's values are learned parameters that encode what the LLM knows about that token. The size of each vector is a hyperparameter denoted $d$.
-
-:::{aside}
-
-- {dfn}`token embedding dimension` (hyperparameter): integer denoted $d$
-- {dfn}`token embedding` (learned parameter): vector of size $d$
-:::
-
-Every token has exactly one embedding that's used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
+All of the tokens our model knows about form its vocabulary, and each one is associated with a vector called the {dfn}`token embedding`. This embedding''s used throughout the model. If the token appears multiple times in the input, each one will use the same token embedding. (There'll be other things, in particular the @03-self-attention described in the next chapter, to differentiate between input tokens.)
 
 Since we've already tokenized the input, now we just need to create a vector of vectors: each outer vector corresponds to one token in the input, and the inner vector is that token's embedding:
 
