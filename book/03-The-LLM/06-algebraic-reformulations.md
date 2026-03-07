@@ -665,6 +665,18 @@ So:
 
 And there we have it! We've calculated just the last row in attention, which will then snake through the FFN and other transformer blocks to produce a single logit, the next prediction.
 
+When you apply KV caching, the LLM operates in two modes:
+
+1. For the initial prompt, it operates without the KV; this calculates attention for the full $n$ tokens in the prompt at once. (This still _sets_ the cache for the subsequent rounds, though.)
+
+    - This is called the {dfn}`prefill` phase.
+
+2. After that, you can use the KV cache for each individual token as the inference loop works.
+
+    - This is called the {dfn}`decode` phase.
+
+As an added bonus, during the decode phases, you don't need to calculate the [causal mask](#causal-attention-grid). Remember that when we saw the full $n \times n$ input, we used this mask so that tokens don't attend to the tokens ahead of them. But during the decode phase, each token _can't_ look at the tokens ahead of it, because they haven't been generated yet. The one-at-a-time attention generation produces an equivalent effect to the causal mask, just as a natural consequence.
+
 :::{warning} Beware position offsets!
 If you implement KV caching, each round of inference will only see one token. If you're not careful, this can break your [position embeddings](#position-embeddings), since every token will think it's at position 1!
 
