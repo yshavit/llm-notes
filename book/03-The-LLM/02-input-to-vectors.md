@@ -2,6 +2,7 @@
 math:
   '\tok': '\boxed{\texttt{#1}\vphantom{X}}\;'
   '\merge': '\; \underbrace{ \tok{#1} \tok{#2}} \;'
+  '\tokid': '\langle#1\rangle'
 ---
 # Turning input text into vectors
 
@@ -66,6 +67,8 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
    \end{array}
    $$
 
+   (In this example, all of the characters in "Hi Bob!" translate to single-byte UTF-8 sequences. If the input text had any multi-byte code points, we'd still treat each byte as a single-byte sequence. For example, "$\,\char"2603\,$" would translate to three single-byte sequences: $\tok{0xE2} \tok{0x98} \tok{0x83}$.)
+
 2. Merge sequences:
 
    At this point, we have a list of byte sequences (so, a list of lists). Each of the inner lists has exactly 1 element, but that's about to change.
@@ -108,7 +111,7 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
    \begin{array}{cccc}
    \tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\[0.5em]
    \downarrow & \downarrow & \downarrow & \downarrow \\[0.5em]
-   1 & 4 & 2 & 3
+   \tokid{1} & \tokid{4} & \tokid{2} & \tokid{3}
    \end{array}
    $$
 
@@ -143,7 +146,7 @@ $$
 & \begin{array}{cccc}
 \tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\
 \downarrow & \downarrow & \downarrow & \downarrow \\
-1 & 4 & 2 & 3
+\tokid{1} & \tokid{4} & \tokid{2} & \tokid{3}
 \end{array}
 \end{align}
 $$
