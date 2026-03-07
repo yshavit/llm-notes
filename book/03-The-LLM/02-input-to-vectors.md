@@ -195,5 +195,3 @@ For each token in the parsed text, we just the sum its token embedding and posit
 (Note that I picked the token and positional embedding values so that it'd be easier to follow them through the flow. In an actual LLM, these would all be just random-looking numbers.)
 
 Now we have the input tokenized, and each token translated into an input embedding. In the next chapter, I'll show how the LLM contextualizes these embeddings relative to each other.
-
-[bpe]: https://en.wikipedia.org/wiki/Byte-pair_encoding
