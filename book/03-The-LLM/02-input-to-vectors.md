@@ -3,6 +3,7 @@ math:
   '\tok': '\boxed{\texttt{#1}\vphantom{X}}\;'
   '\merge': '\; \underbrace{ \tok{#1} \tok{#2}} \;'
   '\tokid': '\langle#1\rangle'
+  '\space': '\_'
 ---
 # Turning input text into vectors
 
@@ -61,13 +62,13 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
    $$
    \text{"Hi Bob!"} \\ \downarrow \\[ 0.5em ]
    \begin{array}{ccccccc}
-   \texttt{H} & \texttt{i} & \texttt{\char"00B7} & \texttt{B} & \texttt{o} & \texttt{b} & \texttt{!} \\
+   \texttt{H} & \texttt{i} & \texttt{\space} & \texttt{B} & \texttt{o} & \texttt{b} & \texttt{!} \\
    \texttt{(0x48} & \texttt{0x69} & \texttt{0x20} & \texttt{0x42} & \texttt{0x6f} & \texttt{0x62} & \texttt{0x21)} \\
-   \tok{H} & \tok{i} & \tok{\char"00B7} & \tok{B} & \tok{o} & \tok{b} & \tok{!} \\
+   \tok{H} & \tok{i} & \tok{\space} & \tok{B} & \tok{o} & \tok{b} & \tok{!} \\
    \end{array}
    $$
 
-   (In this example, all of the characters in "Hi Bob!" translate to single-byte UTF-8 sequences. If the input text had any multi-byte code points, we'd still treat each byte as a single-byte sequence. For example, "$\,\char"2603\,$" would translate to three single-byte sequences: $\tok{0xE2} \tok{0x98} \tok{0x83}$.)
+   (In this example, all of the characters in "Hi Bob!" translate to single-byte UTF-8 sequences. If the input text had any multi-byte code points, we'd still treat each byte as a single-byte sequence. For example, " &#x2603; " would translate to three single-byte sequences: $\tok{0xE2} \tok{0x98} \tok{0x83}$.)
 
 2. Merge sequences:
 
@@ -87,10 +88,10 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
 
    $$
    \begin{align}
-   & \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \; \textit{merge \tok{B}\tok{o}} \\[1em]
-   & \merge{H}{i} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & -  \;\textit{merge \tok{H}\tok{i}} \\[1em]
-   & \tok{Hi} \tok{\char"00B7} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
-   & \tok{Hi} \tok{\char"00B7} \tok{Bob} \tok{!} \\
+   & \tok{H} \tok{i} \tok{\space} \merge{B}{o} \tok{b} \tok{!} & - \; \textit{merge \tok{B}\tok{o}} \\[1em]
+   & \merge{H}{i} \tok{\space} \tok{Bo} \tok{b} \tok{!} & -  \;\textit{merge \tok{H}\tok{i}} \\[1em]
+   & \tok{Hi} \tok{\space} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
+   & \tok{Hi} \tok{\space} \tok{Bob} \tok{!} \\
    \end{align}
    $$
 
@@ -109,7 +110,7 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
 
    $$
    \begin{array}{cccc}
-   \tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\[0.5em]
+   \tok{Hi} & \tok{\space} & \tok{Bob} & \tok{!} \\[0.5em]
    \downarrow & \downarrow & \downarrow & \downarrow \\[0.5em]
    \tokid{1} & \tokid{4} & \tokid{2} & \tokid{3}
    \end{array}
@@ -127,10 +128,10 @@ In this case, we'd do:
 
 $$
 \begin{align}
-& \tok{H} \tok{i} \tok{\char"00B7} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
-& \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}} \\[1em]
-& \merge{H}{i} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
-& \tok{Hi} \tok{\char"00B7} \tok{Bo} \tok{b} \tok{!} & - \;\textit{never merged \tok{Bo}\tok{o}!} \\
+& \tok{H} \tok{i} \tok{\space} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
+& \tok{H} \tok{i} \tok{\space} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}} \\[1em]
+& \merge{H}{i} \tok{\space} \tok{Bo} \tok{b} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
+& \tok{Hi} \tok{\space} \tok{Bo} \tok{b} \tok{!} & - \;\textit{never merged \tok{Bo}\tok{o}!} \\
 \end{align}
 $$
 
@@ -138,13 +139,13 @@ To solve this, once we find a merge pair, we reset the merge pairs list and look
 
 $$
 \begin{align}
-& \tok{H} \tok{i} \tok{\char"00B7} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
-& \tok{H} \tok{i} \tok{\char"00B7} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}; reset search} \\[1em]
-& \tok{H} \tok{i} \tok{\char"00B7} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
-& \tok{H} \tok{i} \tok{\char"00B7} \tok{Bob} \tok{!} & - \;\textit{no \tok{B}\tok{o} to merge} \\[1em]
-& \merge{H}{i} \tok{\char"00B7} \tok{Bob} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
+& \tok{H} \tok{i} \tok{\space} \tok{B} \tok{o} \tok{b} \tok{!} & - \;\textit{no \tok{Bo}\tok{b} to merge} \\[1em]
+& \tok{H} \tok{i} \tok{\space} \merge{B}{o} \tok{b} \tok{!} & - \;\textit{merge \tok{B}\tok{o}; reset search} \\[1em]
+& \tok{H} \tok{i} \tok{\space} \merge{Bo}{b} \tok{!} & - \;\textit{merge \tok{Bo}\tok{b}} \\[1em]
+& \tok{H} \tok{i} \tok{\space} \tok{Bob} \tok{!} & - \;\textit{no \tok{B}\tok{o} to merge} \\[1em]
+& \merge{H}{i} \tok{\space} \tok{Bob} \tok{!} & - \;\textit{merge \tok{H}\tok{i}} \\[1em]
 & \begin{array}{cccc}
-\tok{Hi} & \tok{\char"00B7} & \tok{Bob} & \tok{!} \\
+\tok{Hi} & \tok{\space} & \tok{Bob} & \tok{!} \\
 \downarrow & \downarrow & \downarrow & \downarrow \\
 \tokid{1} & \tokid{4} & \tokid{2} & \tokid{3}
 \end{array}
