@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
-import { basename, join } from 'path';
+import { basename, join, relative } from 'path';
 
 function grepLines(lines, searchString) {
   for (const [i, line] of lines.entries()) {
@@ -49,11 +49,11 @@ function unindent(lines) {
   return lines.map(line => line.slice(minIndent));
 }
 
-function render(cwd, blockDesc) {
+function render(repoRoot, blockDesc) {
   const startMarker = `MYSTMD::${blockDesc} START`;
   const endMarker = `MYSTMD::${blockDesc} END`;
 
-  const { filePath, fileLines, line: startLine } = grepOne(cwd, startMarker);
+  const { filePath, fileLines, line: startLine } = grepOne(join(repoRoot, 'simpllm', 'simpllm-core'), startMarker);
   const fileFromStartMarker = fileLines.slice(startLine + 1);
 
   if (grepLines(fileFromStartMarker, startMarker) != null) {
@@ -68,6 +68,12 @@ function render(cwd, blockDesc) {
   }
 
   const matchedLines = unindent(fileLines.slice(startLine + 1, startLine + endLine + 1));
+
+  // +2 on start, for 0-indexing and the marker
+  // +1 on end, for 0-indexing
+  let startLineNo = startLine + 2;
+  let endLineNo = startLine + endLine + 1;
+  const relFilePath = relative(repoRoot, filePath);
 
   return [
     {
@@ -86,13 +92,12 @@ function render(cwd, blockDesc) {
           children: [
             {
               type: 'link',
-              url: 'https://github.com/yshavit/llm-notes',
+              url: `https://github.com/yshavit/llm-notes/blob/main/${relFilePath}#L${startLineNo}-L${endLineNo}`,
               children: [
                 {
+
                   type: 'inlinecode',
-                  // +2 on start, for 0-indexing and the marker
-                  // +1 on end, for 0-indexing
-                  value: `${basename(filePath)}:${startLine + 2}-${startLine + endLine + 1}`,
+                  value: `${basename(filePath)}:${startLineNo}-${endLineNo}`,
                 }
               ]
             }
@@ -111,7 +116,7 @@ const directive = {
     doc: 'Rust block description',
   },
   run(data, vfile) {
-    return render(join(vfile.cwd, '..', 'simpllm', 'simpllm-core'), data.arg);
+    return render(join(vfile.cwd, '..'), data.arg);
   },
 };
 
