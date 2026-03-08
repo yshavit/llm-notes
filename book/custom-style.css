@@ -58,3 +58,15 @@
   transform: translateY(-0.05em) rotate(12.5deg);
   margin: 0 0.15em;
 }
+
+.rustref {
+  position: relative;
+}
+
+.rustref .filelink {
+  position: absolute;
+  top: 1.5rem;
+  left: 2rem;
+  font-family: monospace;
+  opacity: 0.6;
+}

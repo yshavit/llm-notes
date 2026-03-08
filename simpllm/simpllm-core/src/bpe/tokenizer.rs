@@ -55,8 +55,8 @@ impl Tokenizer {
 
         // Merge the Toks.
         let mut merge_rules = self.merge_rules.iter();
+        // Look for matches (MYSTMD::BPE::MERGE START)
         while let Some(merge_rule) = merge_rules.next() {
-            // look for matches
             let mut look_starting_at_idx = 0;
             loop {
                 let encoded_segment = &encoded[look_starting_at_idx..];
@@ -65,15 +65,16 @@ impl Tokenizer {
                     Some(index_within_segment) => {
                         let index_within_full = index_within_segment + look_starting_at_idx;
 
-                        // remove the next word, and add it to this one
+                        // Merge the words by removing the next word and adding it to this one
                         let _ = encoded.remove(index_within_full + 1);
                         encoded[index_within_full].extend(merge_rule.1.clone());
 
-                        // now we'll continue searching from here (inclusive)
+                        // Search for more matches of the merge_rule within the input, starting at the index we just
+                        // merged.
                         look_starting_at_idx = index_within_full;
 
-                        // Start from the top of the merge rules again, since the newly merged string may have been one
-                        // of the rules we've already passed.
+                        // Reset the merge rules, since the newly merged string may have been one of the rules we've
+                        // already passed.
                         // Note that this won't affect the current loop; it'll just affect the next iteration of
                         // `while let Some(..) = merge_rules.next()`.
                         merge_rules = self.merge_rules.iter();
@@ -81,6 +82,7 @@ impl Tokenizer {
                 }
             }
         }
+        // MYSTMD::BPE::MERGE END
 
         // Decode to ranks
         encoded

@@ -134,7 +134,7 @@ $$
 \end{align}
 $$
 
-To solve this, once we find a merge pair, we start reset the merge pairs list and look from the top again:
+To solve this, once we find a merge pair, we reset the merge pairs list and look from the top again:
 
 $$
 \begin{align}

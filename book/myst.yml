@@ -17,6 +17,7 @@ project:
     - type: executable
       path: ../myst-plugins/dfn
     - ../myst-plugins/drawio.mjs
+    - ../myst-plugins/rustref.mjs
     - ../myst-plugins/mdash.mjs
     - ../myst-plugins/status.mjs
     - ../myst-plugins/emoji.mjs
