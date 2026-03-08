@@ -42,7 +42,7 @@ Each "inner" vector, or logit, has one scalar per token in the LLM's vocabulary.
 :::
 
 (using-last-logit)=
-To predict the input's next token, we just need to look at the last logit --- that is, the one that makes a prediction for the last input token --- and pick the token with the highest value. That's the one we'll append to the input and loop back again.
+To predict the input's next token, we just need to look at the last logit --- that is, the one that makes a prediction for the last input token --- and pick the token with the highest value. That's the one we'll append to the input and loop back again. (More commonly, we don't actually pick the very highest value, but instead use the logits as weights for a randomized pick.)
 
 :::{drawio} images/transformer/smallest-llm-logits-zoom
 :alt: The LLM takes the highest-value token in the last logit
@@ -73,6 +73,8 @@ When I learned that the LLM outputs an $n$ logits but that we only use the last 
 Part of the issue is that there isn't actually a great way to turn an $n \times d$ matrix into a $v$ vector (or, equivalently, a $1 \times v$ matrix).
 
 But beyond that, the throwaway logits aren't actually throwaway. They're not used at inference, but at training, they let you check $n$ predictions in one pass. In the example above, our third logit predicted that the token after "brown" is "fox", which we know from our input is the correct prediction. If it had predicted "hen", our training would use this to adjust the model's learned parameters.
+
+Lastly, as we'll see in the next chapter, we can actually optimize this and only emit the last logit after all.
 :::
 
 At this point, you should understand everything in [the simple LLM diagram above](#smallest-llm-figure). That's all we need in order for the equations and dimensions to all add up, so we could call that an LLM. In practice, such an LLM wouldn't work well: its predictions won't be good enough. So, let's beef it up.
