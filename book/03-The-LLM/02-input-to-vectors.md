@@ -106,7 +106,7 @@ Let's look at each of these. To keep things simple, I'll keep all the characters
    [   ]   → 4
    ```
 
-   Then we'll map:
+   ...then we'll map:
 
    $$
    \begin{array}{cccc}
