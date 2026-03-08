@@ -21,6 +21,7 @@ project:
     - ../myst-plugins/mdash.mjs
     - ../myst-plugins/status.mjs
     - ../myst-plugins/emoji.mjs
+    - ../myst-plugins/inimg.mjs
   error_rules:
     - rule: link-resolves
       keys:

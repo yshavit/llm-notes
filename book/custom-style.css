@@ -70,3 +70,11 @@
   font-family: monospace;
   opacity: 0.6;
 }
+
+.dark .dark-only {
+  display: inline;
+}
+
+.inline-icon {
+  padding-right: 0.25rem;
+}
