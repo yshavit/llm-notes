@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 const pluginDir = '_plugin/drawio';
@@ -59,6 +59,8 @@ function renderDrawio(vfile, imagePath, theme) {
 }
 
 function render(vfile, imagePath, container, classString, alt) {
+  mkdirSync(pluginDir, { recursive: true });
+
   const light = renderDrawio(vfile, imagePath, 'light');
   const dark = renderDrawio(vfile, imagePath, 'dark');
 
