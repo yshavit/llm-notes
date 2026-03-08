@@ -25,6 +25,7 @@ project:
     - rule: link-resolves
       keys:
         - "https://platform.openai.com/tokenizer"
+        - "https://github.com/yshavit/llm-notes/blob/main/**"
 site:
   title: Yuval's Intro to LLMs
   template: book-theme
