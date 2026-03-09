@@ -23,10 +23,6 @@ Over time, each of these jostles either reinforce each other or cancel each othe
 
 ## Training considerations
 
-:::{warning} TODO
-move this to the training section
-:::
-
 ### Causal masking
 
 This improvement only applies during training.
