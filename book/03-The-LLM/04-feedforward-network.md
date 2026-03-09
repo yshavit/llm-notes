@@ -120,6 +120,10 @@ If all we had were the above linear transformations, we wouldn't need multiple l
 
 The activation function is what prevents this collapse. This can technically be any non-linear function that translates a scalar to another scalar, but to be useful, the activation function needs a couple other properties. (We don't need to get into those properties yet, though they'll come up when I discuss training later.) (TODO: make sure I do this)
 
+(relu)=
+:::::{div}
+:class: content-group
+
 A common activation function is the Rectified Linear Unit (ReLU) function, which is a fancy name for "negative values are clipped to 0":
 
 $$
@@ -129,6 +133,8 @@ $$
 :::{drawio} images/ffn/relu
 :alt: graph of ReLU
 :::
+
+:::::
 
 This activation function is where the bias comes in: the higher the bias is, the easier it is for any given input to survive the ReLU cutoff. This means that the higher the bias, the more lax the neuron is about what it considers relevant input. (Of course, the bias can also be negative, meaning the neuron is even stricter than the weights alone would be.)
 

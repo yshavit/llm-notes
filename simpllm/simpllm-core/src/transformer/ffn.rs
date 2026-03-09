@@ -29,17 +29,20 @@ impl<B: TensorBackend> Ffn<B> {
 
     pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
+        // MYSTMD::FFN START
         let n_rows = input.num_rows();
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
-            assert_eq!(input.shape(), Shape::new([n_rows, transform.in_dims()]));
+            // Apply the transformation's weights and bias
             let mut output = input.matmul(transform.weights()).add(transform.bias());
-            assert_eq!(output.shape(), Shape::new([n_rows, transform.out_dims()]));
+
+            // If this isn't the last transformation, also apply the activation function.
             if transforms.peek().is_some() {
                 output = output.gelu();
             }
             input = output;
         }
+        // MYSTMD::FFN END
         input
     }
 }

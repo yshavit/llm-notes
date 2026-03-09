@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 455 250" width="455" height="250">
+  <defs>
+    <filter id="glow-relu" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-gelu" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="plot-area">
+      <rect x="45" y="20" width="360" height="192"/>
+    </clipPath>
+  </defs>
+
+  <!-- Grid -->
+  <g stroke="#aaa" stroke-width="0.5" opacity="0.35">
+    <!-- verticals at x=-2,-1,0,1,2 -->
+    <line x1="105" y1="20" x2="105" y2="182"/>
+    <line x1="165" y1="20" x2="165" y2="182"/>
+    <line x1="225" y1="20" x2="225" y2="182"/>
+    <line x1="285" y1="20" x2="285" y2="182"/>
+    <line x1="345" y1="20" x2="345" y2="182"/>
+    <!-- horizontals at y=-0.5, 1, 2 -->
+    <line x1="45" y1="212" x2="405" y2="212"/>
+    <line x1="45" y1="122" x2="405" y2="122"/>
+    <line x1="45" y1="62"  x2="405" y2="62"/>
+  </g>
+
+  <!-- Axes -->
+  <line x1="45"  y1="182" x2="413" y2="182" stroke="#666" stroke-width="1.2"/>
+  <line x1="225" y1="20"  x2="225" y2="218" stroke="#666" stroke-width="1.2"/>
+
+  <!-- Axis arrows -->
+  <polygon points="413,179.5 419,182 413,184.5" fill="#666"/>
+  <polygon points="222.5,20 225,14 227.5,20" fill="#666"/>
+
+  <!-- Tick marks -->
+  <g stroke="#777" stroke-width="1">
+    <line x1="105" y1="180.5" x2="105" y2="183.5"/>
+    <line x1="165" y1="180.5" x2="165" y2="183.5"/>
+    <line x1="285" y1="180.5" x2="285" y2="183.5"/>
+    <line x1="345" y1="180.5" x2="345" y2="183.5"/>
+    <line x1="223.5" y1="62"  x2="226.5" y2="62"/>
+    <line x1="223.5" y1="122" x2="226.5" y2="122"/>
+    <line x1="223.5" y1="212" x2="226.5" y2="212"/>
+  </g>
+
+  <!-- Tick labels -->
+  <g fill="#666" font-family="Georgia, serif" font-size="10px">
+    <text x="105" y="194" text-anchor="middle">-2</text>
+    <text x="165" y="194" text-anchor="middle">-1</text>
+    <text x="285" y="194" text-anchor="middle">1</text>
+    <text x="345" y="194" text-anchor="middle">2</text>
+    <text x="219" y="65.5"  text-anchor="end">2</text>
+    <text x="219" y="125.5" text-anchor="end">1</text>
+    <text x="219" y="215.5" text-anchor="end">-0.5</text>
+    <text x="219" y="186"   text-anchor="end">0</text>
+    <text x="423" y="186"   font-style="italic">x</text>
+    <text x="229" y="18"    font-style="italic">y</text>
+  </g>
+
+  <!-- ReLU -->
+  <polyline
+    points="45,182 225,182 357,50"
+    fill="none"
+    stroke="#c07000"
+    stroke-width="2.2"
+    stroke-linejoin="round"
+    filter="url(#glow-relu)"
+    clip-path="url(#plot-area)"
+  />
+
+  <!-- GELU -->
+  <polyline
+    fill="none"
+    stroke="#0077bb"
+    stroke-width="2.2"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    filter="url(#glow-gelu)"
+    clip-path="url(#plot-area)"
+    points="
+      45.0,182.2 51.0,182.3 57.0,182.4 63.0,182.5 69.0,182.7 75.0,182.9
+      81.0,183.2 87.0,183.5 93.0,183.8 99.0,184.2 105.0,184.7 111.0,185.3
+      117.0,185.9 123.0,186.6 129.0,187.3 135.0,188.0 141.0,188.8 147.0,189.6
+      153.0,190.3 159.0,191.0 165.0,191.5 171.0,191.9 177.0,192.2 183.0,192.2
+      189.0,191.9 195.0,191.3 201.0,190.3 207.0,188.9 213.0,187.0 219.0,184.8
+      225.0,182.0 231.0,178.8 237.0,175.0 243.0,170.9 249.0,166.3 255.0,161.3
+      261.0,155.9 267.0,150.2 273.0,144.2 279.0,137.9 285.0,131.5 291.0,125.0
+      297.0,118.3 303.0,111.6 309.0,104.8 315.0,98.0 321.0,91.3 327.0,84.6
+      333.0,77.9 339.0,71.3 345.0,64.7 351.0,58.2 357.0,51.8 358.7,50.0
+    "
+  />
+
+  <!-- Legend: two items side by side, below the plot -->
+  <g font-family="Georgia, serif" font-size="11px" font-weight="bold">
+    <line x1="45" y1="234" x2="62" y2="234" stroke="#c07000" stroke-width="2"/>
+    <text x="66" y="238" fill="#c07000">ReLU</text>
+    <line x1="108" y1="234" x2="125" y2="234" stroke="#0077bb" stroke-width="2"/>
+    <text x="129" y="238" fill="#0077bb">GELU</text>
+  </g>
+</svg>

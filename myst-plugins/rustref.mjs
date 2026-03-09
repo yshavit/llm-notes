@@ -71,8 +71,12 @@ function render(repoRoot, blockDesc) {
 
   // +2 on start, for 0-indexing and the marker
   // +1 on end, for 0-indexing
-  let startLineNo = startLine + 2;
-  let endLineNo = startLine + endLine + 1;
+  const startLineNo = startLine + 2;
+  const endLineNo = startLine + endLine + 1;
+  var endLineDisplay = '';
+  if (startLineNo !== endLineNo) {
+    endLineDisplay = `-${endLineNo}`;
+  }
   const relFilePath = relative(repoRoot, filePath);
 
   return [
@@ -97,7 +101,7 @@ function render(repoRoot, blockDesc) {
                 {
 
                   type: 'inlinecode',
-                  value: `${basename(filePath)}:${startLineNo}-${endLineNo}`,
+                  value: `${basename(filePath)}:${startLineNo}${endLineDisplay}`,
                 }
               ]
             }
