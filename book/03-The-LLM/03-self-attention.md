@@ -527,7 +527,7 @@ I'll describe this in more detail in [](./05-putting-it-together.md). For now, j
 
 As I mentioned in the previous chapter, modern LLMs don't add positional encoding to the input embeddings. Instead, they use something called RoPE, which gets applied in the attention layer.
 
-For now, I'll just mention that this exists. I'll describe it more in {ref}`beyond-the-toy-llm`.
+I won't describe RoPE in this book --- sorry! Just know that it's the modern replacement for positional embeddings.
 
 ### Dropout
 

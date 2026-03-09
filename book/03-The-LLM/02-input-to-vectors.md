@@ -177,10 +177,6 @@ Again it's important to remember that the values don't _actually_ encode existen
 
 A word's meaning may change depending on where in a sentence it appears. That could be because it has an entirely different meaning, and the different usages correlate with position; or it could have the same meaning, but with different nuance or tone. To capture this additional information, we're going to add a {dfn}`positional embedding` to each input.
 
-:::{note}
-Modern LLMs don't actually use positional embeddings anymore. They still care about positions, but the mechanism is different and more complex. I'll discuss positional embeddings now because they're simpler, and {ref}`beyond-the-toy-llm` will explain the modern alternative.
-:::
-
 (position-embeddings)=
 Just as we defined a unique embedding for each token in the vocabulary --- "be" always the same token embedding, for example --- we'll now define a unique embedding for each position. For example, the first token in an input always used the same embedding, that of position 0. These embeddings are learned vectors, with the same dimension $d$ as the token embeddings.
 
