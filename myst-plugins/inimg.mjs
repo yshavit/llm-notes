@@ -12,7 +12,18 @@ const plugin = {
         required: true,
       },
       run(data, vfile) {
-        const { dir, name, ext } = parse(data.body);
+        var alt = undefined;
+        var givenPath = data.body;
+        const pipeDelm = givenPath.indexOf('|');
+        if (pipeDelm >= 0) {
+          console.log('here');
+          alt = givenPath.slice(0, pipeDelm);
+          if (!alt) {
+            alt = undefined;
+          }
+          givenPath = givenPath.slice(pipeDelm + 1);
+        }
+        const { dir, name, ext } = parse(givenPath);
         function filePath(theme) {
           var pathWithTheme = join(vfile.dirname, dir, `${name}-${theme}${ext}`);
           if (!existsSync(pathWithTheme)) {
@@ -21,8 +32,6 @@ const plugin = {
           pathWithTheme = relative(vfile.dirname, pathWithTheme);
           return pathWithTheme;
         }
-
-        const alt = 'TODO';
 
         return [
           {

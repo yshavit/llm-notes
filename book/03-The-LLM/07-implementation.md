@@ -7,7 +7,7 @@
 
 Now that we've worked through the conceptual workings of the LLM as well as the reformulations to make it efficient, let's see what all of this actually looks like in code.
 
-There's a fully working implementation of an LLM at [{in-img}`../images/implementation/gh.svg`yshavit/llm-notes`://simpllm`][simpllm] (which is in the same repository that hosts this book's source). That repository has a few modules:
+There's a fully working implementation of an LLM at [{in-img}`GitHub logo|../images/implementation/gh.svg`yshavit/llm-notes`://simpllm`][simpllm] (which is in the same repository that hosts this book's source). That repository has a few modules:
 
 - `simpllm-core`: A complete, from-scratch implementation of an LLM. This includes the tokenizer, inference, tensor math, and logit sampling. The only external dependencies are `rand` (for randomization in the logit sampler) and `rayon` (for parallelization).
 - `simpllm`: An executable that takes `simpllm-core` and wraps it into a nice TUI.
