@@ -3,6 +3,8 @@
 :::{status} 0
 :::
 
+## A working example
+
 Now that we've worked through the conceptual workings of the LLM as well as the reformulations to make it efficient, let's see what all of this actually looks like in code.
 
 There's a fully working implementation of an LLM at [{in-img}`../images/implementation/gh.svg`yshavit/llm-notes`://simpllm`][simpllm] (which is in the same repository that hosts this book's source). That repository has a few modules:
@@ -54,4 +56,11 @@ GELU is often approximated in LLMs, including my implementation:
 :::{rustref} GELU
 :::
 
+## The rest of the owl
+
+After attention and FFN, everything else is either glue or relatively simple stuff like normalization or logit sampling.
+
+I won't go into those here. If you're interested, I invite you to take a look at [the project itself][simpllm-core].
+
 [simpllm]: https://github.com/yshavit/llm-notes/tree/main/simpllm
+[simpllm-core]: https://github.com/yshavit/llm-notes/tree/main/simpllm/simpllm-core
