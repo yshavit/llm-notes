@@ -23,26 +23,21 @@ To get the most benefit, you should:
 - When building or using `cargo run`, use `--features cuda`
 
 ```powershell
-Push-Location (Split-Path (cargo locate-project --workspace --message-format plain))
-try {
-  cargo run -p fasterllm --release --features cuda
-}
-finally {
-  Pop-Location
-}
+# Run this from the workspace root: ./simpllm from the repo root
+
+cargo run -p fasterllm --release --features cuda
 ```
 
-## macOs
+## macOS
 
-No extra installation needed
+No extra installation needed.
 
-- When building or using `cargo run`, use `--features metal`
+When building or using `cargo run`, use `--features metal`
 
 ```bash
-(
-    cd "$(dirname "$(cargo locate-project --workspace --message-format plain)")"
-    cargo run -p fasterllm --release --features metal
-)
+# Run this from the workspace root: ./simpllm from the repo root
+
+cargo run -p fasterllm --release --features metal
 ```
 
 [candle-rs]: https://github.com/huggingface/candle
