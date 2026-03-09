@@ -183,12 +183,8 @@ impl<const R: usize> Tensor<R> for CpuTensor<R> {
         self
     }
 
-    fn reshape<const R2: usize>(self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
-        assert_eq!(
-            self.strides,
-            Self::contiguous_strides(self.shape),
-            "can only shape contiguous tensors"
-        );
+    fn reshape<const R2: usize>(mut self, new_shape: impl Into<Shape<R2>>) -> <Self::Backend as TensorBackend>::Tensor<R2> {
+        self = self.contiguous();
         let new_shape = new_shape.into();
         assert_eq!(
             self.shape.num_elements(),
@@ -730,13 +726,6 @@ mod tests {
         fn shape_mismatch() {
             let original = CpuBackend::new_matrix(2, 6);
             let _ = original.reshape([2, 7]);
-        }
-
-        #[test]
-        #[should_panic]
-        fn transposed() {
-            let original = CpuBackend::new_matrix(2, 6).transposed(0, 1);
-            let _ = original.reshape([6, 2]);
         }
     }
 

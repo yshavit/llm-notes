@@ -27,4 +27,11 @@ Steps 1 and 3 are trivial, so let's take a look at step 2. It's not too bad!
 :::{rustref} BPE::MERGE
 :::
 
+## Attention
+
+Attention is a bit involved because of KV caching and the various details like scaling, softmax, and combined $QKV$ weights; but even so, it's not too bad:
+
+:::{rustref} Attention
+:::
+
 [simpllm]: https://github.com/yshavit/llm-notes/tree/main/simpllm
