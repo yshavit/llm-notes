@@ -54,31 +54,29 @@ impl Tokenizer {
         let mut encoded: Vec<Tok> = text.as_bytes().iter().map(|&b| vec![b]).collect();
 
         // Merge the Toks.
-        let mut merge_rules = self.merge_rules.iter();
         // Look for matches (MYSTMD::BPE::MERGE START)
+        let mut merge_rules = self.merge_rules.iter();
         while let Some(merge_rule) = merge_rules.next() {
             let mut look_starting_at_idx = 0;
             loop {
-                let encoded_segment = &encoded[look_starting_at_idx..];
-                let Some(idx_within_segment) = Self::find_match(encoded_segment, merge_rule) else {
+                let segment = &encoded[look_starting_at_idx..];
+                let Some(idx_within_segment) = Self::find_match(segment, merge_rule) else {
                     break;
                 };
                 let index_within_full = idx_within_segment + look_starting_at_idx;
 
-                // Merge the words by removing the next word and adding it to
-                // this one.
+                // Merge the words by removing the next word and adding it to this one.
                 let _ = encoded.remove(index_within_full + 1);
                 encoded[index_within_full].extend(merge_rule.1.clone());
 
-                // Search for more matches of the merge_rule within the input,
-                // starting at the index we just merged.
+                // Search for more matches of the merge_rule within the input, starting at the
+                // index we just merged.
                 look_starting_at_idx = index_within_full;
 
-                // Reset the merge rules, since the newly merged string may have
-                // been one of the rules we've already passed.
-                // Note that this won't affect the current loop; it'll just
-                // affect the next iteration of
-                // `while let Some(..) = merge_rules.next()`.
+                // Reset the merge rules, since the newly merged string may have been one of
+                // the rules we've already passed.
+                // Note that this won't affect the current loop; it'll just affect the next
+                // iteration of while let Some(..) = merge_rules.next()`.
                 merge_rules = self.merge_rules.iter();
             }
         }
