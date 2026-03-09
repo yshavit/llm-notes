@@ -1,8 +1,8 @@
 pub(super) fn gelu(x: f32) -> f32 {
     use std::f32::consts::PI;
-    /// MYSTMD::GELU START
+    // MYSTMD::GELU START
     0.5 * x * (1. + f32::tanh((2. / PI).sqrt() * (x + 0.044715 * x.powi(3))))
-    /// MYSTMD::GELU END
+    // MYSTMD::GELU END
 }
 
 #[cfg(test)]

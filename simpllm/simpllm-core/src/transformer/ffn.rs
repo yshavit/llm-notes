@@ -1,4 +1,4 @@
-use crate::tensor::{Matrix, Shape, Tensor, Tensor2D, TensorBackend};
+use crate::tensor::{Matrix, Tensor, Tensor2D, TensorBackend};
 use crate::transformer::weights::MatrixAndBias;
 
 pub struct Ffn<B: TensorBackend> {
@@ -30,7 +30,6 @@ impl<B: TensorBackend> Ffn<B> {
     pub fn apply(&self, mut input: Matrix<B>) -> Matrix<B> {
         assert_eq!(input.num_cols(), self.in_dims(), "input dimensions");
         // MYSTMD::FFN START
-        let n_rows = input.num_rows();
         let mut transforms = self.layers_transforms.iter().peekable();
         while let Some(transform) = transforms.next() {
             // Apply the transformation's weights and bias
