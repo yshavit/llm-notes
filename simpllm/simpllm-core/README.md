@@ -1,7 +1,7 @@
 # simpllm-core
 
 The meat of the project! A fully from-scratch implementation of an LLM. The only two external dependencies (not counting
-for tests) are [`rand`] for sampling logits, and [`rayon`] for parellel processing (for matrix math).
+for tests) are [`rand`] for sampling logits, and [`rayon`] for parallel processing (for matrix math).
 
 - [`bpe`](src/bpe): An implementation of a [byte-pair encoding][bpe] tokenizer.
 - [`tensor`](src/tensor): Traits for tensor implementations.
