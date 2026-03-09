@@ -61,6 +61,8 @@ impl Tokenizer {
             loop {
                 let segment = &encoded[look_starting_at_idx..];
                 let Some(idx_within_segment) = Self::find_match(segment, merge_rule) else {
+                    // Break out of the `loop`: we're with this merge rule.
+                    // We'll pick up at the next iteration of `while let Some(merge_rule)`.
                     break;
                 };
                 let index_within_full = idx_within_segment + look_starting_at_idx;
