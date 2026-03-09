@@ -62,20 +62,22 @@ impl Tokenizer {
                 let encoded_segment = &encoded[look_starting_at_idx..];
                 match Self::find_match(encoded_segment, merge_rule) {
                     None => break,
-                    Some(index_within_segment) => {
-                        let index_within_full = index_within_segment + look_starting_at_idx;
+                    Some(idx_in_segment) => {
+                        let index_within_full = idx_in_segment + look_starting_at_idx;
 
-                        // Merge the words by removing the next word and adding it to this one
+                        // Merge the words by removing the next word and adding it to
+                        // this one.
                         let _ = encoded.remove(index_within_full + 1);
                         encoded[index_within_full].extend(merge_rule.1.clone());
 
-                        // Search for more matches of the merge_rule within the input, starting at the index we just
-                        // merged.
+                        // Search for more matches of the merge_rule within the input,
+                        // starting at the index we just merged.
                         look_starting_at_idx = index_within_full;
 
-                        // Reset the merge rules, since the newly merged string may have been one of the rules we've
-                        // already passed.
-                        // Note that this won't affect the current loop; it'll just affect the next iteration of
+                        // Reset the merge rules, since the newly merged string may have
+                        // been one of the rules we've already passed.
+                        // Note that this won't affect the current loop; it'll just
+                        // affect the next iteration of
                         // `while let Some(..) = merge_rules.next()`.
                         merge_rules = self.merge_rules.iter();
                     }

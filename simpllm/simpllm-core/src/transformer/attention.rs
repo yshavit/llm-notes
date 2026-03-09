@@ -72,7 +72,7 @@ impl<B: TensorBackend> Attention<B> {
 
         // MYSTMD::Attention START
         // Calculate QKV at once:
-        // - Each is size (h, n, d/h)
+        // - Each is size [h x n x d/h ]
         // - KV caching applies, so n = 1 after the prefill phase.
         let combined = input.matmul(self.w_qkv.weights()).add(self.w_qkv.bias());
         let [queries, keys, values] = combined.split::<3>(1);
@@ -83,20 +83,21 @@ impl<B: TensorBackend> Attention<B> {
             values: Some(values),
         });
 
-        // K and V are the [N x d] from above, where N is the total sequence size, including cached.
+        // K and V are the [N x d] from above, where N is the total sequence size,
+        // including cached.
         // Reshape each to [N x h x d/h], then transpose to [h x N x d/h]
         let [keys, values] = [keys, values].map(|kv| {
             let full_n = kv.shape()[0];
             kv.clone().reshape([full_n, h, d / h]).transposed(0, 1)
         });
-        // similarly, reshape and transpose Q. Note that queries are [n x d], not [N x d], where
-        // n is just this input's size (not including the cache).
+        // Similarly, reshape and transpose Q. Note that queries are [n x d], not
+        // [N x d], where n is just this input's size (not including the cache).
         let queries = queries.reshape([input_n, h, d / h]).transposed(0, 1);
         
         // Attention scores: QK^T
         let mut a = queries.matmul(&keys.transposed(1, 2));
 
-        // causal attention during prefill (but not decode); then scaling and softmax
+        // Causal attention during prefill (but not decode); then scaling and softmax
         if input_n > 1 {
             let causal_mask = B::lower_triangle(input_n);
             a = a.add(&causal_mask);
@@ -105,7 +106,8 @@ impl<B: TensorBackend> Attention<B> {
         a.multiply_scalar(1.0 / (dim_per_head as f32).sqrt());
         a = a.softmax();
 
-        // Attention = AV; then transpose from [h x n x d/h] to [n x h x d/h] and reshape to [n x d].
+        // Attention = AV; then transpose from [h x n x d/h] to [n x h x d/h]
+        // and reshape to [n x d].
         let attn = a.matmul(&values).transposed(0, 1).reshape([input_n, d]);
 
         // Finally, apply W_o's weights and bias
