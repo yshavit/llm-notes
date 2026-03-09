@@ -21,9 +21,11 @@ I welcome any corrections, comments or questions. Please make sure to include th
 
 LLMs --- large language models --- encompass a range of technologies. These include models that generate text, but also translation tools, classification tools, and others.
 
-There are various architectures under the LLM umbrella, such as BERT (I'll cover some of these in @other-llm-models). But when most people talk about "LLMs", they really mean the ones that can generate text and images --- and specifically, an LLM architecture called {dfn}`Generative Pre-trained Transformer`, or {dfn}`GPT`.
+There are various architectures under the LLM umbrella, but when most people talk about "LLMs", they really mean the ones that can generate text and images --- and specifically, an LLM architecture called {dfn}`Generative Pre-trained Transformer`, or {dfn}`GPT`.
 
 Following that colloquial usage, this book will use "LLM" and "GPT" interchangeably.
+
+That said, research into new architectures is ongoing, and some of it looks promising. So, maybe it's best to just mentally translate "LLM" to "a GPT-2-style LLM" as you read this book.
 
 ## Organization
 

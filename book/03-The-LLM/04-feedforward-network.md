@@ -118,7 +118,8 @@ The input's overall alignment to the weight vector is a sum of all these terms, 
 
 If all we had were the above linear transformations, we wouldn't need multiple layers: you could just make a single transformation layer that's effectively a concatenation of all the multi-layer ones, and that would be equivalent. But if you did that, you'd lose the ability to create specialized inferences at each layer, which then combine to create (usually) higher-level inferences in deeper layers.
 
-The activation function is what prevents this collapse. This can technically be any non-linear function that translates a scalar to another scalar, but to be useful, the activation function needs a couple other properties. (We don't need to get into those properties yet, though they'll come up when I discuss training later.) (TODO: make sure I do this)
+(why-activation-function)=
+The activation function is what prevents this collapse. This can technically be any non-linear function that translates a scalar to another scalar, but to be useful, the activation function needs a couple other properties. (We don't need to get into those properties yet, though they'll come up when I discuss training later.)
 
 (relu)=
 :::::{div}
