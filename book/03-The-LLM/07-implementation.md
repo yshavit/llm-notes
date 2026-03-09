@@ -43,7 +43,7 @@ The FFNs in an LLM always have two layers, but it's not hard to write a generic 
 :::{rustref} FFN
 :::
 
-Note that this FFN uses GELU for the activation function, not the ReLU that I described [previously](#relu). GELU is similar to ReLU, but smoother; this improves both training and inference by removing sharp spikes in whether neurons get activated.
+Note that this FFN uses GELU for the activation function, not the ReLU that I described [previously](#relu). GELU is similar to ReLU, but smoother; this improves both training and inference by removing sharp spikes in neuron activation.
 
 ```{figure} ../images/implementation/relu-and-gelu.svg
 :alt: ReLU and GELU superimposed
