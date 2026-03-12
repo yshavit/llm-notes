@@ -7,8 +7,8 @@ FEEDBACK_FORM_URL ?=
 build: $(VENV)/bin/pip
 	cd book && \
 		MYST=$(MYST) ../strict-myst build --strict --html && \
-		mkdir -p _build/html/build/_assets/llm-book \
-		cp book/static/* _build/html/build/_assets/llm-book/ \
+		mkdir -p _build/html/build/_assets/llm-book && \
+		cp static/* _build/html/build/_assets/llm-book/ && \
 		cd _build/html && \
 		find . -type f -exec sed -i 's|FEEDBACK_FORM_URL|$(FEEDBACK_FORM_URL)|g' {} +
 

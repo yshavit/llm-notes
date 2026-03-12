@@ -3,7 +3,7 @@
 
 ::::{dropdown} Feedback
 
-:::{iframe} FEEDBACK_FORM_URL
+:::{iframe} 
 :title: feedback form
 :::
 
