@@ -93,5 +93,5 @@ figure.fig-figure figcaption {
 .wide-iframe > div {
   width: 95% !important;
   padding-bottom: 0 !important;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 9;
 }

@@ -7,14 +7,11 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 20px;
             background: #f5f5f5;
         }
         .container {
             background: white;
-            padding: 30px;
+            padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
@@ -153,7 +150,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Softmax Temperature Visualization</h1>
+        <h1>Softmax Visualization</h1>
         
         <div class="explanation">
             <strong>What is Softmax?</strong><br>
@@ -162,7 +159,7 @@
 
         <div class="temperature-explanation">
             <strong>Temperature Effect:</strong><br>
-            As you increase the temperature multiplier (scale inputs up), the softmax becomes more "confident" - it approaches a step function where the highest input gets probability ≈1 and others get ≈0. This is what people mean by "acting like a step function"!
+            As you increase the temperature multiplier (scale inputs up), the softmax becomes more "confident." At high temperatures, this approaches a step function where the highest input gets probability ≈ 1 and others get ≈ 0.
         </div>
 
         <div class="controls">
