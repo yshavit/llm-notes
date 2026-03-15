@@ -89,3 +89,9 @@ figure.fig-figure figcaption {
 .inline-icon {
   padding-right: 0.25rem;
 }
+
+.wide-iframe > div {
+  width: 95% !important;
+  padding-bottom: 0 !important;
+  aspect-ratio: 16 / 9;
+}

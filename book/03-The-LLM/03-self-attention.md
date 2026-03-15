@@ -369,6 +369,7 @@ $$
 You can play around with [a visualization of softmax](../static/softmax.html) to get a sense of how it works:
 
 :::{iframe} ../build/_assets/llm-book/softmax.html
+:class: wide-iframe
 :::
 
 ::::
