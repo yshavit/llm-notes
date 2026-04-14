@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rand = "0.10.0" # for sampling logits
+rand = "0.10.1" # for sampling logits
 rayon = "1.11.0" # multithreading
 
 [dev-dependencies]
