@@ -10,4 +10,4 @@ rayon = "1.11.0" # multithreading
 [dev-dependencies]
 # for unit tests:
 approx = "0.5" # asserts for floats
-tiktoken-rs = "0.9.1" # reference implementation of BPE tokenizer, to compare against
+tiktoken-rs = "0.11" # reference implementation of BPE tokenizer, to compare against
