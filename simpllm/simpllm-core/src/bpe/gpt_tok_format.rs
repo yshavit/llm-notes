@@ -29,7 +29,7 @@ pub(super) fn gpt2_bpe_char_to_byte() -> HashMap<char, u8> {
     }
 
     // Fill in the result array
-    for (b, c) in bs.into_iter().zip(cs.into_iter()) {
+    for (b, c) in bs.into_iter().zip(cs) {
         result[b as usize] = Some(char::from_u32(c).unwrap());
     }
 

@@ -8,8 +8,8 @@ cuda = ["candle-core/cuda"]
 metal = ["candle-core/metal"]
 
 [dependencies]
-candle-core = "0.9"
-candle-nn = "0.9"
+candle-core = "0.10"
+candle-nn = "0.10"
 simpllm = { path = "../simpllm" }
 simpllm-core = { path = "../../simpllm-core" }
 
