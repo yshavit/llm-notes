@@ -129,3 +129,71 @@ The gradients for each learned parameter ($a$ and $b$) represent the partial der
 :::{drawio} images/backprop/training-pipeline
 :alt: Visual representation of the steps described above
 :::
+
+The first three of these are trivial (remember that in this example, "run $x$ through the model" is just $y_{pred} = ax + b$). Let's focus on the fourth step, the chain rule.
+
+We'll focus on $a$ first. What we want is the partial derivative of the loss $L$ with respect to $a$:
+
+$$
+\pdv{L}{a}
+$$
+
+We can think of $L$ as a composed function: $L(x) = ( \, f(x) \, - y_{true} )^2$, where $f(x)$ is the model. That means we can use the chain rule, with that inner $f$ function being the chain. And $f$ is just the prediction, $y_{pred}$:
+
+$$
+\begin{align}
+\pdv{L}{a} & = \pdv{L}{f} \cdot \pdv{f}{a} \\
+& = \pdv{L}{y_{pred}} \cdot \pdv{y_{pred}}{a}
+\end{align}
+$$
+
+:::{warning}
+TODO: make sure I get the left and right terms right, I think I may have swapped them
+:::
+
+Let's start by calculating the right term, $\pdv{y_{pred}}{a}$. Here's where I'll assume familiarity with basic derivatives:
+
+$$
+y_{pred}(x) = ax + b \\[0.8em]
+\Downarrow \\[0.8em]
+\pdv{y_{pred}}{a} = x
+$$
+
+Now the left term, $\pdv{L}{y_{pred}}$:
+
+$$
+L(y_{pred}) = (y_{pred} - y_{true})^2\\[0.8em]
+\Downarrow \\[0.8em]
+\pdv{L}{y_{pred}} = 2(y_{pred} - y_{true})
+$$
+
+Putting it all together:
+
+$$
+\begin{align}
+\pdv{L}{a} & = \pdv{L}{y_{pred}} & \cdot & \; \pdv{y_{pred}}{a} \\[1em]
+& = 2(y_{pred} - y_{true}) & \cdot & \; x
+\end{align}
+$$
+
+And here's where the "efficient application of" starts to kick in: during our inference phase, we already calculated $p_{pred}$. If we just store that value, this is a trivial calculation: $y_{pred}$ comes from that stored lookup, and $x$ and $y_{true}$ were our given arguments. We call this value $a$'s {dfn}`gradient`.
+
+We can can do the same thing to calculate $\pdv{L}{b}$:
+
+$$
+\begin{align}
+\pdv{L}{b} &= \pdv{L}{y_{pred}} \cdot \pdv{y_{pred}}{b} & \qquad \text{\small (plug in $\pdv{(ax + b)}{b} \rightarrow 1$)} \\[1em]
+&= \pdv{L}{y_{pred}} \cdot 1 & \qquad \text{\small (plug in $\pdv{L}{y_{pred}}$, which was just like in the $a$ case)}\\[2em]
+&= 2(y_{pred} - y_{true}) \cdot 1
+\end{align}
+$$
+
+Notice that the left term is exactly the same as it was for $a$'s gradient, so we only need to calculate it once.
+
+Finally, we just apply the gradients to our learned parameters $a$ and $b$ to update them. As I mentioned before, we subtract the gradients, because we want to lower the loss. We first scale them down by $\eta$, which is a {dfn}`learning rate` that's some small number like 0.01. This means that each round of learning only _nudges_ the values towards a 0-loss, instead of lurching them there.
+
+$$
+\eta = 0.01 \\[1.5em]
+a_{updated} = a - (\eta \; a_{gradient}) \\
+b_{updated} = b - (\eta \; b_{gradient})
+$$
