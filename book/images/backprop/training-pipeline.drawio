@@ -1,0 +1,37 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="Mr3UTv5aX5ZHq3Qj_cHK">
+    <mxGraphModel dx="813" dy="737" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-8" edge="1" parent="1" source="NqX7_UO9smvLynKb-mAQ-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NqX7_UO9smvLynKb-mAQ-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;u&gt;Input&lt;/u&gt;&lt;div&gt;&lt;u&gt;&lt;br&gt;&lt;/u&gt;&lt;div&gt;(&lt;i&gt;x, y&lt;sub&gt;true&lt;/sub&gt;&lt;/i&gt;)&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="40" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-7" edge="1" parent="1" source="NqX7_UO9smvLynKb-mAQ-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NqX7_UO9smvLynKb-mAQ-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;u&gt;Model Inference&lt;/u&gt;&lt;br&gt;&lt;br&gt;&lt;div&gt;&lt;i&gt;y&lt;sub&gt;pred&lt;/sub&gt;&lt;/i&gt; = &lt;i&gt;ax&lt;/i&gt; + &lt;i&gt;b&lt;/i&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="180" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-9" edge="1" parent="1" source="NqX7_UO9smvLynKb-mAQ-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NqX7_UO9smvLynKb-mAQ-4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;u&gt;Loss&lt;/u&gt;&lt;br&gt;&lt;br&gt;&lt;div&gt;&lt;i&gt;L&lt;/i&gt; = (&lt;i&gt;y&lt;sub&gt;pred&lt;/sub&gt;&lt;/i&gt; - &lt;i&gt;y&lt;sub&gt;true&lt;/sub&gt;&lt;/i&gt;)&lt;sup&gt;2&lt;/sup&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="320" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-10" edge="1" parent="1" source="NqX7_UO9smvLynKb-mAQ-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NqX7_UO9smvLynKb-mAQ-5" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;u&gt;Gradients&lt;/u&gt;&lt;br&gt;&lt;br&gt;&lt;div&gt;&lt;i&gt;∂a / ∂L&lt;/i&gt;&lt;/div&gt;&lt;div&gt;&lt;i style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;∂b / ∂L&lt;/i&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="460" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="NqX7_UO9smvLynKb-mAQ-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" value="&lt;u&gt;Update model&lt;/u&gt;&lt;br&gt;&lt;br&gt;&lt;div&gt;&lt;i style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;a =&amp;nbsp;&lt;/i&gt;&lt;i style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;a -&amp;nbsp;&lt;/i&gt;&lt;i style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;∂a / ∂&lt;br&gt;&lt;/i&gt;&lt;i style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;b =&amp;nbsp;&lt;/i&gt;&lt;i style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;b -&amp;nbsp;&lt;/i&gt;&lt;i style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;∂b / ∂&lt;/i&gt;&lt;i style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;/i&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="120" x="600" y="10" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -2,7 +2,7 @@ VENV := venv
 MYST := $(abspath $(VENV)/bin/myst)
 FEEDBACK_FORM_URL ?=
 
-.PHONY: setup build serve start clean
+.PHONY: setup images build serve start clean
 
 build: $(VENV)/bin/pip
 	cd book && \
@@ -13,6 +13,14 @@ build: $(VENV)/bin/pip
 		find . -type f -exec sed -i 's|FEEDBACK_FORM_URL|$(FEEDBACK_FORM_URL)|g' {} +
 
 setup: $(VENV)/bin/pip
+
+images: book/images/backprop/xy-plot-light.svg book/images/backprop/xy-plot-dark.svg
+
+book/images/backprop/xy-plot-light.svg: $(VENV)/bin/pip
+	$(VENV)/bin/python3 scripts/generate-plot.py light
+
+book/images/backprop/xy-plot-dark.svg: $(VENV)/bin/pip
+	$(VENV)/bin/python3 scripts/generate-plot.py dark
 
 start: $(VENV)/bin/pip
 	cd book && $(MYST) start

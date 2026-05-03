@@ -1,3 +1,4 @@
 mystmd==1.9.0
 nodeenv==1.9.1
 platformdirs==4.2.2
+svgwrite==1.4.3

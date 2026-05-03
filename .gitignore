@@ -8,3 +8,7 @@
 __pycache__/
 _build
 _plugin
+
+# generated via scripts/generate-plot.py
+/book/images/backprop/xy-plot-light.svg
+/book/images/backprop/xy-plot-dark.svg
