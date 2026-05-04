@@ -110,18 +110,18 @@ This is just a plain old line, like you learned about in middle school. We're go
 
 Since we're assuming (as the model designers) that the points form a line $y = ax + b$, our job will be to figure out $a$ and $b$ from the various $(x, y)$ data points.
 
-Our first step is to define a {dfn}`loss function` $L$, which defines how wrong a given prediction is from the true value. A common one is mean squared error (MSE):
+Our first step is to define a {dfn}`loss function` $L$, which defines how wrong a given prediction is from the true value. A common one is mean squared error (MSE), which we'll adapt for our scalar model:
 
 $$
 L = (y_{pred} - y_{true})^2
 $$
 
-Our simple LLM will:
+Our simple model will:
 
 1. Take an $(x, y_{true})$ pair from the training data set
 2. Run $x$ through the model (with whatever $a$ and $b$ we currently have) to produce a prediction, $y_{pred}$
 3. Calculate the loss $L = (y_{pred} - y_{true})^2$
-4. Apply the chain rule on the two partial derivatives, $\pdv{y}{a}$ and $\pdv{y}{b}$ to calculate the {dfn}`gradients` for $a$ and $b$ (I'll explain this in just a second)
+4. Use the chain rule to compute the two partial derivatives, $\pdv{L}{a}$ and $\pdv{L}{b}$. These give us the {dfn}`gradients` for $a$ and $b$ (I'll explain this in just a second)
 5. Use the gradients to nudge $a$ and $b$ towards where they should be
 
 The gradients for each learned parameter ($a$ and $b$) represent the partial derivative of the loss function with respect to that parameter. In other words, it represents just the mechanical, mathematical question of "as that parameter grows, how fast does the loss grow?" Of course, we want the loss to _shrink_, since it represents how wrong the prediction was. So, we just nudge the parameter in the opposite direction of the gradient.
@@ -169,14 +169,14 @@ $$
 \end{align}
 $$
 
-And here's where the "efficient application of" starts to kick in: during our inference phase, we already calculated $p_{pred}$. If we just store that value during that forward pass, $\pdv{L}{a}$ becomes a trivial calculation: $y_{pred}$ comes from that stored lookup, and $x$ and $y_{true}$ were our given arguments. We call this value $a$'s {dfn}`gradient`.
+And here's where the "efficient application of" starts to kick in: during our inference phase, we already calculated $y_{pred}$. If we just store that value during that forward pass, $\pdv{L}{a}$ becomes a trivial calculation: $y_{pred}$ comes from that stored lookup, and $x$ and $y_{true}$ were our given arguments. We call this value $a$'s {dfn}`gradient`.
 
 We can can do the same thing to calculate $\pdv{L}{b}$. I'll go a bit faster, since it's basically the same work (again, assuming familiarity with derivatives).
 
 $$
 \begin{align}
 \pdv{L}{b} &= \pdv{L}{y_{pred}} \cdot \underbrace{\pdv{y_{pred}}{b}}_{\partial/\partial b (ax + b) = 1} \\[3em]
-&= \underbrace{\pdv{L}{y_{pred}}}_{\textit{same as $\partial a$ above}} \cdot 1 \\[3em]
+&= \underbrace{\pdv{L}{y_{pred}}}_{\textit{same as $\partial L / \partial a$ above}} \cdot 1 \\[3em]
 &= 2(y_{pred} - y_{true}) \cdot 1
 \end{align}
 $$
