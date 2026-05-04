@@ -3,7 +3,7 @@ math:
   '\pdv': '\frac{\partial #1}{\partial #2}'
 ---
 
-# Backpropagation (v.2)
+# Backpropagation
 
 :::{status} 0
 :::
@@ -138,20 +138,13 @@ $$
 \pdv{L}{a}
 $$
 
-We can think of $L$ as a composed function: $L(x) = ( \, f(x) \, - y_{true} )^2$, where $f(x)$ is the model. That means we can use the chain rule, with that inner $f$ function being the chain. And $f$ is just the prediction, $y_{pred}$:
+We can think of $L$ as a composed function: $L(x) = ( \, f(x) \, - y_{true} )^2$, where $f(x)$ is the model. That means we can use the chain rule, with that inner $f$ function being the chain. And $f$ is just the prediction, $y_{pred}$, so we get:
 
 $$
-\begin{align}
-\pdv{L}{a} & = \pdv{L}{f} \cdot \pdv{f}{a} \\
-& = \pdv{L}{y_{pred}} \cdot \pdv{y_{pred}}{a}
-\end{align}
+\pdv{L}{a} = \pdv{L}{y_{pred}} \cdot \pdv{y_{pred}}{a}
 $$
 
-:::{warning}
-TODO: make sure I get the left and right terms right, I think I may have swapped them
-:::
-
-Let's start by calculating the right term, $\pdv{y_{pred}}{a}$. Here's where I'll assume familiarity with basic derivatives:
+Let's start by calculating the right term, $\pdv{y_{pred}}{a}$. Here's where I'll assume familiarity with basic derivatives. The derivative $f'$ for $f'(x) = ax + b$ is $x$, so in our notation:
 
 $$
 y_{pred}(x) = ax + b \\[0.8em]
@@ -176,21 +169,21 @@ $$
 \end{align}
 $$
 
-And here's where the "efficient application of" starts to kick in: during our inference phase, we already calculated $p_{pred}$. If we just store that value, this is a trivial calculation: $y_{pred}$ comes from that stored lookup, and $x$ and $y_{true}$ were our given arguments. We call this value $a$'s {dfn}`gradient`.
+And here's where the "efficient application of" starts to kick in: during our inference phase, we already calculated $p_{pred}$. If we just store that value during that forward pass, $\pdv{L}{a}$ becomes a trivial calculation: $y_{pred}$ comes from that stored lookup, and $x$ and $y_{true}$ were our given arguments. We call this value $a$'s {dfn}`gradient`.
 
-We can can do the same thing to calculate $\pdv{L}{b}$:
+We can can do the same thing to calculate $\pdv{L}{b}$. I'll go a bit faster, since it's basically the same work (again, assuming familiarity with derivatives).
 
 $$
 \begin{align}
-\pdv{L}{b} &= \pdv{L}{y_{pred}} \cdot \pdv{y_{pred}}{b} & \qquad \text{\small (plug in $\pdv{(ax + b)}{b} \rightarrow 1$)} \\[1em]
-&= \pdv{L}{y_{pred}} \cdot 1 & \qquad \text{\small (plug in $\pdv{L}{y_{pred}}$, which was just like in the $a$ case)}\\[2em]
+\pdv{L}{b} &= \pdv{L}{y_{pred}} \cdot \underbrace{\pdv{y_{pred}}{b}}_{\partial/\partial b (ax + b) = 1} \\[3em]
+&= \underbrace{\pdv{L}{y_{pred}}}_{\textit{same as $\partial a$ above}} \cdot 1 \\[3em]
 &= 2(y_{pred} - y_{true}) \cdot 1
 \end{align}
 $$
 
 Notice that the left term is exactly the same as it was for $a$'s gradient, so we only need to calculate it once.
 
-Finally, we just apply the gradients to our learned parameters $a$ and $b$ to update them. As I mentioned before, we subtract the gradients, because we want to lower the loss. We first scale them down by $\eta$, which is a {dfn}`learning rate` that's some small number like 0.01. This means that each round of learning only _nudges_ the values towards a 0-loss, instead of lurching them there.
+Finally, we just apply the gradients to our learned parameters $a$ and $b$ to update them. As I mentioned before, we subtract the gradients, because we want to lower the loss. We first scale them down by $\eta$, which is a {dfn}`learning rate` that's some small number like 0.01. This means that each round of learning only _nudges_ the values towards a 0-loss, instead of lurching them there; this prevents over-fitting any one data point.
 
 $$
 \eta = 0.01 \\[1.5em]
