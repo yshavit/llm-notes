@@ -124,9 +124,9 @@ function render({ model, el }) {
         <span class="val" id="trueBVal">0.30</span>
       </div>
       <div class="control-group">
-        <label>Learning rate (η)</label>
-        <input type="range" id="eta" min="0.01" max="0.5" step="0.01" value="0.1">
-        <span class="val" id="etaVal">0.10</span>
+        <label>Learning rate (𝜂)</label>
+        <input type="range" id="eta" min="0.001" max="1.0" step="0.001" value="0.01">
+        <span class="val" id="etaVal">0.01</span>
       </div>
       <div class="control-group">
         <label>Speed</label>
@@ -164,14 +164,14 @@ function render({ model, el }) {
   el.appendChild(widget);
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const canvas  = widget.querySelector('#plot');
-  const ctx     = canvas.getContext('2d');
+  const canvas = widget.querySelector('#plot');
+  const ctx = canvas.getContext('2d');
 
   // Make canvas crisp on HiDPI
   function resizeCanvas() {
     const w = canvas.clientWidth;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width  = w * dpr;
+    canvas.width = w * dpr;
     canvas.height = 300 * dpr;
     ctx.scale(dpr, dpr);
   }
@@ -188,9 +188,10 @@ function render({ model, el }) {
   let trainPoints = [];
   function genPoints() {
     trainPoints = [];
-    for (let i = 0; i < 12; i++) {
-      const x = -1.8 + i * (3.6 / 11);
-      const noise = (Math.random() - 0.5) * 0.15;
+    const nPoints = 120;
+    for (let i = 0; i <= nPoints; i++) {
+      const x = -1.8 + i * (3.6 / nPoints);
+      const noise = (Math.random() - 0.5) * 1.5;
       trainPoints.push({ x, y: trueA * x + trueB + noise });
     }
   }
@@ -252,7 +253,7 @@ function render({ model, el }) {
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(toCanvasX(-2), toCanvasY(trueA * -2 + trueB));
-    ctx.lineTo(toCanvasX(2),  toCanvasY(trueA *  2 + trueB));
+    ctx.lineTo(toCanvasX(2), toCanvasY(trueA * 2 + trueB));
     ctx.stroke();
 
     // Learned line (red, 1px)
@@ -260,14 +261,14 @@ function render({ model, el }) {
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(toCanvasX(-2), toCanvasY(a * -2 + b));
-    ctx.lineTo(toCanvasX(2),  toCanvasY(a *  2 + b));
+    ctx.lineTo(toCanvasX(2), toCanvasY(a * 2 + b));
     ctx.stroke();
 
     // Training points (small dots, matching true line color)
     ctx.fillStyle = '#3a6ea5';
     for (const p of trainPoints) {
       ctx.beginPath();
-      ctx.arc(toCanvasX(p.x), toCanvasY(p.y), 2.5, 0, Math.PI * 2);
+      ctx.arc(toCanvasX(p.x), toCanvasY(p.y), 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -282,8 +283,8 @@ function render({ model, el }) {
     widget.querySelector('#aVal').textContent = a.toFixed(4);
     widget.querySelector('#bVal').textContent = b.toFixed(4);
     if (gradA !== null) {
-      widget.querySelector('#aGrad').textContent  = `∂L/∂a = ${gradA.toFixed(4)}`;
-      widget.querySelector('#bGrad').textContent  = `∂L/∂b = ${gradB.toFixed(4)}`;
+      widget.querySelector('#aGrad').textContent = `∂L/∂a = ${gradA.toFixed(4)}`;
+      widget.querySelector('#bGrad').textContent = `∂L/∂b = ${gradB.toFixed(4)}`;
       widget.querySelector('#lossVal').textContent = loss.toFixed(5);
     }
     widget.querySelector('#iterCount').textContent = `iter ${iter}`;
@@ -298,15 +299,15 @@ function render({ model, el }) {
     let sumGradA = 0, sumGradB = 0, sumLoss = 0;
     for (const p of trainPoints) {
       const yPred = a * p.x + b;
-      const err   = yPred - p.y;
-      sumLoss  += err * err;
+      const err = yPred - p.y;
+      sumLoss += err * err;
       sumGradA += 2 * err * p.x;
       sumGradB += 2 * err;
     }
     const n = trainPoints.length;
     const gradA = sumGradA / n;
     const gradB = sumGradB / n;
-    const loss  = sumLoss  / n;
+    const loss = sumLoss / n;
 
     a -= eta * gradA;
     b -= eta * gradB;
@@ -318,7 +319,7 @@ function render({ model, el }) {
 
   // ── Controls wiring ───────────────────────────────────────────────────────
   function bindSlider(id, valId, parse, fmt, onChange) {
-    const sl  = widget.querySelector(`#${id}`);
+    const sl = widget.querySelector(`#${id}`);
     const lbl = widget.querySelector(`#${valId}`);
     sl.addEventListener('input', () => {
       const v = parse(sl.value);
@@ -331,13 +332,13 @@ function render({ model, el }) {
 
   bindSlider('trueA', 'trueAVal', parseFloat, v => v.toFixed(2), v => { trueA = v; resetState(); });
   bindSlider('trueB', 'trueBVal', parseFloat, v => v.toFixed(2), v => { trueB = v; resetState(); });
-  bindSlider('eta',   'etaVal',   parseFloat, v => v.toFixed(2), v => { eta   = v; });
-  bindSlider('speed', 'speedVal', parseInt,   v => `${v} iter/s`, v => {
+  bindSlider('eta', 'etaVal', parseFloat, v => v.toFixed(3), v => { eta = v; });
+  bindSlider('speed', 'speedVal', parseInt, v => `${v} iter/s`, v => {
     speed = v;
     if (playing) { clearInterval(intervalId); intervalId = setInterval(step, 1000 / speed); }
   });
 
-  const playBtn  = widget.querySelector('#playBtn');
+  const playBtn = widget.querySelector('#playBtn');
   const resetBtn = widget.querySelector('#resetBtn');
 
   playBtn.addEventListener('click', () => {

@@ -218,10 +218,11 @@ $$
 
 That's all there is to it! If we churn this training through a large enough data set, $a$ and $b$ will eventually converge to the right values.
 
-:::{warning} TODO
-:class: dropdown
+:::{tip} Try it out!
 
-Maybe a JS widget that shows this?
+The following widget lets you see the training in action.
+
+(If you set the learning rate too high, $a$ and $b$ diverge towards infinity or NaN. This is a real phenomenon, and illustrates the importance of the learning rate! In the widget, this renders as a vertical line.)
 
 ```{anywidget} ./linear-backprop.mjs
 ```
