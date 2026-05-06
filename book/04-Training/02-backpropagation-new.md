@@ -215,3 +215,19 @@ $$
 a_{updated} = a - (\eta \; a_{gradient}) \\
 b_{updated} = b - (\eta \; b_{gradient})
 $$
+
+That's all there is to it! If we churn this training through a large enough data set, $a$ and $b$ will eventually converge to the right values.
+
+:::{warning} TODO
+:class: dropdown
+
+Maybe a JS widget that shows this?
+
+```{anywidget} ./linear-backprop.mjs
+```
+
+:::
+
+## Backprop on a multi-layer, scalar model
+
+TODO
