@@ -231,4 +231,117 @@ The following widget lets you see the training in action.
 
 ## Backprop on a multi-layer, scalar model
 
-TODO
+
+Now that we have backprop working on a single-layer model, let's add a second layer. For now, we won't have an activation function between the two:
+
+$$
+y_1 = a_1x + b_1 \\
+y_2 = a_2 (y_1) + b_2
+$$
+
+We'll use the same loss function as before:
+
+$$
+L(x) = (y_2(x) - y_{true})^2
+$$
+
+Let's start by keeping in mind our objectives:
+
+- We want to figure out how much to nudge $a_1$, $b_1$, $a_2$, and $b_2$.
+- To do that, we need to calculate their four gradients.
+- Each gradient is a partial derivative: $\pdv{L}{a_1}$, $\pdv{L}{b_1}$, $\pdv{L}{a_2}$, $\pdv{L}{b_2}$.
+
+We'll start at the bottom of the model, the layer closest to $L$: $\pdv{L}{a_2}$ and $\pdv{L}{b_2}$. As before, we'll use the chain rule, and focus it on the gradient for $a_2$:
+
+:::{warning} TODO --- Can all this just be a short sentence saying, "same as the previous section"?
+
+$$
+L(x) = (y_2(x) - y_{true})^2 \\[1em]
+\Downarrow \\[1em]
+\pdv{L}{a_2} = \pdv{L}{y_2} \cdot \pdv{y_2}{a_2}
+$$
+
+The left term is just as it's been before:
+
+$$
+\pdv{}{y_2} (y_2(x) - y_{true})^2 = 2(y_2(x) - y_{true})
+$$
+
+And the right side, again as before, is just $x$:
+
+$$
+\pdv{}{a_2}(a_2x + b_2) = x
+$$
+
+:::
+
+All of this is exactly as it was in the single-layer case.
+
+Now comes the new wrinkle: calculating the gradients for the $y_1$ layer. As before, we'll start by writing out the loss function:
+
+$$
+L(x) = (y_2(x) - y_{true})^2
+$$
+
+Note that even though we're interested in the parameters at layer $y_1$, the loss function is still defined in terms of $y_2$. The loss function can _only_ be defined against $y_2$, because its semantic is "how wrong was the model's ultimate prediction"; we don't have any way of estimating how far off an intermediate value was, because our training data only has the inputs and final expected outputs.
+
+Let's start with $\pdv{L}{a_1}$. Again, we'll use the chain rule --- but what do we want to use as the chain?
+
+$$
+\pdv{L}{a_1} = \pdv{L}{\textcircled{\scriptstyle ?}} \cdot \pdv{\textcircled{\scriptstyle ?}}{a_1}
+$$
+
+If we think about what $a_1$ most directly impacts --- that is, what changes most directly as $a_1$ changes --- it's just $y_1$, the function that directly uses $a_1$. So, let's use that:
+
+$$
+\pdv{L}{a_1} = \pdv{L}{y_1} \cdot \pdv{y_1}{a_1}
+$$
+
+With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in $L$'s definition. Instead, let's try the chain rule.
+
+$$
+\pdv{L}{y_1} = \pdv{L}{\textcircled{\scriptstyle ?}} \cdot \pdv{\textcircled{\scriptstyle ?}}{y_1}
+$$
+
+Again we ask, what does $y_1$ most directly affect? Well, it's used in the next layer:
+
+$$
+y_2 = a_2 (y_1) + b_2
+$$
+
+...so $y_1$ most directly affects $y_2$. Let's fill that in:
+
+$$
+\pdv{L}{y_1} = \pdv{L}{y_2} \cdot \pdv{y_2}{y_1}
+$$
+
+Here's where the "efficient application" kicks in again. We already computed $\pdv{L}{y_2}$ in the previous step --- it was the left-hand term of the chain rule --- so we can just plug that in. For the right hand term (of our $y_1$ layer), we can fall back to standard derivatives:
+
+$$
+\pdv{y_2}{y_1} \, = \pdv{}{y_1} (a_2 (y_1) + b_2) \, = a_2
+$$
+
+With that, we've calculated the left term of our $a_1$ gradient:
+
+$$
+\begin{array}{lccccc}
+\pdv{L}{a_1} & = & \pdv{L}{y_1} & \cdot & \pdv{y_1}{a_1} \\[2em]
+& = & \pdv{L}{y_2} \cdot \pdv{y_2}{y_1} & \cdot & \pdv{y_1}{a_1} \\[2em]
+& = & \underbrace{\pdv{L}{y_2}}_{\text{from previous layer}} \cdot a_2 & \cdot & \pdv{y_1}{a_1}
+\end{array}
+$$
+
+And we can then fill in the right term straightforwardly:
+
+$$
+\begin{align}
+& = \pdv{L}{y_2} \cdot a_2 \cdot & \underbrace{\pdv{y_1}{a_1}}_{\pdv{}{a_1}a_1 x + b_1} \\[2em]
+& = \pdv{L}{y_2} \cdot a_2 \cdot & x
+\end{align}
+$$
+
+:::{warning} TODO
+- briefly mention the $b_1$ term
+- If we had more layers, each higher-up one follows the same pattern: the left-hand term pulls the partial derivative from the previous layer and multiplies it by $a_n$; the right-hand term gets calculated using only the local definition, without having to pull from the previous layer.
+- "residual" vs "local derivative"
+:::
