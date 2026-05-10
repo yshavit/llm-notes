@@ -2,6 +2,7 @@
 math:
   '\pdv': '\tfrac{\partial #1}{\partial #2}'
   '\dpdv': '\frac{\partial #1}{\partial #2}'
+  '\unknown': '\boxed{\scriptstyle ?}'
 ---
 
 # Backpropagation
@@ -322,7 +323,7 @@ Note that even though we're interested in the parameters at layer $y_1$, the los
 Let's start with $\pdv{L}{a_1}$. Again, we'll use the chain rule --- but what do we want to use as the chain?
 
 $$
-\dpdv{L}{a_1} = \dpdv{L}{\boxed{\scriptstyle ?}} \cdot \dpdv{\boxed{\scriptstyle ?}}{a_1}
+\dpdv{L}{a_1} = \dpdv{L}{\,\unknown} \cdot \dpdv{\,\unknown}{a_1}
 $$
 
 If we think about what $a_1$ most directly impacts --- that is, what changes most directly as $a_1$ changes --- it's just $y_1$, the function that directly uses $a_1$. So, let's use that:
@@ -334,7 +335,7 @@ $$
 With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in the definition for $L$. Instead, let's try the chain rule again:
 
 $$
-\dpdv{L}{y_1} = \dpdv{L}{\boxed{\scriptstyle ?}} \cdot \dpdv{\boxed{\scriptstyle ?}}{y_1}
+\dpdv{L}{y_1} = \dpdv{L}{\,\unknown} \cdot \dpdv{\,\unknown}{y_1}
 $$
 
 Again we ask, what does $y_1$ most directly affect? Well, it's used in the next layer:
@@ -434,5 +435,9 @@ Following this through, we get a pattern for every layer $y_n$:
 TODO
 
 ## Using tensors instead of scalars
+
+TODO
+
+## Expanding to computation graphs
 
 TODO
