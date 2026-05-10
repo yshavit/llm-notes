@@ -1,6 +1,7 @@
 ---
 math:
-  '\pdv': '\frac{\partial #1}{\partial #2}'
+  '\pdv': '\tfrac{\partial #1}{\partial #2}'
+  '\dpdv': '\frac{\partial #1}{\partial #2}'
 ---
 
 # Backpropagation
@@ -28,7 +29,7 @@ By the last of those, we'll have a "full" understanding of backprop. After that,
 
 ## The math you'll need
 
-This chapter assumes you're decently familiar with derivatives; if you're not, it may be tough. If you're familiar with them but just need a quick refresher, the following sections should help.
+This chapter assumes you're decently familiar with derivatives; if you're not, it may be tough. If you're familiar with them but just need a quick refresher, the following sections should help. If you're already comfortable with these, feel free to [jump ahead](#backdrop-single-layer-scalar) to the meat of it.
 
 ### Derivatives
 
@@ -40,8 +41,8 @@ To differentiate a polynomial, bring each exponent down as a factor and lower it
 
 $$
 \begin{array}{rccccl}
-y  & = & ax^n          & +          & bx^m          & + \, \dots \\[1em]
-   &   &               & \Downarrow &               &            \\[1em]
+y  & = & ax^n          & +          & bx^m          & + \, \dots \\[0.3em]
+   &   & \downarrow    &            & \downarrow    &            \\[0.3em]
 y' & = & n \; ax^{n-1} & +          & m \; bx^{m-1} & + \, \dots
 \end{array}
 $$
@@ -98,6 +99,7 @@ $$
 \pdv{y}{x} \quad,\quad \pdv{y}{u} \quad,\quad \pdv{y}{v} \quad,\quad \dots
 $$
 
+(backdrop-single-layer-scalar)=
 ## Backprop on a simple, scalar model
 
 Now that we have our math refreshed, let's get to the fun stuff! To start our intuition for how backprop works, let's start with the simplest possible model: a scalar, linear function:
@@ -153,28 +155,28 @@ The first three steps in the list above are trivial (remember that in this examp
 We'll focus on $a$ first. What we want is the partial derivative of the loss $L$ with respect to $a$:
 
 $$
-\pdv{L}{a}
+\dpdv{L}{a}
 $$
 
 We can think of $L$ as a composed function $L(x) = ( \, y(x) \, - y_{true} )^2$. That means we can use the chain rule:
 
 $$
-\pdv{L}{a} = \pdv{L}{y} \cdot \pdv{y}{a}
+\dpdv{L}{a} = \dpdv{L}{y} \cdot \dpdv{y}{a}
 $$
 
 Let's start by calculating the right term, $\pdv{y}{a}$:
 
 $$
-y(x) = ax + b \\[0.8em]
-\Downarrow \\[0.8em]
+y(x) = ax + b \\[0.3em]
+\downarrow \\[0.3em]
 \pdv{y}{a} = x
 $$
 
 Now the left term, $\pdv{L}{y}$:
 
 $$
-L(x) = (y(x) - y_{true})^2\\[0.8em]
-\Downarrow \\[0.8em]
+L(x) = (y(x) - y_{true})^2\\[0.3em]
+\downarrow \\[0.3em]
 \pdv{L}{y} = 2(y(x) - y_{true})
 $$
 
@@ -182,7 +184,7 @@ Putting it all together:
 
 $$
 \begin{align}
-\pdv{L}{a} & = \pdv{L}{y} & \cdot & \; \pdv{y}{a} \\[1em]
+\dpdv{L}{a} & = \dpdv{L}{y} & \cdot & \; \dpdv{y}{a} \\[1em]
 & = 2(y(x) - y_{true}) & \cdot & \; x
 \end{align}
 $$
@@ -192,23 +194,16 @@ And here's where the "efficient application of" starts to kick in: during our in
 We can can do the same thing to calculate $\pdv{L}{b}$. I'll go a bit faster, since it's basically the same work.
 
 $$
-\begin{align}
-\pdv{L}{b} &= \underbrace{\pdv{L}{y}}_{\textit{same as $\partial L / \partial a$ above}} \cdot \underbrace{\pdv{y}{b}}_{\partial/\partial b (ax + b) = 1} \\[3em]
-&= 2(y(x) - y_{true}) \cdot 1
-\end{align}
-$$
-
-$$
 \begin{array}{rccc}
 \pdv{L}{b} = & \underbrace{\pdv{L}{y}} & \cdot & \underbrace{\pdv{y}{b}} \\[1em]
-& \textit{\footnotesize same as $\pdv{L}{y}$ above} & & \footnotesize \pdv{}{b} (ax + b) = 1 \\[1.5em]
+& \textit{\footnotesize same as $\pdv{L}{y}$ above} & & \footnotesize \pdv{}{b} (ax + b)\\[1.5em]
 = & 2(y(x) - y_{true}) & \cdot  & 1
 \end{array}
 $$
 
 Notice that the left term is exactly the same as it was for $a$'s gradient.
 
-Finally, we just apply the gradients to our learned parameters $a$ and $b$ to update them. As I mentioned before, we subtract the gradients, because we want to lower the loss. Before we do that, we scale them down by $\eta$, which is a {dfn}`learning rate` that's some small number like 0.01. This means that each round of learning only _nudges_ the values towards a 0-loss, instead of lurching them there; this prevents over-fitting any one data point.
+With that, we've calculated our two gradients, for $a$ and $b$. Now we just apply each one to its respective parameter ($a$ and $b$) to update them. As I mentioned before, we _subtract_ the gradients, because we want to _reduce_ the loss. Before we do that, we scale the gradients down by $\eta$, which is a {dfn}`learning rate`. This is some small number, like 0.01, and it means that each round of learning only _nudges_ the values towards a 0-loss, instead of lurching them there. This prevents over-fitting any one data point, which can cause the model to overshoot and oscillate around the desired value, or worse, shoot off to infinity.
 
 $$
 \eta = 0.01 \\[1.5em]
@@ -228,6 +223,48 @@ The following widget lets you see the training in action.
 ```
 
 :::
+
+## Terminology: residual and local derivative
+
+Before we go further, let's introduce two useful names for the concepts we've already learned. Remember that the gradients for $a$ and $b$ each used the chain rule, and in both cases their left-hand term was the same:
+
+$$
+\begin{align}
+\pdv{L}{a} & = 2(y(x) - y_{true}) & \cdot & \; x \\[1em]
+\pdv{L}{b} & = 2(y(x) - y_{true}) & \cdot & \; 1
+\end{align}
+$$
+
+Let's ask where these various terms come from, and do so within the framing of the layer that contains $a$ and $b$ (that is, $y = ax + b$).
+
+- $2(y(x) - y_{true})$ comes purely from the layer below us ($ \, L(v) = (v - y_{true})^2 \, $), where $y_{true}$ can be thought of as a constant)
+  - $v$ got stored during forward inference
+  - The fact that we need to $2 \times$ the value is due to the derivative _of $L$_ --- irrespective of what anything else in the model is doing.
+- The $x$ and $1$ each come from partial derivatives local to the $y$ layer. Again, these only depend on the $y$ layer, irrespective of what anything else is doing.
+
+The distinction between information coming from the layer below, and information computed at this layer, is reflected in terminology:
+
+- The {dfn}`residual` is the left-hand term in the chain rule: the signal from the layer below
+- The {dfn}`local derivatives` are the right-hand term in the chain rule: the partial derivatives applied at this layer
+
+We can think of this for any parameter $p$ as:
+
+$$
+\begin{align}
+\dpdv{L}{p} & = \text{(signal from lower level)} & \cdot & \; \text{(partial derivative of $p$)} \\[0.5em]
+            & = \text{(residual)} & \cdot & \; \text{(local derivative)} \\[1em]
+            & = \boxed{r \cdot \dpdv{y}{p}}
+\end{align}
+$$
+
+...where:
+
+- $p$ is a parameter defined at layer $y$
+- $r$ is the residual, which comes from the layer below $y$
+
+Note that $r$ isn't an equation, but an actual, concrete value. Each layer gets this value, and then uses it as-is for _all_ of that layer's parameters. This is a lot of what's behind the "efficient" in "efficient application of the chain rule".
+
+The lowest layer, $L$, is a special case: it doesn't have a lower layer to provide a residual, so we need to calculate it by figuring out its derivative and plugging in $y_{pred}$ and $y_{true}$.
 
 ## Backprop on a multi-layer, scalar model
 
@@ -253,29 +290,27 @@ Let's start by keeping in mind our objectives:
 
 We'll start at the bottom of the model, the layer closest to $L$: $\pdv{L}{a_2}$ and $\pdv{L}{b_2}$. As before, we'll use the chain rule, and focus it on the gradient for $a_2$:
 
-:::{warning} TODO --- Can all this just be a short sentence saying, "same as the previous section"?
-
 $$
-L(x) = (y_2(x) - y_{true})^2 \\[1em]
-\Downarrow \\[1em]
+L(x) = (y_2(x) - y_{true})^2 \\[0.3em]
+\downarrow \\[0.3em]
 \pdv{L}{a_2} = \pdv{L}{y_2} \cdot \pdv{y_2}{a_2}
 $$
 
-The left term is just as it's been before:
+This turns out to be exactly the same as the single-layer example above: just add a $_2$ subscript to $y$, $a$, and $b$:
 
 $$
-\pdv{}{y_2} (y_2(x) - y_{true})^2 = 2(y_2(x) - y_{true})
+\pdv{L}{a_2} = 2(y_2(x) - y_{true}) \cdot x \\[0.3em]
+\pdv{L}{b_2} = 2(y_2(x) - y_{true}) \cdot 1
 $$
 
-And the right side, again as before, is just $x$:
+Let's give a name to the residual coming into $y_2$: $r_2$. So:
 
 $$
-\pdv{}{a_2}(a_2x + b_2) = x
+\pdv{L}{a_2} = r_2 \cdot x \\[1em]
+\pdv{L}{b_2} = r_2 \cdot 1
 $$
 
-:::
-
-All of this is exactly as it was in the single-layer case.
+So far, this is all just a review of the previous two sections.
 
 Now comes the new wrinkle: calculating the gradients for the $y_1$ layer. As before, we'll start by writing out the loss function:
 
@@ -288,19 +323,19 @@ Note that even though we're interested in the parameters at layer $y_1$, the los
 Let's start with $\pdv{L}{a_1}$. Again, we'll use the chain rule --- but what do we want to use as the chain?
 
 $$
-\pdv{L}{a_1} = \pdv{L}{\textcircled{\scriptstyle ?}} \cdot \pdv{\textcircled{\scriptstyle ?}}{a_1}
+\dpdv{L}{a_1} = \dpdv{L}{\textcircled{\scriptstyle ?}} \cdot \dpdv{\textcircled{\scriptstyle ?}}{a_1}
 $$
 
 If we think about what $a_1$ most directly impacts --- that is, what changes most directly as $a_1$ changes --- it's just $y_1$, the function that directly uses $a_1$. So, let's use that:
 
 $$
-\pdv{L}{a_1} = \pdv{L}{y_1} \cdot \pdv{y_1}{a_1}
+\dpdv{L}{a_1} = \dpdv{L}{y_1} \cdot \dpdv{y_1}{a_1}
 $$
 
-With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in $L$'s definition. Instead, let's try the chain rule.
+With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in $L$'s definition. Instead, let's try the chain rule again:
 
 $$
-\pdv{L}{y_1} = \pdv{L}{\textcircled{\scriptstyle ?}} \cdot \pdv{\textcircled{\scriptstyle ?}}{y_1}
+\dpdv{L}{y_1} = \dpdv{L}{\textcircled{\scriptstyle ?}} \cdot \dpdv{\textcircled{\scriptstyle ?}}{y_1}
 $$
 
 Again we ask, what does $y_1$ most directly affect? Well, it's used in the next layer:
@@ -312,13 +347,13 @@ $$
 ...so $y_1$ most directly affects $y_2$. Let's fill that in:
 
 $$
-\pdv{L}{y_1} = \pdv{L}{y_2} \cdot \pdv{y_2}{y_1}
+\dpdv{L}{y_1} = \dpdv{L}{y_2} \cdot \dpdv{y_2}{y_1}
 $$
 
 Here's where the "efficient application" kicks in again. We already computed $\pdv{L}{y_2}$ in the previous step --- it was the left-hand term of the chain rule --- so we can just plug that in. For the right hand term (of our $y_1$ layer), we can fall back to standard derivatives:
 
 $$
-\pdv{y_2}{y_1} \, = \pdv{}{y_1} (a_2 (y_1) + b_2) \, = a_2
+\dpdv{y_2}{y_1} \, = \dpdv{}{y_1} (a_2 (y_1) + b_2) \, = a_2
 $$
 
 With that, we've calculated the left term of our $a_1$ gradient:
