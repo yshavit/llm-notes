@@ -249,12 +249,13 @@ The distinction between information coming from the layer below, and information
 
 We can think of this for any parameter $p$ as:
 
+(residuals)=
 $$
-\begin{align}
-\dpdv{L}{p} & = \text{(signal from lower level)} & \cdot & \; \text{(partial derivative of $p$)} \\[0.5em]
-            & = \text{(residual)} & \cdot & \; \text{(local derivative)} \\[1em]
-            & = \boxed{r \cdot \dpdv{y}{p}}
-\end{align}
+\begin{array}{lll}
+\dpdv{L}{p} & = \text{(signal from lower level)} & \cdot \; \text{(partial derivative of $p$)} \\[0.5em]
+            & = \text{(residual)} & \cdot \; \text{(local derivative)} \\[1em]
+            & = \boxed{r \cdot \dpdv{y}{p}} &
+\end{array}
 $$
 
 ...where:
@@ -288,7 +289,7 @@ Let's start by keeping in mind our objectives:
 - To do that, we need to calculate their four gradients.
 - Each gradient is a partial derivative: $\pdv{L}{a_1}$, $\pdv{L}{b_1}$, $\pdv{L}{a_2}$, $\pdv{L}{b_2}$.
 
-We'll start at the bottom of the model, the layer closest to $L$: $\pdv{L}{a_2}$ and $\pdv{L}{b_2}$. As before, we'll use the chain rule, and focus it on the gradient for $a_2$:
+We'll start at the bottom of the model, the layer closest to $L$: $y_2$. This means we'll be calculating the gradients for $a_2$ and $b_2$, which are $\pdv{L}{a_2}$ and $\pdv{L}{b_2}$. Let's start with $a_2$. As before, we'll use the chain rule:
 
 $$
 L(x) = (y_2(x) - y_{true})^2 \\[0.3em]
@@ -303,16 +304,14 @@ $$
 \pdv{L}{b_2} = 2(y_2(x) - y_{true}) \cdot 1
 $$
 
-Let's give a name to the residual coming into $y_2$: $r_2$. So:
+So far, this is all just a review of the previous two sections. Now comes the new wrinkle: calculating the gradients for the $y_1$ layer.
 
-$$
-\pdv{L}{a_2} = r_2 \cdot x \\[1em]
-\pdv{L}{b_2} = r_2 \cdot 1
-$$
+There are two ways to approach this: by working everything out piece by piece, or by relying on the residual-based pattern we established in the previous section. I'm not sure which is more helpful, so I'll provide both. If one doesn't make sense, try the other!
 
-So far, this is all just a review of the previous two sections.
+:::::{dropdown} Working it out piece by piece
+:open:
 
-Now comes the new wrinkle: calculating the gradients for the $y_1$ layer. As before, we'll start by writing out the loss function:
+As before, we'll start by writing out the loss function:
 
 $$
 L(x) = (y_2(x) - y_{true})^2
@@ -332,7 +331,7 @@ $$
 \dpdv{L}{a_1} = \dpdv{L}{y_1} \cdot \dpdv{y_1}{a_1}
 $$
 
-With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in $L$'s definition. Instead, let's try the chain rule again:
+With that in mind, let's take a crack at the left term: $\pdv{L}{y_1}$. We can't just use a plain polynomial derivative formula as we've been doing so far, because $y_1$ isn't "directly" in the definition for $L$. Instead, let's try the chain rule again:
 
 $$
 \dpdv{L}{y_1} = \dpdv{L}{\textcircled{\scriptstyle ?}} \cdot \dpdv{\textcircled{\scriptstyle ?}}{y_1}
@@ -341,7 +340,7 @@ $$
 Again we ask, what does $y_1$ most directly affect? Well, it's used in the next layer:
 
 $$
-y_2 = a_2 (y_1) + b_2
+y_2 = a_2 (\underline{y_1}) + b_2
 $$
 
 ...so $y_1$ most directly affects $y_2$. Let's fill that in:
@@ -360,9 +359,9 @@ With that, we've calculated the left term of our $a_1$ gradient:
 
 $$
 \begin{array}{lccccc}
-\pdv{L}{a_1} & = & \pdv{L}{y_1} & \cdot & \pdv{y_1}{a_1} \\[2em]
+\dpdv{L}{a_1} & = & \dpdv{L}{y_1} & \cdot & \dpdv{y_1}{a_1} \\[2em]
 & = & \pdv{L}{y_2} \cdot \pdv{y_2}{y_1} & \cdot & \pdv{y_1}{a_1} \\[2em]
-& = & \underbrace{\pdv{L}{y_2}}_{\text{from previous layer}} \cdot a_2 & \cdot & \pdv{y_1}{a_1}
+& = & \underbrace{ \left( \pdv{L}{y_2} \cdot a_2 \right) }_{\text{from previous layer}} & \cdot & \pdv{y_1}{a_1}
 \end{array}
 $$
 
@@ -370,13 +369,71 @@ And we can then fill in the right term straightforwardly:
 
 $$
 \begin{align}
-& = \pdv{L}{y_2} \cdot a_2 \cdot & \underbrace{\pdv{y_1}{a_1}}_{\pdv{}{a_1}a_1 x + b_1} \\[2em]
-& = \pdv{L}{y_2} \cdot a_2 \cdot & x
+\pdv{L}{a_1} & = \left( \pdv{L}{y_2} \cdot a_2 \right) \cdot & \underbrace{\pdv{y_1}{a_1}}_{\pdv{}{a_1}a_1 x + b_1} \\[2em]
+& = \left( \pdv{L}{y_2} \cdot a_2 \right) \cdot & x
 \end{align}
 $$
 
-:::{warning} TODO
-- briefly mention the $b_1$ term
-- If we had more layers, each higher-up one follows the same pattern: the left-hand term pulls the partial derivative from the previous layer and multiplies it by $a_n$; the right-hand term gets calculated using only the local definition, without having to pull from the previous layer.
-- "residual" vs "local derivative"
+The gradient for $b_1$ would work the same way. In the end, you'd get:
+
+$$
+\begin{align}
+\pdv{L}{b_1} & = \left( \pdv{L}{y_2} \cdot a_2 \right) \cdot & \underbrace{\pdv{y_1}{b_1}}_{\pdv{}{b_1}a_1 x + b_1} \\[2em]
+& = \left( \pdv{L}{y_2} \cdot a_2 \right) \cdot & 1
+\end{align}
+$$
+
+:::::
+
+:::::{dropdown} Using residuals
+:open:
+
+If we trust our understanding of the residuals pattern in the previous section:
+
+:::{embed} #residuals
 :::
+
+...then we can get a shortcut for all of the above. Let's give a name for the residual coming into $y_1$: $r_1$.
+
+$$
+r_1 = \dpdv{L}{y_1}
+$$
+
+The $y_2$ layer will calculate this for us, as an extra step after it calculates its gradients. That's because calculating $\pdv{L}{y_1}$ requires knowing $y_1$'s definition. The calculation is cheap:
+
+$$
+\begin{array}{lll}
+r_ 1 &=& \dpdv{L}{y_1} \\[0.5em]
+& & \downarrow \textit{chain rule} \\[0.5em]
+&=& \dpdv{L}{y_2} \cdot \dpdv{y_2}{y_1} \\[0.5em]
+&=& r_2 \cdot \text{(local derivative of $y_1$ wrt $y_2$)}
+\end{array}
+$$
+
+The $y_2$ layer knows its definition in terms of $y_1$, so it's able to determine its $\pdv{}{y_1}$:
+
+$$
+y_2 = a_2( \, y_1 \, ) + b_2 \\[0.3em]
+\downarrow \\[0.3em]
+\textit{rewrite to make $y_1$ more explicitly the variable} \\[0.3em]
+\downarrow \\[0.3em]
+y_2 = y_1 \, a_2 + b_2 \\[0.3em]
+\downarrow \\[0.3em]
+\dpdv{y_2}{y_1} = a_2
+$$
+
+Following this through, we get a pattern for every layer $y_n$:
+
+1. Take the residual from the previous layer. Use it as the left-hand term of chain rule applications, with the right hand term being the local derivative of each parameter $p$ in this layer.
+2. Calculate the local derivative of the input ( $y_{n-1}$ ), and pass to the $y_{n-1}$ layer
+
+:::::
+
+## Adding an activation function
+
+
+TODO
+
+## Using tensors instead of scalars
+
+TODO
