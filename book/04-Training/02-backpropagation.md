@@ -15,14 +15,36 @@ math:
 
 ## Introduction
 
-:::{warning}
-TODO write intro: 
+At the heart of our LLM's training is backpropagation, or "backprop". This is often described either in simple terms, as in Wikipedia's [introduction to the topic][wikipedia]:
 
-- > Backpropagation, informally known as "backprop", ...
-- > Everyone says it's "an efficient application of the chain rule", but what does that actually mean?
+> It is an efficient application of the chain rule to neural networks.
+
+...or in complex math terms, as in the rest of that Wikipedia article. I'll try to hit an in-between. In particular, this chapter will start with a quick refresher on some level-1 calculus (including what the chain rule is), and then work through how it applies to backprop.
+
+[wikipedia]: https://en.wikipedia.org/wiki/Backpropagation
+
+At its core, backprop tries to answer a conceptually simple question:
+
+- We have a model with a bunch of learned parameters, each of which has some value.
+- We take some input for which we know the expected result, and we run that input through the model.
+- We compare the predicted result with the actual result, and notice that the two don't quite match up.
+- Backprop then asks: how can we wiggle each parameter such that when we hold all the other parameters constant, but wiggle _just that one_ parameter, the prediction will get closer to the expected value?
+
+:::{drawio} images/backprop/what-is-backprop
+:alt: The model has parameters a, b, c, ... n. After it makes a prediction, backprop wiggles a to get the answer closer, then b, then c, and so on.
 :::
 
-To get an understanding of how backprop works, we'll start exceedingly simple and build up from there:
+To do this, we define a {dfn}`loss function`, which takes the predicted and actual value, and compares them. We then apply a bunch of math, which does this wiggling. The loss function always produces a non-negative scalar, and backprop will wiggle the model's parameters to get the loss closer to 0.
+
+:::{tip} The rest of this chapter is optional
+
+If you're happy with all of the above, you can skip the rest of this chapter. The details aren't important for knowing how to define the loss function or how to use backprop within a training loop; you can treat backprop as a black box.
+
+If you want to see what's going on under the hood, and you're ready for some math, read on!
+
+:::
+
+To get an understanding of how backprop works, I'll start exceedingly simple and build up from there:
 
 1. Backprop on a single-layer, scalar model
 2. Backprop on a multi-layer, but still scalar model
@@ -631,22 +653,15 @@ But if you'll recall, our LLM has two ways in which operations branch off and re
 
 - Attention layer:
 
-  We took our input, applied it to each of the $W_q$, $W_k$, $W_v$ matrices, and then recombined them by multiplying them together.
+  We took our input, applied it to each of the $W_q$, $W_k$, $W_v$ matrices, and then recombined them via the attention operation.
 
-In both cases, this forms a graph, not a simple sequence. For example, residuals look like:
+In both cases, this branching and rejoining forms a graph, not a simple sequence. For example, residuals look like:
 
 :::{drawio} images/backprop/graph
 :alt: Layer 1 flows into layer 2, which flows into layer 3. Layer 1 also flows into layer 3 directly.
 :::
 
-To handle this, we just compute each path separately:
+:::{warning}
+TODO
+:::
 
-$$
-\begin{array}{l|l}
-h_1 = \dots  & h_1 = \dots \\
-h_2 = f(h_1) & \\
-h_3 = g(h_2) & h_3 = j(h_2)
-\end{array} \\
-$$
-
-If the $h_1$ layer has a parameter (which in practice, it always will), then both paths will produce a $\textit{gradient}_p$ value. Just sum those values, and you have the complete $\text{gradient}_p$.
