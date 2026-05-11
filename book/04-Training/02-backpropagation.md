@@ -34,7 +34,7 @@ At its core, backprop tries to answer a conceptually simple question:
 :alt: The model has parameters a, b, c, ... n. After it makes a prediction, backprop wiggles a to get the answer closer, then b, then c, and so on.
 :::
 
-To do this, we define a {dfn}`loss function`, which takes the predicted and actual value, and compares them. We then apply a bunch of math, which does this wiggling. The loss function always produces a non-negative scalar, and backprop will wiggle the model's parameters to get the loss closer to 0.
+To do this, we define a {dfn}`loss function`, which takes the predicted and actual value, and compares them. We then apply a bunch of math, which does this wiggling. The loss function always produces a scalar (typically non-negative, so that zero represents a perfect prediction), and backprop will wiggle the model's parameters to get the loss closer to 0.
 
 :::{tip} The rest of this chapter is optional
 
@@ -631,6 +631,7 @@ What I can say is that the answer was to transpose one of the terms. We just did
 
 :::
 
+Note that even though most of backprop works against matrices, the loss function still produces a scalar. The derivative of this function with respect to its input is a matrix of the same shape as that input. This becomes the first residual, and from there everything works as above.
 
 ## Expanding to computation graphs
 
