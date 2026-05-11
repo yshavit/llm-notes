@@ -15,7 +15,7 @@ math:
 
 ## Introduction
 
-At the heart of our LLM's training is backpropagation, or "backprop". This is often described either in simple terms, as in Wikipedia's [introduction to the topic][wikipedia]:
+At the heart of our LLM's training is backpropagation, or "backprop". This is often described either in simple terms, as in Wikipedia's [introduction to the topic][wikipedia]...
 
 > It is an efficient application of the chain rule to neural networks.
 
@@ -28,13 +28,13 @@ At its core, backprop tries to answer a conceptually simple question:
 - We have a model with a bunch of learned parameters, each of which has some value.
 - We take some input for which we know the expected result, and we run that input through the model.
 - We compare the predicted result with the actual result, and notice that the two don't quite match up.
-- Backprop then asks: how can we wiggle each parameter such that when we hold all the other parameters constant, but wiggle _just that one_ parameter, the prediction will get closer to the expected value?
+- Backprop then asks: how can we wiggle each parameter such that when we hold all the other parameters constant, but wiggle _just that one_ parameter, the prediction will get closer to the expected value? (The actual mechanism is more efficient than literally wiggling each parameter and recomputing the prediction, as we'll see below.)
 
 :::{drawio} images/backprop/what-is-backprop
 :alt: The model has parameters a, b, c, ... n. After it makes a prediction, backprop wiggles a to get the answer closer, then b, then c, and so on.
 :::
 
-To do this, we define a {dfn}`loss function`, which takes the predicted and actual value, and compares them. We then apply a bunch of math, which does this wiggling. The loss function always produces a scalar (typically non-negative, so that zero represents a perfect prediction), and backprop will wiggle the model's parameters to get the loss closer to 0.
+To do this, we define a {dfn}`loss function`, which takes the predicted and actual value, and compares them. We then apply a bunch of math, which does this wiggling. The loss function always produces a scalar (typically non-negative, so that zero represents a perfect prediction), and backprop will wiggle the model's parameters to get the loss closer to zero.
 
 :::{tip} The rest of this chapter is optional
 
