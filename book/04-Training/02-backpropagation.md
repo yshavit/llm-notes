@@ -612,4 +612,41 @@ What I can say is that the answer was to transpose one of the terms. We just did
 
 ## Expanding to computation graphs
 
-TODO
+In all of the above, our model was a single sequence of operations:
+
+$$
+\begin{align}
+& y_1 = ax \\
+& y_2 = y_1 + b \\
+& y_3 = y_2 - y_{true} \\
+& y_4 = {y_3}^2
+\end{align}
+$$
+
+But if you'll recall, our LLM has two ways in which operations branch off and reconnect.
+
+- Residual connections (unrelated to the "residuals" in this chapter):
+
+  We take a layer $h_1$, perform some operations on it to produce $h_2$, and then add the original layer to get $h_3 = h_1 + h_2$.
+
+- Attention layer:
+
+  We took our input, applied it to each of the $W_q$, $W_k$, $W_v$ matrices, and then recombined them by multiplying them together.
+
+In both cases, this forms a graph, not a simple sequence. For example, residuals look like:
+
+:::{drawio} images/backprop/graph
+:alt: Layer 1 flows into layer 2, which flows into layer 3. Layer 1 also flows into layer 3 directly.
+:::
+
+To handle this, we just compute each path separately:
+
+$$
+\begin{array}{l|l}
+h_1 = \dots  & h_1 = \dots \\
+h_2 = f(h_1) & \\
+h_3 = g(h_2) & h_3 = j(h_2)
+\end{array} \\
+$$
+
+If the $h_1$ layer has a parameter (which in practice, it always will), then both paths will produce a $\textit{gradient}_p$ value. Just sum those values, and you have the complete $\text{gradient}_p$.
