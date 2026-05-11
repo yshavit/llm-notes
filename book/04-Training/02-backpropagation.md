@@ -2,6 +2,8 @@
 math:
   '\pdv': '\tfrac{\partial #1}{\partial #2}'
   '\dpdv': '\frac{\partial #1}{\partial #2}'
+  '\ipdv': '{\scriptsize \ibpdv{#1}{#2}}'
+  '\ibpdv': '\partial #1/\partial #2'
   '\unknown': '\boxed{\scriptstyle ?}'
 ---
 
@@ -430,9 +432,88 @@ Following this through, we get a pattern for every layer $y_n$:
 
 :::::
 
+Note the general pattern: we start at the bottom of the model, and then work our way up, with each layer providing the residual for the one before it. This is the "back" in "backpropagation."
+
 ## Adding an activation function
 
-TODO
+Now that we have our nice two-layer model, we'll want to add an activation function:
+
+$$
+y_1 = a_1x + b_1 \\
+y_2 = GeLU(y1) \\
+y_3 = a_3 (y_2) + b_3
+$$
+
+But instead of getting straight into that, I want to revisit the one-layer model. This will seem like (possibly pedantic) side discussion, but I promise, it'll get at the activation-enabled model.
+
+Let's rewrite our one-layer model, with the loss function --- but this time expand it into individual operations:
+
+$$
+\begin{align}
+& y = ax + b \\
+& L = (y - y_{true})^2 \\[0.3em]
+& \downarrow \\[0.3em]
+& y_1 = ax \\
+& y_2 = y_1 + b \\
+& y_3 = y_2 - y_{true} \\
+& y_4 = {y_3}^2
+\end{align}
+$$
+
+Just like I described in the previous section, we'll work from the bottom of the model up: each layer will calculate the gradients for its parameter (if it has one), and then calculate its local derivative with respect to its input and pass that residual up to that input.
+
+$$
+\begin{array}{l|l|l|l|l}
+\textbf{Layer}     & \textbf{Local deriv.} & \textbf{Incoming}              & \textbf{Outgoing}              & \textbf{Gradient} \\
+                   & \textbf{wrt input}    & \textbf{residual}              & \textbf{residual}              &                   \\
+\hline
+y_4 = {y_3}^2      & 2 \, y_3              & \text{---}                     & r_4 = \underline{2 \, y_3}     & \text{---} \\
+y_3 = y_2-y_{true} & 1                     & r_4                            & r_3 = r_4 \cdot \underline{1}  & \text{---} \\
+y_2 = y_1+b        & 1                     & r_3                            & r_2 = r_3 \cdot \underline{1}  & \ipdv{L}{b} = r_3 \cdot 1 \\
+y_1 = a \cdot x    & a                     & r_2                            & r_1 = r_2 \cdot \underline{a}  & \ipdv{L}{a} = r_2 \cdot x \\
+\end{array}
+$$
+
+Hopefully this table drives home everything from the above. You can see that:
+
+- Each layer $y_n$ calculates its outgoing residual as the product of its incoming residual and its local derivatives $\ipdv{(y_n)}{(y_{n-1})}$
+- For the layers that have learned parameters, those layers separately calculate their gradients as the product of the incoming residual and $\ipdv{(y_n)}{p}$, where $p$ is the layer's learned parameter.
+- Crucially, note that some layers don't calculate any gradient, and that's fine. They still calculate an outgoing residual, and that's all the rest of the layers need.
+
+What would happen if we slid a function $f$ between $y_1$ and $y_2$? This would correspond to a model:
+
+$$
+\begin{array}{cl}
+& y = ax + f(b) \\[0.3em]
+& \downarrow \\[0.3em]
+& y_1 = ax \\
+\bigstar & y_f = f(y_1) \\
+& y_2 = y_f + b \\
+& y_3 = y_2 - y_{true} \\
+& y_4 = {y_3}^2
+\end{array}
+$$
+
+I've named the layer $y_f$ so that most of the other layers don't have to change; you can see that other than $y_1$ referring to the new residual $r_f$, everything else is exactly the same.
+
+Note that in a real LLM, the activation function doesn't go between the weight and the bias, as I've done here. But as we're about to see, the whole point is that backprop doesn't actually care where it goes. In fact, as far as backprop is concerned, there's no such thing as a layer at all: everything is just a sequence of operations. Here's the same table as above, this time with one more layer for $y_f$:
+
+$$
+& \begin{array}{cl|l|l|l|l}
+& \textbf{Layer}        & \textbf{Local deriv.} & \textbf{Incoming}              & \textbf{Outgoing}              & \textbf{Gradient} \\
+&                       & \textbf{wrt input}    & \textbf{residual}              & \textbf{residual}              &                   \\
+\hline
+& y_4 = {y_3}^2         & 2 \, y_3              & \text{---}                     & r_4 = \underline{2 \, y_3}     & \text{---} \\
+& y_3 = y_2-y_{true}    & 1                     & r_4                            & r_3 = r_4 \cdot \underline{1}  & \text{---} \\
+& y_2 = y_f+b           & 1                     & r_3                            & r_2 = r_3 \cdot \underline{1}  & \ipdv{L}{b} = r_3 \cdot 1 \\
+\bigstar & y_f = f(y_1) & f'(y_1)               & r_2                            & r_f = r_2 \cdot f'             & \text{---} \\
+& y_1 = a \cdot x       & a                     & r_f                            & r_1 = r_f \cdot \underline{a}  & \ipdv{L}{a} = r_f \cdot x \\
+\end{array}
+$$
+
+And that's it! If $f$ is our activation function --- GELU, ReLU, or anything else --- then that's all there is to it. The machinery needs to know what the activation function's local derivative with respect to its input is, but the implementation can just hard-code that. This also applies to any other operation in the real LLM, like softmax.
+
+The actual equations for these derivatives can be a handful -- for example, GELU's is $0.5(1 + \tanh(u)) + 0.5x \cdot \text{sech}^2(u) \cdot \sqrt{\frac{2}{\pi}}(1 + 0.134145x^2)$ -- but the implementation just hard-codes them, as it does for the functions' forward-pass definition.
 
 ## Using tensors instead of scalars
 
