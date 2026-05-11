@@ -10,7 +10,7 @@ math:
 
 # Backpropagation
 
-:::{status} 0
+:::{status} 1
 :::
 
 ## Introduction
