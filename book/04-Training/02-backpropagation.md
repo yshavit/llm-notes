@@ -5,6 +5,7 @@ math:
   '\ipdv': '{\scriptsize \ibpdv{#1}{#2}}'
   '\ibpdv': '\partial #1/\partial #2'
   '\unknown': '\boxed{\scriptstyle ?}'
+  '\mm': '{\scriptsize (#1 \times #2)}'
 ---
 
 # Backpropagation
@@ -499,7 +500,7 @@ I've named the layer $y_f$ so that most of the other layers don't have to change
 Note that in a real LLM, the activation function doesn't go between the weight and the bias, as I've done here. But as we're about to see, the whole point is that backprop doesn't actually care where it goes. In fact, as far as backprop is concerned, there's no such thing as a layer at all: everything is just a sequence of operations. Here's the same table as above, this time with one more layer for $y_f$:
 
 $$
-& \begin{array}{cl|l|l|l|l}
+\begin{array}{cl|l|l|l|l}
 & \textbf{Layer}        & \textbf{Local deriv.} & \textbf{Incoming}              & \textbf{Outgoing}              & \textbf{Gradient} \\
 &                       & \textbf{wrt input}    & \textbf{residual}              & \textbf{residual}              &                   \\
 \hline
@@ -513,11 +514,101 @@ $$
 
 And that's it! If $f$ is our activation function --- GELU, ReLU, or anything else --- then that's all there is to it. The machinery needs to know what the activation function's local derivative with respect to its input is, but the implementation can just hard-code that. This also applies to any other operation in the real LLM, like softmax.
 
-The actual equations for these derivatives can be a handful -- for example, GELU's is $0.5(1 + \tanh(u)) + 0.5x \cdot \text{sech}^2(u) \cdot \sqrt{\frac{2}{\pi}}(1 + 0.134145x^2)$ -- but the implementation just hard-codes them, as it does for the functions' forward-pass definition.
+The actual equations for these derivatives can be a handful --- for example, GELU's is $0.5(1 + \tanh(u)) + 0.5x \cdot \text{sech}^2(u) \cdot \sqrt{\frac{2}{\pi}}(1 + 0.134145x^2)$ --- but the implementation just hard-codes them, as it does for the functions' forward-pass definition.
 
-## Using tensors instead of scalars
+## Using vectors instead of scalars
 
-TODO
+Until now, our simple backprop model has used scalars. In an LLM, of course, everything is a matrix.
+
+:::{note} Vectors? Tensors?
+:class: simple dropdown
+
+For purposes of calculating derivatives in backprop, we'll treat _everything_ as a matrix.
+
+- We'll treat $n$-vectors as $(n \times 1)$ matrices
+- We'll treat higher-ranked tensors as having a bunch of [batching dimensions](#batching-tensors), and then two matrix dimensions at the end.
+:::
+
+The concepts are exactly the same as above: the only difference is that when we take the \[partial] derivative of functions, those functions will have matrices as their inputs and parameters, instead of scalars. Likewise, the result will be a matrix:
+
+$$
+\begin{array}{ccccc}
+y_1        & = & A        & \times & X \\
+\mm{n}{v} &   & \mm{n}{m} &        & \mm{m}{v}
+\end{array}
+$$
+
+As with the scalar model, each layer (that is, operation) in the matrix-based model will have to do two things:
+
+- Compute its outgoing residual, which is the layer's local derivative relative to its input.
+  - This residual will be used by the layer above this layer as the value of this layer; so it needs to be the same shape as this layer's input.
+- Compute its learned parameter's gradient, if any.
+  - This will eventually be subtracted from the learned parameter, so it needs to be of the same shape as that parameter.
+
+At the core of it, that's all we need to know for now. Just to round it out, let's look back at the $a$-layer of our scalar model:
+
+$$
+\begin{align}
+y(x) & = ax \\[0.3em]
+& \downarrow \\[0.3em]
+\text{gradient}_a & = r_{\text{in}} \cdot x \\[0.3em]
+r_{\text{out}} & = \pdv{}{x}(ax)
+\end{align}
+$$
+
+It's going to be almost the same for the matrix version, with one gotcha on the gradient:
+
+$$
+\begin{align}
+y(X) & = AX \\[0.3em]
+& \downarrow \\[0.3em]
+\text{gradient}_A & = r_{\text{in}} \cdot X^T \\[0.3em]
+r_{\text{out}} & = \underbrace{\pdv{}{X} (AX)}_{\text{\scriptstyle more on this below}} \\
+\end{align}
+$$
+
+Let's look at the gradient. Where did that transpose come from? Without getting too into the weeds of matrix derivatives, let's at least look at the _shapes_ of the matrices.
+
+- Let's say $A$ is an $(n \times m)$ matrix.
+- This means our layer (in the forward, inference pass) is:
+  $$
+  \begin{array}{ccccc}
+  y         & = & A         & \, & X         \\
+  \mm{n}{v} & = & \mm{n}{m} &    & \mm{m}{v}
+  \end{array}
+  $$
+  ...for some dimension $v$.
+- We know $\textit{gradient}_A$ also has to be $(n \times m)$, as mentioned above.
+- We know $r_{\text{in}}$ has the same shape this layer's output, which is $(n \times v$)$.
+
+So we have:
+
+$$
+\begin{array}{ccccc}
+\text{gradient}_A & = & r_{\text{in}} & \, & \unknown \\
+\mm{n}{m}         &   & \mm{n}{v}     &    & \mm{?}{?}
+\end{array}
+$$
+
+In order for the matrix multiplication to work, the unknown bit _must_ have shape $(v \times m)$. And wouldn't you know it, that's exactly the shape of $X^T$.
+
+:::{note} We're just randomly transposing now?
+
+If you're like me, adding that transpose feels a bit like cheating. Like, yes, it makes the matrix math shape work --- but we can't just add math operations willy-nilly just because it's convenient! After all, the gradient comes from the chain rule, and we we got that definition right at the top of this chapter:
+
+$$
+\frac{dz}{dx} = \frac{dz}{dy} \cdot \frac{dy}{dx}
+$$
+
+There are actually two things going on here.
+
+- First, the scalar chain rule above is a simplification: The full, general version involves something called a Jacobian matrix, and is more complex.
+- Second, the shape argument we just made only tells us that the mystery factor must be $(v \times m)$. That happens to be the same shape as $X^T$, so that's a plausible guess as to what the factor might be; but the shape isn't the full proof or reasoning for why $X^T$ is the right value. For that, you'd need to work through the full Jacobian derivation, which I don't know how to do, and is out of scope for this book.
+
+What I can say is that the answer was to transpose one of the terms. We just didn't see it in the scalar case, because in the generalized, Jacobian world, scalars are just $(1 \times 1)$ matrices. The transpose of a $(1 \times 1)$ matrix is just the matrix itself, so when we write the chain rule in scalar-land, we can omit the transpose; but it was always there, hiding.
+
+:::
+
 
 ## Expanding to computation graphs
 

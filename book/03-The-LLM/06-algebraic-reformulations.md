@@ -730,6 +730,7 @@ The last dimension is always just "the rest of the elements at this level" --- o
 This is all a bit of a simplification: things like transposition and optimization details can complicate the picture. But at a high level, it's a good way of understanding what's going on.
 :::
 
+(batching-tensors)=
 When tensor libraries perform matrix operations on higher-order tensors (rank 3 or above), they treat the leftmost dimensions as "batching dimensions" --- basically, dimensions to loop over. They can load this batching to GPUs, where it happens very efficiently.
 
 Unfortunately, this approach doesn't quite work for our $n \times h \times \frac{d}{h}$ tensor: we want to loop over each of the $h$ heads, not each of the $n$ rows. To solve this, we'll first transpose the tensor to $h \times n \times \frac{d}{h}$. This doesn't change its layout at all: it just changes how the library indexes into the tensor, and thus how it batches.
