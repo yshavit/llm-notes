@@ -268,6 +268,29 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "candle-core"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c15b675b80d994b2eadb20a4bbe434eabeb454eac3ee5e2b4cf6f147ee9be091"
+dependencies = [
+ "byteorder",
+ "float8 0.6.1",
+ "gemm 0.19.0",
+ "half",
+ "libm",
+ "memmap2",
+ "num-traits",
+ "num_cpus",
+ "rand 0.9.4",
+ "rand_distr",
+ "rayon",
+ "safetensors 0.7.0",
+ "thiserror 2.0.18",
+ "yoke 0.8.2",
+ "zip",
+]
+
+[[package]]
+name = "candle-core"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bd9895436c1ba5dc1037a19935d084b838db066ff4e15ef7dded020b7c12a4a"
@@ -277,7 +300,7 @@ dependencies = [
  "candle-metal-kernels",
  "candle-ug",
  "cudarc 0.19.4",
- "float8",
+ "float8 0.7.0",
  "gemm 0.19.0",
  "half",
  "libm",
@@ -322,11 +345,27 @@ dependencies = [
 
 [[package]]
 name = "candle-nn"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3045fa9e7aef8567d209a27d56b692f60b96f4d0569f4c3011f8ca6715c65e03"
+dependencies = [
+ "candle-core 0.9.2",
+ "half",
+ "libc",
+ "num-traits",
+ "rayon",
+ "safetensors 0.7.0",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "candle-nn"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9317a09d6530b758990ed7f625ac69ff43653bc9ee28b0464644ad1169ada87"
 dependencies = [
- "candle-core",
+ "candle-core 0.10.2",
  "half",
  "libc",
  "num-traits",
@@ -345,6 +384,15 @@ dependencies = [
  "ug",
  "ug-cuda",
  "ug-metal",
+]
+
+[[package]]
+name = "candlescratch"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candle-core 0.9.2",
+ "candle-nn 0.9.2",
 ]
 
 [[package]]
@@ -669,7 +717,7 @@ version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f071cd6a7b5d51607df76aa2d426aaabc7a74bc6bdb885b8afa63a880572ad9b"
 dependencies = [
- "float8",
+ "float8 0.7.0",
  "half",
  "libloading 0.9.0",
 ]
@@ -995,8 +1043,8 @@ dependencies = [
 name = "fasterllm"
 version = "0.1.0"
 dependencies = [
- "candle-core",
- "candle-nn",
+ "candle-core 0.10.2",
+ "candle-nn 0.10.2",
  "simpllm",
  "simpllm-core",
 ]
@@ -1029,6 +1077,18 @@ name = "fixedbitset"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
+
+[[package]]
+name = "float8"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "719a903cc23e4a89e87962c2a80fdb45cdaad0983a89bd150bb57b4c8571a7d5"
+dependencies = [
+ "half",
+ "num-traits",
+ "rand 0.9.4",
+ "rand_distr",
+]
 
 [[package]]
 name = "float8"
