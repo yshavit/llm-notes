@@ -1,0 +1,5 @@
+.git
+venv/
+book/_build/
+__pycache__/
+*.pyc

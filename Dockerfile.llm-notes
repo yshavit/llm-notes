@@ -1,0 +1,34 @@
+FROM docker:cli AS docker-cli
+
+FROM python:3.14-slim-bookworm
+COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    VENV=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    HOST=0.0.0.0 \
+    MYSTMD_ALLOW_NODEENV=yes \
+    DRAWIO_DOCKER_VOLUME=llm-notes-drawio \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes \
+        bash \
+        ca-certificates \
+        jq \
+        make \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv "${VENV}"
+
+COPY requirements.txt /tmp/requirements.txt
+RUN python -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
+RUN myst --version
+
+WORKDIR /workspace
+
+EXPOSE 3000 3001
+
+CMD ["make", "VENV=/opt/venv", "MYST_START_ARGS=--keep-host --port 3000 --server-port 3001", "start"]

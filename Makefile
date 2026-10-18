@@ -1,6 +1,7 @@
 VENV := venv
 MYST := $(abspath $(VENV)/bin/myst)
 FEEDBACK_FORM_URL ?=
+MYST_START_ARGS ?=
 
 .PHONY: setup images build serve start clean
 
@@ -23,7 +24,7 @@ book/images/backprop/xy-plot-dark.svg: $(VENV)/bin/pip
 	$(VENV)/bin/python3 scripts/generate-plot.py dark
 
 start: $(VENV)/bin/pip images
-	cd book && $(MYST) start
+	cd book && $(MYST) start $(MYST_START_ARGS)
 
 serve: build
 	$(VENV)/bin/python3 -m http.server -d book/_build/html 8000

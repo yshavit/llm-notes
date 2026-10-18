@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 const pluginDir = '_plugin/drawio';
+const drawioDockerVolume = process.env.DRAWIO_DOCKER_VOLUME;
 
 function tryReadFile(f) {
   try {
@@ -39,10 +40,11 @@ function renderDrawio(vfile, imagePath, theme) {
   }
   if (renderReason) {
     console.log(`need to ${renderReason} ${imagePath}-${theme}`);
+    const dockerVolume = drawioDockerVolume ?? `${vfile.cwd}/${pluginDir}`;
     execFileSync('docker', [
       'run', '--rm', '-i',
       '-w', '/data',
-      '-v', `${vfile.cwd}/${pluginDir}:/data`,
+      '-v', `${dockerVolume}:/data`,
       'rlespinasse/drawio-desktop-headless',
       '-x',
       '-f', 'svg',
