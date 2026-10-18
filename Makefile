@@ -2,12 +2,13 @@ VENV := venv
 MYST := $(abspath $(VENV)/bin/myst)
 FEEDBACK_FORM_URL ?=
 MYST_START_ARGS ?=
+MYST_BUILD_ARGS ?=
 
 .PHONY: setup images build serve start clean
 
 build: $(VENV)/bin/pip images
 	cd book && \
-		MYST=$(MYST) ../strict-myst build --strict --html && \
+		MYST=$(MYST) ../strict-myst build --strict --html $(MYST_BUILD_ARGS) && \
 		mkdir -p _build/html/build/_assets/llm-book && \
 		cp static/* _build/html/build/_assets/llm-book/ && \
 		cd _build/html && \

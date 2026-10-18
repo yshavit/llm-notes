@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/opt/venv/bin:${PATH}" \
     HOST=0.0.0.0 \
     MYSTMD_ALLOW_NODEENV=yes \
+    MYST_BUILD_ARGS=--keep-host \
     DRAWIO_DOCKER_VOLUME=llm-notes-drawio \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -18,6 +19,7 @@ RUN apt-get update \
         ca-certificates \
         jq \
         make \
+        procps \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv "${VENV}"
