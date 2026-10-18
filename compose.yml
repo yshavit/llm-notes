@@ -1,0 +1,23 @@
+services:
+  book:
+    build:
+      context: .
+      dockerfile: Dockerfile.llm-notes
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    environment:
+      VENV: /opt/venv
+      MYST_BUILD_ARGS: --keep-host
+      MYST_START_ARGS: --keep-host --port 3000 --server-port 3001
+      DRAWIO_DOCKER_VOLUME: llm-notes-drawio
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - llm-notes-drawio:/workspace/book/_plugin/drawio
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+
+volumes:
+  llm-notes-drawio:
+    name: llm-notes-drawio

@@ -12,43 +12,21 @@ See it at <https://yshavit.github.io/llm-notes/>
 
 ## Editing on Windows
 
-Requires Docker Desktop. Instructions assume Git Bash.
+Requires Docker Desktop.
 
-- Build the Docker image:
-
-  ```bash
-  docker build -f Dockerfile.llm-notes -t llm-notes .
-  ```
-
-- Start the live server:
+- Run any Make target. For example:
 
   ```bash
-  docker run --rm -it \
-    --mount "type=bind,source=$(pwd),target=/workspace" \
-    --mount "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock" \
-    --mount "type=volume,source=llm-notes-drawio,target=/workspace/book/_plugin/drawio" \
-    -p 3000:3000 \
-    llm-notes
+  ./win/win-make.sh start
   ```
 
-- Open <http://localhost:3000>.
+- Open <http://localhost:3000> after `start`.
 
-or,
+To stop the container:
 
-- to run a one-shot build:
-  ```bash
-  docker run --rm -it \
-    --mount "type=bind,source=$(pwd),target=/workspace" \
-    --mount "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock" \
-    --mount "type=volume,source=llm-notes-drawio,target=/workspace/book/_plugin/drawio" \
-    llm-notes \
-    make VENV=/opt/venv build
+  ```powershell
+  docker compose down
   ```
-
-Note:
-
-- The Docker socket mount is required for Drawio rendering.
-- Do not mount the Windows `venv`; the container uses `/opt/venv`.
 
 ## License
 

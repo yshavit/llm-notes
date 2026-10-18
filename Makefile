@@ -1,4 +1,4 @@
-VENV := venv
+VENV ?= venv
 MYST := $(abspath $(VENV)/bin/myst)
 FEEDBACK_FORM_URL ?=
 MYST_START_ARGS ?=
