@@ -16,7 +16,6 @@ const plugin = {
         var givenPath = data.body;
         const pipeDelm = givenPath.indexOf('|');
         if (pipeDelm >= 0) {
-          console.log('here');
           alt = givenPath.slice(0, pipeDelm);
           if (!alt) {
             alt = undefined;
