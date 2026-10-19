@@ -7,6 +7,8 @@ services:
     command: ["sleep", "infinity"]
     environment:
       VENV: /opt/venv
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "2000"
       MYST_BUILD_ARGS: --keep-host
       MYST_START_ARGS: --keep-host --port 3000 --server-port 3001
       DRAWIO_DOCKER_VOLUME: llm-notes-drawio
