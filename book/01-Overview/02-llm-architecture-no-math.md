@@ -97,9 +97,7 @@ We'll start the ultra-high view: just the inputs, a black box of math, and outpu
 
 - The input is a vector of vectors.
   - Each element in the "outer" vector corresponds to one token in the input.
-  - Its value is a $d$-dimensional vector that describes what the LLM has learned about this token.
   - These are called the {dfn}`input embeddings`.
-
 - The output is also a vector of vectors --- but with very different meanings for the inner vectors.
   - Each element in the outer vector is the prediction for the corresponding token's next-token.
   - These predictions are called {dfn}`logits`.
@@ -107,9 +105,11 @@ We'll start the ultra-high view: just the inputs, a black box of math, and outpu
 :::{drawio} images/no-math/high-level-1
 :::
 
+Let's look at the input embeddings and output logits in a bit more detail.
+
 #### Input embeddings
 
-Each input token gets translated into an input embedding, which is a $d$-dimensional vector. It combines two pieces of information: the token, and its position within the input. Both of those pieces of information are just looked up in a dictionary of what the LLM learned during training.
+Each input token gets translated into an input embedding, which is a $d$-dimensional vector. (The dimensionality $d$ just describes how much we know about each token. The LLM designers tune this: bigger numbers mean the LLM learns more nuance, but requires more compute power and memory.) It combines two pieces of information: the token, and its position within the input. Both of those pieces of information are just trivially looked up in a dictionary based on what the LLM learned during training.
 
 For example, take the phrase:
 
@@ -143,11 +143,20 @@ $$
 
 Note that the two instances of $\texttt{"time"}$ used the same token values, but each one used its corresponding (different) position values.
 
+:::{tip} Terminology details
+:class: simple dropdown
+The token values (without position) are called {dfn}`token embeddings`, and the position values are {dfn}`position embeddings`. "Embedding" here just means "a vector that encodes what we know."
+
+$$
+\text{input embedding} = \text{token embedding} + \text{position embedding}
+$$
+:::
+
 #### Output logits
 
 The result of the LLM's inference is a vector of vectors: one vector per input token, whose value is a vector of logits that predicts that input's next token.
 
-Each logit is a $v$-dimensional vector, where $v$ is the number of tokens the LLM knows about (very loosely, the number of words it knows). We imagine sorting the tokens alphabetically; then, the value of each value in this $v$-vector is how likely the corresponding token is to be the next token.
+Each of those prediction vectors is a $v$-dimensional vector, where $v$ is the number of tokens the LLM knows about (very loosely, the number of words it knows). We imagine sorting the tokens alphabetically; then, the value of each value in this $v$-vector is how likely the corresponding token is to be the next token.
 
 For example, let's say we had an LLM that knew only five words:
 
@@ -175,7 +184,7 @@ Did I lose you a bit with the math? Here's where to snap back.
 - Our inputs are a bunch of $d$-vectors, one per input. These encode what we trivially know about the input (its token and position).
   - $d$ is the {dfn}`embedding dimension` --- basically, how much information we can learn about any given token.
 - Out outputs are a bunch of $v$-vectors, one per input. These encode our predictions for each input (its logits).
-  - $v$ is the vocabulary size: it's just, how many tokens does this LLM know.
+  - $v$ is the vocabulary size: how many tokens does this LLM know.
 
 ### Airplane-level view
 
