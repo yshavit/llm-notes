@@ -91,7 +91,7 @@ In this chapter, we won't worry ourselves with how dot products and matrix multi
 
 Let's build a progressively more detailed (but still very high-level) picture of the shape of our inference engine. This will help us get grounded in the overall direction, before we dig into the individual components.
 
-### LLMs from orbit
+### Space-station view
 
 We'll start the ultra-high view: just the inputs, a black box of math, and outputs.
 
@@ -131,13 +131,13 @@ And the following position values:
 Each token's input embedding just adds the vectors for token and value. So:
 
 $$
-\begin{array}{rcl}
-\text{(first)}\texttt{ "time"}  & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix} + \begin{bmatrix}0.84 & -1.2 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.06 & -0.10 & \dots\end{bmatrix} \\[1.5em]
-\texttt{"after"}                & = & \begin{bmatrix}0.65 & -1.3 & \dots\end{bmatrix} + \begin{bmatrix}-0.59 & 1.1 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.06 & -0.20 & \dots\end{bmatrix} \\[1.5em]
-\text{(second)}\texttt{ "time"} & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix} + \begin{bmatrix}1.2 & 0.43 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.42 & 1.53 & \dots\end{bmatrix}
+\begin{array}{rcll}
+\text{(first)}\texttt{ "time"}  & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}0.84 & -1.2 & \dots\end{bmatrix} \\
+                                & = & \begin{bmatrix}0.06 & -0.10 & \dots\end{bmatrix} & \\[1.5em]
+\texttt{"after"}                & = & \begin{bmatrix}0.65 & -1.3 & \dots\end{bmatrix}  & + \begin{bmatrix}-0.59 & 1.1 & \dots\end{bmatrix} \\
+                                & = & \begin{bmatrix}0.06 & -0.20 & \dots\end{bmatrix} & \\[1.5em]
+\text{(second)}\texttt{ "time"} & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}1.2 & 0.43 & \dots\end{bmatrix} \\
+                                & = & \begin{bmatrix}0.42 & 1.53 & \dots\end{bmatrix}  &
 \end{array}
 $$
 
@@ -151,9 +151,11 @@ Each logit is a $v$-dimensional vector, where $v$ is the number of tokens the LL
 
 For example, let's say we had an LLM that knew only five words:
 
-- {keyboard}`aardvark`, {keyboard}`cat`, {keyboard}`fox`, {keyboard}`stoat`, and {keyboard}`wolf`.
+$$
+\begin{bmatrix} \texttt{aardvark} & \texttt{cat} & \texttt{fox} & \texttt{stoat} & \texttt{wolf} \end{bmatrix}
+$$
 
-Then, if the $v$-vector for a given token is:
+Then, if the $v$-vector of logits for a given token is:
 
 $$
 \begin{bmatrix} 1.6\%, & 2.2\%, & 93\%, & 1.4\%, & 1.8\% \end{bmatrix}
@@ -162,6 +164,18 @@ $$
 ...it means the LLM has calculated that there's a 93% chance that the next token is "fox", a 2.2% chance it's "cat", and so on.
 
 Note that every token in the input gets a prediction. This is useful during training, but at inference we only care about the last prediction; we simply ignore the others.
+
+#### In summary
+
+:::{important} Important!
+:class: simple
+Did I lose you a bit with the math? Here's where to snap back.
+:::
+
+- Our inputs are a bunch of $d$-vectors, one per input. These encode what we trivially know about the input (its token and position).
+  - $d$ is the {dfn}`embedding dimension` --- basically, how much information we can learn about any given token.
+- Out outputs are a bunch of $v$-vectors, one per input. These encode our predictions for each input (its logits).
+  - $v$ is the vocabulary size: it's just, how many tokens does this LLM know.
 
 ### Airplane-level view
 
