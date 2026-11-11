@@ -1,0 +1,49 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="CNF8s9ProxLeZJfa_j8j">
+    <mxGraphModel dx="1078" dy="748" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="h2J_14hYC94js4Uu6xm6-2" parent="1" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;shapeInside=1;fixedSize=1;fillColor=#FFFFEE;fontColor=#333333;strokeColor=#666666;size=45;fillStyle=auto;" value="" vertex="1">
+          <mxGeometry height="170" width="300" x="175" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="vector of d-vectors" vertex="1">
+          <mxGeometry height="20" width="270" x="190" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="vector of v-vectors" vertex="1">
+          <mxGeometry height="20" width="270" x="190" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-14" edge="1" parent="1" source="h2J_14hYC94js4Uu6xm6-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;defaultLabelBackgroundColor=page;strokeWidth=2;" target="h2J_14hYC94js4Uu6xm6-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=0" value="Transformer" vertex="1">
+          <mxGeometry height="20" width="210" x="220" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=0" value="Transformer" vertex="1">
+          <mxGeometry height="20" width="210" x="220" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=0" value="Transformer" vertex="1">
+          <mxGeometry height="20" width="210" x="220" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=middle;fontStyle=0" value="&lt;span&gt;⋯&lt;/span&gt;" vertex="1">
+          <mxGeometry height="20" width="210" x="220" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;fillColor=#99CCFF;strokeColor=#82b366;gradientColor=#AAE0AA;fontStyle=0" value="Output Projection" vertex="1">
+          <mxGeometry height="20" width="210" x="220" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-17" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="30" width="270" x="190" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-16" parent="h2J_14hYC94js4Uu6xm6-17" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;perimeter=cloudPerimeter;strokeColor=none;fontColor=#808080;" value="" vertex="1">
+          <mxGeometry height="30" width="270" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-15" parent="h2J_14hYC94js4Uu6xm6-17" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;perimeter=cloudPerimeter;strokeColor=none;fontColor=#808080;opacity=90;opacityGroup=1;" value="" vertex="1">
+          <mxGeometry height="30" width="270" as="geometry" />
+        </mxCell>
+        <mxCell id="h2J_14hYC94js4Uu6xm6-1" parent="h2J_14hYC94js4Uu6xm6-17" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;perimeter=cloudPerimeter;strokeColor=#808080;fontColor=#808080;fillColor=none;" value="matrix math and stuff" vertex="1">
+          <mxGeometry height="30" width="270" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

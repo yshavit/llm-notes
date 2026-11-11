@@ -13,17 +13,16 @@ On the other hand, if you prefer to learn things from the bottom up, you may wan
 
 This chapter is structured in four parts:
 
-1. **Math, without the math**: I'll start with a mathless description of the basic operations. For this, we're not interested in the specifics of how the operations work, but just their shapes. It turns out that'll be enough to give a good sense of how data flows through.
+1. **The math, without the math**: I'll start with a mathless description of the basic operations. For this, we're not interested in the specifics of how the operations work, but just their shapes. It turns out that'll be enough to give a good sense of how data flows through.
 2. **High-level overview**: Then, I'll give an overview of the components and where they slot into the architecture. This will be light on details; it's just to help give context for the next sections.
 3. **The components**: Next, I'll dig into the details of the specific components. For each one, I'll use the mathless math to describe the component's parts and how data flows through them.
 4. **How it fits together**: Finally, I'll revisit the high-level architecture, but now in more detail. This section will fill in some of the rationale and hand-waving from the high-level view. It'll also talk about the all-important {dfn}`prompt caching` that you may have heard about.
 
 This chapter does assume you've read [the previous chapter](./01-overview-of-llms.md) for some of the fundamental terminology, but it doesn't assume anything more than that.
 
+## The math, without the math
 
-## Math, without the math
-
-Okay, I know I said we won't get into the math in this chapter; but I do at least need to tell you what the math operations are, and what shape they take. I'll keep it high level.
+Even though this chapter will steer away from the details of the math, we do want to get a bit more concrete than hand-wavingly saying "and then some magical math happens." To help us strike a middle ground, it's useful to know a handful of mathematical concepts, and the _shape_ of how they fit together. We don't need to know particulars; you'll see what I mean by the shape momentarily.
 
 ### The cast of characters
 
@@ -46,8 +45,11 @@ We'll be working with three kinds of operands:
    \begin{bmatrix}4 & 5 & 6 \\ 7 & 8 & 9 \end{bmatrix}
    $$
 
-We can also think of vectors as a special case of matrices, where one of the sides has length 1.
+   When we specify the size of a matrix, we write it as $m \times n$, where $m$ is the matrix's number of rows, and $n$ is the number of columns. The matrix above, for example, is $2 \times 3$.
 
+We can also think of vectors as a special case of matrices, where one of the sides has length 1. (It doesn't matter which side we set to 1, but for our purposes, we'll always set the rows to 1 and the columns as $n$.)
+
+(vector-or-matrix)=
 :::{drawio} images/no-math/vector-or-matrix
 :::
 
@@ -72,6 +74,7 @@ Next, we have a handful of operations on these operands:
 
 2. {dfn}`Matrix multiplication` takes two matrices, and produces a third. The first matrix’s number of columns has to equal the second matrix’s number of rows; and then the result has the same number of rows as the first matrix, and the same number of columns as the second. It sounds complicated, but visually it's not that bad:
 
+   (no-math-matrix-multiplication)=
    :::{drawio} images/no-math/matrix-mult
    :::
 
@@ -118,13 +121,13 @@ For example, take the phrase:
 Let's say that our LLM has learned the following token values:
 
 - $\text{time}  = \begin{bmatrix}-0.78 & 1.1 & 0.30 & -1.4 \dots\end{bmatrix}$
-- $\text{after} = \begin{bmatrix}0.65 & -1.3 & 0.84 & 1.1 \dots\end{bmatrix}$
+- $\text{after} = \begin{bmatrix}0.65 & -1.3 & 0.84 & 1.3 \dots\end{bmatrix}$
 - ...
 
 And the following position values:
 
 - $1^{\text{st}}\text{ word}  = \begin{bmatrix}0.84 & -1.2 & 0.63 & 1.5 \dots\end{bmatrix}$
-- $2^{\text{nd}}\text{ word}  = \begin{bmatrix}-0.59 & 1.1 & -1.4 & 0.71 \dots\end{bmatrix}$
+- $2^{\text{nd}}\text{ word}  = \begin{bmatrix}-0.59 & 1.6 & -1.4 & 0.71 \dots\end{bmatrix}$
 - $3^{\text{rd}}\text{ word}  = \begin{bmatrix}1.2 & 0.43 & -0.87 & -0.16 \dots\end{bmatrix}$
 - ...
 
@@ -134,7 +137,7 @@ $$
 \begin{array}{rcll}
 \text{(first)}\texttt{ "time"}  & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}0.84 & -1.2 & \dots\end{bmatrix} \\
                                 & = & \begin{bmatrix}0.06 & -0.10 & \dots\end{bmatrix} & \\[1.5em]
-\texttt{"after"}                & = & \begin{bmatrix}0.65 & -1.3 & \dots\end{bmatrix}  & + \begin{bmatrix}-0.59 & 1.1 & \dots\end{bmatrix} \\
+\texttt{"after"}                & = & \begin{bmatrix}0.65 & -1.3 & \dots\end{bmatrix}  & + \begin{bmatrix}-0.59 & 1.6 & \dots\end{bmatrix} \\
                                 & = & \begin{bmatrix}0.06 & -0.20 & \dots\end{bmatrix} & \\[1.5em]
 \text{(second)}\texttt{ "time"} & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}1.2 & 0.43 & \dots\end{bmatrix} \\
                                 & = & \begin{bmatrix}0.42 & 1.53 & \dots\end{bmatrix}  &
@@ -188,7 +191,26 @@ Did I lose you a bit with the math? Here's where to snap back.
 
 ### Airplane-level view
 
-TODO: inputs → transformer stack → output transformation
+Let's zoom in a bit and start to get some resolution into that "matrix math and stuff" stand-in. Inside that bubble are basically two main chunks: a series of {dfn}`transformer blocks`, followed by an output projection:
+
+:::{drawio} images/no-math/high-level-2
+:::
+
+We'll cover the transformer blocks more in the next sections. For now, all you need to know is that each one turns a $d$-vector into a different, but similarly-shaped $d$-vector. The first transformer's $d$-vectors are just the input embeddings; after that, each transformer's output is the next one's input.
+
+At the end of the chain of transformers, the contents of our original $d$-vector input embeddings have been changed quite a bit --- but they're still $d$-vectors. What we need, however, are $v$-vectors for the logits. How do we do that?
+
+First, remember that we can [turn each vector into a matrix](#vector-or-matrix) where one of the sides is 1. So, let's turn our $d$-vectors into $1 \times d$, and our $v$-vectors into $1 \times v$. Now we just need a way to go from a $1 \times d$ matrix to a $v \times 1$ matrix:
+
+:::{drawio} images/no-math/output-projection-unknown
+:::
+
+The [matrix multiplication described above](#no-math-matrix-multiplication) does exactly that. All we need is a $d \times v$ matrix, which we multiply our $d \times 1$ matrix by to get the $v \times 1$ matrix:
+
+:::{drawio} images/no-math/output-projection
+:::
+
+The output projection is really just that simple!
 
 ### Bird's-eye view
 
@@ -198,7 +220,7 @@ I know, some birds fly higher than some airplanes. Work with me on this! Metapho
 
 TODO: transformer blocks
 
-## The components
+## The transformer components
 
 ### Feed-forward networks (FFNs)
 
