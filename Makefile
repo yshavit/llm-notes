@@ -37,12 +37,12 @@ build: $(VENV_PYTHON) images
 
 setup: $(VENV_PYTHON)
 
-images: book/images/backprop/xy-plot-light.svg book/images/backprop/xy-plot-dark.svg
+images: 04-Training/xy-plot-light.svg 04-Training/xy-plot-dark.svg
 
-book/images/backprop/xy-plot-light.svg: $(VENV_PYTHON)
+04-Training/xy-plot-light.svg: $(VENV_PYTHON)
 	$(VENV_PYTHON) scripts/generate-plot.py light
 
-book/images/backprop/xy-plot-dark.svg: $(VENV_PYTHON)
+04-Training/xy-plot-dark.svg: $(VENV_PYTHON)
 	$(VENV_PYTHON) scripts/generate-plot.py dark
 
 start: $(VENV_PYTHON) images
@@ -52,7 +52,7 @@ serve: build
 	$(VENV_PYTHON) -m http.server -d book/_build/html 8000
 
 clean: $(VENV_PYTHON)
-	cd book && $(MYST) clean && rm -f images/backprop/xy-plot-light.svg images/backprop/xy-plot-dark.svg
+	cd book && $(MYST) clean && rm -f 04-Training/xy-plot-light.svg 04-Training/xy-plot-dark.svg
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)

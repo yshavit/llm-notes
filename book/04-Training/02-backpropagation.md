@@ -138,12 +138,12 @@ This is just a plain old line, like you learned about in middle school. We're go
 
 :::{div}
 :class: hidden dark:block
-![plot of data showing points more or less along a line](/images/backprop/xy-plot-dark.svg)
+![plot of data showing points more or less along a line](xy-plot-dark.svg)
 :::
 
 :::{div}
 :class: dark:hidden
-![plot of data showing points more or less along a line](/images/backprop/xy-plot-light.svg)
+![plot of data showing points more or less along a line](xy-plot-light.svg)
 :::
 
 Since we're assuming (as the model designers) that the points form a line $y = ax + b$, our job will be to figure out $a$ and $b$ from the various $(x, y)$ data points. In other words, $a$ and $b$ are the model's learned parameters.

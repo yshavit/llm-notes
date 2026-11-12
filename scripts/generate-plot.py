@@ -57,7 +57,7 @@ IMG_WIDTH = PADDING + PLOT_WIDTH + GAP + TABLE_WIDTH + PADDING
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
-OUT_DIR = "book/images/backprop"
+OUT_DIR = "book/04-Training"
 OUT_BASENAME = "xy-plot"
 
 # ---------------------------------------------------------------------------
@@ -92,14 +92,15 @@ THEMES = {
 # ---------------------------------------------------------------------------
 # Jitter function
 # ---------------------------------------------------------------------------
-JITTER_POWER = 4.5    # higher = more points near the line, wilder outliers
-JITTER_MAX   = 2.5    # max jitter as a fraction of Y_RANGE
-JITTER_EXTRA = 0.4    # extra wiggle in data units (not a fraction)
+JITTER_POWER = 4.5  # higher = more points near the line, wilder outliers
+JITTER_MAX = 2.5  # max jitter as a fraction of Y_RANGE
+JITTER_EXTRA = 0.4  # extra wiggle in data units (not a fraction)
+
 
 def jitter(y_ideal: float) -> float:
-    t     = random.random()
-    scale = (t ** JITTER_POWER) * JITTER_MAX
-    sign  = random.choice([-1, 1])
+    t = random.random()
+    scale = (t**JITTER_POWER) * JITTER_MAX
+    sign = random.choice([-1, 1])
     extra = random.gauss(0, JITTER_EXTRA)
     return y_ideal + sign * scale * Y_RANGE + extra
 
@@ -280,8 +281,7 @@ def main():
 
     mid_cx = (col_x_cx + col_y_cx) // 2
 
-
-    ellipsis = '...'
+    ellipsis = "..."
 
     # data rows
     row_y = ty + TABLE_HEADER_H + TABLE_DOT_H
