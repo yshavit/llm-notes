@@ -8,4 +8,4 @@ simpllm-core = { path = "../../simpllm-core" }
 gpt2weights = { path = "../../crates/gpt2weights" }
 clap = { workspace = true }
 ratatui = "0.30"
-crossterm = "0.29.0"
+crossterm = "0.29"

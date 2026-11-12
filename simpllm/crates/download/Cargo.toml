@@ -17,6 +17,6 @@ anyhow = "1.0"
 futures-util = "0.3"
 strum = "0.28"
 strum_macros = "0.28"
-safetensors = "0.7"
+safetensors = "0.8"
 serde_json = { workspace = true }
 memmap2 = "0.9.9"
