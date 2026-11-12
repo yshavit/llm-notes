@@ -324,21 +324,11 @@ I need to finish this section
 
 (multi-head goes here)
 
-## How it fits together
-
-### Stacked transformer blocks
+## KV caching
 
 TODO
 
-### Residual connections
-
-TODO
-
-### Output logits
-
-TODO
-
-### KV Caching
+## Summary
 
 TODO
 
