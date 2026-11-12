@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
-const pluginDir = '_plugin/drawio';
+const pluginDir = path.join('_plugin', 'drawio');
 const drawioDockerVolume = process.env.DRAWIO_DOCKER_VOLUME;
 
 function tryReadFile(f) {
@@ -23,12 +24,12 @@ function sha1(data) {
 function renderDrawio(vfile, imagePath, theme) {
   const imagePathHash = sha1(imagePath) + `-${theme}`;
 
-  const drawioPath = `${pluginDir}/${imagePathHash}.drawio`;
+  const drawioPath = `${path.join(pluginDir, imagePathHash)}.drawio`;
   copyFileSync(`${imagePath}.drawio`, drawioPath);
 
   var renderReason = 'render';
 
-  const contentHashFile = `${pluginDir}/${imagePathHash}.sha1`;
+  const contentHashFile = `${path.join(pluginDir, imagePathHash)}.sha1`;
   const expectedContentHash = tryReadFile(contentHashFile);
   const actualContentHash = sha1(readFileSync(drawioPath));
   if (expectedContentHash !== undefined) {
@@ -40,7 +41,7 @@ function renderDrawio(vfile, imagePath, theme) {
   }
   if (renderReason) {
     console.log(`need to ${renderReason} ${imagePath}-${theme}`);
-    const dockerVolume = drawioDockerVolume ?? `${vfile.cwd}/${pluginDir}`;
+    const dockerVolume = drawioDockerVolume ?? path.join(vfile.cwd, pluginDir);
     execFileSync('docker', [
       'run', '--rm', '-i',
       '-w', '/data',
@@ -54,10 +55,10 @@ function renderDrawio(vfile, imagePath, theme) {
     ]);
     writeFileSync(contentHashFile, actualContentHash, 'utf8');
   }
-  const svgContents = readFileSync(`${pluginDir}/${imagePathHash}.svg`).toString('base64');
-  const dataFile = `${pluginDir}/${imagePathHash}.data`
+  const svgContents = readFileSync(`${path.join(pluginDir, imagePathHash)}.svg`).toString('base64');
+  const dataFile = `${path.join(pluginDir, imagePathHash)}.data`
   writeFileSync(dataFile, 'data:image/svg+xml;base64' + svgContents, 'utf8');
-  return `/${pluginDir}/${imagePathHash}.svg`;
+  return `${path.sep}${path.join(pluginDir, imagePathHash)}.svg`;
 }
 
 function render(vfile, imagePath, container, classString, alt) {
