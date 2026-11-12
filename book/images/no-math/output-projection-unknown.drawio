@@ -28,7 +28,7 @@
         <mxCell id="5pWK9TpiSdM5uD7XmOOx-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
           <mxGeometry height="20" width="20" x="650" y="170" as="geometry" />
         </mxCell>
-        <mxCell id="5pWK9TpiSdM5uD7XmOOx-9" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="d × 1 matrix" vertex="1">
+        <mxCell id="5pWK9TpiSdM5uD7XmOOx-9" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="1 × d matrix" vertex="1">
           <mxGeometry height="20" width="70" x="360" y="130" as="geometry" />
         </mxCell>
         <mxCell id="5pWK9TpiSdM5uD7XmOOx-10" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="1 × v matrix" vertex="1">

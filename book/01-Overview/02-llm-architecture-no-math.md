@@ -215,10 +215,32 @@ The output projection is really just that simple!
 ### Bird's-eye view
 
 :::{aside}
-I know, some birds fly higher than some airplanes. Work with me on this! Metaphors are hard.
+I know, some birds fly higher than some airplanes. Metaphors are hard!
 :::
 
-TODO: transformer blocks
+Before we go into each component in depth, let's look at the transformer blocks. Each consists of three elements:
+
+- a {dfn}`self-attention` layer (often called just "attention")
+- a {dfn}`feed-forward network` (FFN) layer
+- {dfn}`residual connections`
+
+:::{drawio} images/no-math/high-level-transformer
+:::
+
+As I mentioned above, these work to transform one vector of $d$-vectors into another vector of $d$-vectors: the transformer layer changes the input's contents, but not its shape.
+
+We'll cover the FFN and self-attention in more detail below --- they're really the heart of the LLM, and where all the tricky computation happens.
+
+Both the FFN and self-attention layer take $d$-vectors as input and produce $d$-vectors as output. The {dfn}`residuals` aren't transformation layers, but connections between them. They're very simple: after each transformation layer (FFN or attention) does its thing, the residual takes each resulting $d$-vector and adds its corresponding original input $d$-vector. That's it!
+
+:::{drawio} images/no-math/residuals
+:::
+
+It turns out that these simple residuals are extremely important! Without them, the FFN and attention layers have to learn two separate things: the "core" knowledge (like "cats are animals") as well as how to apply that knowledge to the input. This tends to make them over-fit their data and cause "sharp corners" in the transformations, which in turn limits how many such layers you can stack. Since each transformer represents a unit of learning, limiting the number of transformers in the LLM means there's a ceiling on how smart the LLM can be.
+
+Residuals take care of the "apply that knowledge to the input" aspect, allowing the FFN and attention layers focus on learning just their core knowledge. This eliminates the limit on stacking, which is what lets LLM vendors build the trillion-parameter LLMs that have become so powerful.
+
+If you're interested in a deeper dive, [this YouTube video](https://www.youtube.com/watch?v=QgH9sr7G13Q) does a great job of walking through the visuals.
 
 ## The transformer components
 
