@@ -1,38 +1,59 @@
 VENV ?= venv
-MYST := $(abspath $(VENV)/bin/myst)
 FEEDBACK_FORM_URL ?=
 MYST_START_ARGS ?=
 MYST_BUILD_ARGS ?=
 
+# Platform-specific virtualenv layout
+ifeq ($(OS),Windows_NT)
+    VENV_BIN := $(VENV)/Scripts
+    EXE_SUFFIX := .exe
+    PYTHON ?= python
+else
+    VENV_BIN := $(VENV)/bin
+    EXE_SUFFIX :=
+    PYTHON ?= python3
+endif
+
+VENV_PYTHON := $(VENV_BIN)/python$(EXE_SUFFIX)
+VENV_PIP := $(VENV_BIN)/pip$(EXE_SUFFIX)
+MYST := $(abspath $(VENV_BIN)/myst$(EXE_SUFFIX))
+
+# Use Bash for recipes (particularly important on Windows)
+ifeq ($(OS),Windows_NT)
+    SHELL := bash
+else
+    SHELL := /bin/sh
+endif
+
 .PHONY: setup images build serve start clean
 
-build: $(VENV)/bin/pip images
+build: $(VENV_PYTHON) images
 	cd book && \
-		MYST=$(MYST) ../strict-myst build --strict --html $(MYST_BUILD_ARGS) && \
+		MYST="$(MYST)" ../strict-myst build --strict --html $(MYST_BUILD_ARGS) && \
 		mkdir -p _build/html/build/_assets/llm-book && \
 		cp static/* _build/html/build/_assets/llm-book/ && \
 		cd _build/html && \
 		find . -type f -exec sed -i 's|FEEDBACK_FORM_URL|$(FEEDBACK_FORM_URL)|g' {} +
 
-setup: $(VENV)/bin/pip
+setup: $(VENV_PYTHON)
 
 images: book/images/backprop/xy-plot-light.svg book/images/backprop/xy-plot-dark.svg
 
-book/images/backprop/xy-plot-light.svg: $(VENV)/bin/pip
-	$(VENV)/bin/python3 scripts/generate-plot.py light
+book/images/backprop/xy-plot-light.svg: $(VENV_PYTHON)
+	$(VENV_PYTHON) scripts/generate-plot.py light
 
-book/images/backprop/xy-plot-dark.svg: $(VENV)/bin/pip
-	$(VENV)/bin/python3 scripts/generate-plot.py dark
+book/images/backprop/xy-plot-dark.svg: $(VENV_PYTHON)
+	$(VENV_PYTHON) scripts/generate-plot.py dark
 
-start: $(VENV)/bin/pip images
+start: $(VENV_PYTHON) images
 	cd book && $(MYST) start $(MYST_START_ARGS)
 
 serve: build
-	$(VENV)/bin/python3 -m http.server -d book/_build/html 8000
+	$(VENV_PYTHON) -m http.server -d book/_build/html 8000
 
-clean: $(VENV)/bin/pip
-	cd book && $(MYST) clean && rm -f book/images/backprop/xy-plot-light.svg book/images/backprop/xy-plot-dark.svg
+clean: $(VENV_PYTHON)
+	cd book && $(MYST) clean && rm -f images/backprop/xy-plot-light.svg images/backprop/xy-plot-dark.svg
 
-$(VENV)/bin/pip:
-	python3 -m venv $(VENV)
-	$(VENV)/bin/pip install -r requirements.txt
+$(VENV_PYTHON):
+	$(PYTHON) -m venv $(VENV)
+	$(VENV_PYTHON) -m pip install -r requirements.txt
