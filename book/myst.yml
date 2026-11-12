@@ -14,8 +14,7 @@ project:
     - "*.dtmp"
     - sidebar_footer.md
   plugins:
-    - type: executable
-      path: ../myst-plugins/dfn
+    - ../myst-plugins/dfn.mjs
     - ../myst-plugins/drawio.mjs
     - ../myst-plugins/rustref.mjs
     - ../myst-plugins/mdash.mjs
