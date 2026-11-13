@@ -120,27 +120,39 @@ For example, take the phrase:
 
 Let's say that our LLM has learned the following token values:
 
-- $\text{time}  = \begin{bmatrix}-0.78 & 1.1 & 0.30 & -1.4 \dots\end{bmatrix}$
-- $\text{after} = \begin{bmatrix}0.65 & -1.3 & 0.84 & 1.3 \dots\end{bmatrix}$
-- ...
+$$
+\begin{array}{lcl}
+\text{time}  & = & \begin{bmatrix}1.0 & 2.0 & 3.0 \; \dots\end{bmatrix} \\[0.5em]
+\text{after} & = & \begin{bmatrix}5.0 & 6.0 & 7.0 \; \dots\end{bmatrix} \\[0.5em]
+             & \dots
+\end{array}
+$$
+
+:::{aside}
+None of the values in this section are realistic. I'm only choosing them because it makes things easier to follow.
+:::
 
 And the following position values:
 
-- $1^{\text{st}}\text{ word}  = \begin{bmatrix}0.84 & -1.2 & 0.63 & 1.5 \dots\end{bmatrix}$
-- $2^{\text{nd}}\text{ word}  = \begin{bmatrix}-0.59 & 1.6 & -1.4 & 0.71 \dots\end{bmatrix}$
-- $3^{\text{rd}}\text{ word}  = \begin{bmatrix}1.2 & 0.43 & -0.87 & -0.16 \dots\end{bmatrix}$
-- ...
+$$
+\begin{array}{lcl}
+1^{\text{st}}\text{ word} & = & \begin{bmatrix}0.1 & 0.2 & 0.3 \; \dots\end{bmatrix} \\[0.5em]
+2^{\text{nd}}\text{ word} & = & \begin{bmatrix}0.4 & 0.5 & 0.6 \; \dots\end{bmatrix} \\[0.5em]
+3^{\text{rd}}\text{ word} & = & \begin{bmatrix}0.7 & 0.8 & 0.9 \; \dots\end{bmatrix} \\[0.5em]
+                          & \dots
+\end{array}
+$$
 
 Each token's input embedding just adds the vectors for token and value. So:
 
 $$
 \begin{array}{rcll}
-\text{(first)}\texttt{ "time"}  & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}0.84 & -1.2 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.06 & -0.10 & \dots\end{bmatrix} & \\[1.5em]
-\texttt{"after"}                & = & \begin{bmatrix}0.65 & -1.3 & \dots\end{bmatrix}  & + \begin{bmatrix}-0.59 & 1.6 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.06 & -0.20 & \dots\end{bmatrix} & \\[1.5em]
-\text{(second)}\texttt{ "time"} & = & \begin{bmatrix}-0.78 & 1.1 & \dots\end{bmatrix}  & + \begin{bmatrix}1.2 & 0.43 & \dots\end{bmatrix} \\
-                                & = & \begin{bmatrix}0.42 & 1.53 & \dots\end{bmatrix}  &
+\text{(first)}\texttt{ "time"}   & = & \begin{bmatrix}1.0 & 2.0 & 3.0 \; \dots\end{bmatrix} & + \begin{bmatrix}0.1 & 0.2 & 0.3 & \; \dots\end{bmatrix} \\[0.5em]
+                                 & = & \begin{bmatrix}1.1 & 2.2 & 3.3 \; \dots\end{bmatrix} & \\[1.5em]
+             \texttt{ "after"}   & = & \begin{bmatrix}4.0 & 5.0 & 6.0 \; \dots\end{bmatrix} & + \begin{bmatrix}0.4 & 0.5 & 0.6 & \; \dots\end{bmatrix} \\[0.5em]
+                                 & = & \begin{bmatrix}4.4 & 5.5 & 6.6 \; \dots\end{bmatrix} & \\[1.5em]
+\text{(second)}\texttt{ "time"}  & = & \begin{bmatrix}1.0 & 2.0 & 3.0 \; \dots\end{bmatrix} & + \begin{bmatrix}0.7 & 0.8 & 0.9 & \; \dots\end{bmatrix} \\[0.5em]
+                                 & = & \begin{bmatrix}1.7 & 2.8 & 3.9 \; \dots\end{bmatrix} & \\[1.5em]
 \end{array}
 $$
 
