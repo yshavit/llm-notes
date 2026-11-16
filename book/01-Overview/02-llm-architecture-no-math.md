@@ -129,7 +129,7 @@ $$
 $$
 
 :::{aside}
-None of the values in this section are realistic. I'm only choosing them because it makes things easier to follow.
+None of the values in this section are realistic values. I'm only choosing them because it makes things easier to follow.
 :::
 
 And the following position values:
@@ -258,7 +258,91 @@ If you're interested in a deeper dive, [this YouTube video](https://www.youtube.
 
 ### Feed-forward networks (FFNs)
 
+Feed-forward networks (which I'll refer to as just FFNs from here on) are one of the oldest concepts in AI. They're also one of the most basic in terms of mechanics, so they're a good place to start as we dig into the transformer architecture.
+
+:::{note}
+Within a transformer, FFNs are the _second_ component, after attention. But FFNs are simpler, and a better introduction to ML concepts, so I'm putting them first in this chapter.
+:::
+
+:::{tip} A note on precise terminology
+:class: dropdown
+FFN is technically a broad category of neural nets --- which themselves are a broad category of AI constructs that boil down to "a network of parameters that information flows through." The defining aspect of FFNs is that data always flows in one direction (as opposed to other neural nets, where it can loop).
+
+In the context of modern, GPT-style LLMs, "FFN" almost always refers to a Multi-Layer Perceptron (MLP), which is one particular kind of FFN. It's a bit like if a car dealership that only sold hatchbacks referred to them as "vehicles": technically a broader category than what we're working with, but everyone knows what it means in context.
+
+This is all to say that this section will describe MLPs, but I'll be referring to them as "FFNs." This is technically imprecise, but matches the standard terminology that everyone else uses (including researchers) when they talk about LLMs.
+:::
+
+The overall input to our FFN layer is the vector of $d$-vectors, but the FFN actually just works with each $d$-vector one at a time: it applies the same transformation to each. (In practice, GPUs can parallelize this extremely efficiently.)
+
+:::{drawio} images/no-math/ffn-high-level
+:::
+
+Let's dig in and see how the FFN actually works. As above, we'll start high-level and zoom in.
+
+An FFN consists of two or more transformations from one vector into another, in a chain. Each vector the chain produces is called a {dfn}`layer`: the last vector is called the {dfn}`output layer`, and all the ones before it are called {dfn}`hidden layers`. In general AI contexts, an FFN can have arbitrarily many hidden layers, but in LLM transformers, we almost always have just one. In GPT2/3-style LLMs, the hidden layer has dimensionality $4d$, where $d$ is the size of the embedding vector we discussed above.
+
+Here's how that looks, focusing on just one of the $d$-vector inputs (since, as mentioned above, the FFN works on each one separately):
+
+:::{drawio} images/no-math/ffn-layers
+:::
+
+Now let's look at the transformations. Each scalar the layer that the transformation produces is called an {dfn}`activation` (for reasons we'll get to in a moment). Each of those activations is produced by a `neuron`, which takes the previous vector (either the FFN's input, or the hidden layer) as its input. For example, a GPT 2/3-style LLM's first transformation has $4d$ neurons, producing $4d$ activations, which are collectively referred to as the hidden layer.
+
+Since each neuron takes the full previous vector as its input, the picture of connections can get very busy. To keep things simple, let's look at a transformation from a 2-dimensional input to a 3-dimensional layer:
+
+:::{drawio} images/no-math/ffn-transformations
+:::
+
+So, now we just need a way to turn our 2-vector into a scalar. If you remember the math operations above, we already have a way to do just that: we just need another 2-vector, and we take the [dot-product](#no-math-operations) of the two vectors. Each neuron has its own 2-vector, which is called the {dfn}`weight vector`:
+
+:::{drawio} images/no-math/ffn-dot-products
+:::
+
+(Remember that this is just our example of a transformation from a 2-dimensional layer to a 3-dimensional one. In general, to transform from an $I$-dimensional vector to an $R$-dimensional vector, you need $R$ neurons, each containing an $I$-dimensional vector.)
+
+Unfortunately, this isn't quite enough. Dot products are linear functions, which means that if we just chained each layer's transformation as we have it, each layer collapses. By way of analogy, consider a function that defines a two-layer transformation with just normal, scalar values:
+
+$$
+\text{output}(x) = \underbrace{\underbrace{x \cdot s}_{1^{\text{st}}\text{ layer}} \cdot t}_{2^{\text{nd}}\text{ layer}}
+$$
+
+Here, $x$ is the input, and $s$ and $t$ are the neuron's learned parameters across two layers ($s$ is the 1st layer's transformation, and $t$ is the second's). These parameters are effectively constants at inference, so we can define a constant $k = st$, and then simplify:
+
+$$
+\begin{align}
+\text{output}(x) & = x \; s \; t \\
+                 & = x \; (st) \\
+                 & = x \; k
+\end{align}
+$$
+
+...and you can see how our two parameters $s$ and $t$ collapse into a single one, $k$. This isn't just a math trick, it's a real problem: as you trained the model to find $s$ and $t$, their values would be correlated, and the overall information you'd gain would be as much as if you only had one parameter, $k$.
+
+To get around this, every transformation except the last one passes the result of the dot product through an {dfn}`activation function` (that's why the neuron outputs are called activations). In principle, this can be any non-linear function. In practice, LLMs use functions that basically trim all negative values to 0 (or close to it), while keeping positive values relatively unchanged. The simplest of these is a function that literally just treats $y = x$ where $x > 0$, and $y = 0$ where $x \le 0$:
+
+:::{drawio} images/ffn/relu
+:::
+
+If we put this activation function in our $\text{output}(x)$ function...
+
+$$
+\text{output}(x) = \text{activation}(x \; s) \; t
+$$
+
+...then we can no longer define a constant $k = st$, meaning that $s$ and $t$ can stay independent.
+
+Okay, let's step back from the math and get back to our FFN transformation. Here's where the activation functions slot in:
+
+:::{drawio} images/no-math/ffn-complete-neurons
+:::
+
+Remember, all of this is just a single layer's transformation. But, since our LLM's FFN only has two layers --- one hidden, and one output --- the whole thing isn't too complicated. Let's see what the full thing looks like for a simple LLM with 2-dimensional embedding. (We'll use the GPT-2/3 implementation of the hidden layer being $4d$):
+
 TODO
+
+:::{drawio} images/no-math/ffn-final
+:::
 
 ### Self-attention
 
