@@ -31,13 +31,13 @@ We'll be working with three kinds of operands:
 1. {dfn}`Scalars` are just numbers, like $1$ or $0.27$.
 2. {dfn}`Vectors` are list of things --- often of scalars, but really of anything. For example, $\begin{bmatrix}1 & 2 & 3 \end{bmatrix}$.
 
-   The vectors we'll see in our LLMs will all either be vectors of scalars, or vectors-of-vectors-of-scalars:
+   The vectors we'll see in our LLMs will all either be vectors of scalars, or vectors of vectors-of-scalars:
 
    $$
    \begin{bmatrix}\begin{bmatrix}1 & 2 & 3 \end{bmatrix} & \begin{bmatrix}4 & 5 & 6 \end{bmatrix} \end{bmatrix}
    $$
 
-   We call the number of elements in a vector its {dfn}`dimensionality`.
+   The number of elements in a vector is its {dfn}`dimensionality`.
 
 3. {dfn}`Matrices` are 2-dimensional grids of scalars:
 
@@ -54,13 +54,13 @@ We can also think of vectors as a special case of matrices, where one of the sid
 :::
 
 (how-we-use-scalars-and-vectors)=
-:::{important} How we'll use these
++++
 Generally speaking, we'll use each of these in distinct ways:
 
 - **Scalars** describe quantitative **how much** of something: think of it as being like asking "on a scale of 1 to 10, ..."
 - **Vectors** describe the qualitative **how** or **what** of something: "how do you feel?" or "what are you thinking about?"
-- **Matrices** are the brains of the LLM; they're how it thinks about the "how"/"what"-vectors that flow through it.
-:::
+- **Matrices** are the **brains** of the LLM; they're how it thinks about the "how"/"what"-vectors that flow through it.
++++
 
 ### The operations
 
@@ -224,7 +224,7 @@ The [matrix multiplication described above](#no-math-matrix-multiplication) does
 
 The output projection is really just that simple!
 
-### Bird's-eye view
+### Bird's-eye view: transformer blocks
 
 :::{aside}
 I know, some birds fly higher than some airplanes. Metaphors are hard!
@@ -241,9 +241,9 @@ Before we go into each component in depth, let's look at the transformer blocks.
 
 As I mentioned above, these work to transform one vector of $d$-vectors into another vector of $d$-vectors: the transformer layer changes the input's contents, but not its shape.
 
-We'll cover the FFN and self-attention in more detail below --- they're really the heart of the LLM, and where all the tricky computation happens.
+We'll cover the FFN and self-attention in more detail below. They're the heart of the LLM, and where all the tricky computation happens.
 
-Both the FFN and self-attention layer take $d$-vectors as input and produce $d$-vectors as output. The {dfn}`residuals` aren't transformation layers, but connections between them. They're very simple: after each transformation layer (FFN or attention) does its thing, the residual takes each resulting $d$-vector and adds its corresponding original input $d$-vector. That's it!
+Both the FFN and self-attention layer take $d$-vectors as input and produce $d$-vectors as output. The {dfn}`residuals` aren't transformation layers, but short-circuiting connections between them. They're very simple: after each transformation layer (FFN or attention) does its thing, the residual takes each resulting $d$-vector and adds its corresponding original input $d$-vector. That's it!
 
 :::{drawio} images/no-math/residuals
 :::
@@ -252,7 +252,7 @@ It turns out that these simple residuals are extremely important! Without them, 
 
 Residuals take care of the "apply that knowledge to the input" aspect, allowing the FFN and attention layers focus on learning just their core knowledge. This eliminates the limit on stacking, which is what lets LLM vendors build the trillion-parameter LLMs that have become so powerful.
 
-If you're interested in a deeper dive, [this YouTube video](https://www.youtube.com/watch?v=QgH9sr7G13Q) does a great job of walking through the visuals.
+If you're interested in a deeper dive, [this YouTube video](https://www.youtube.com/watch?v=QgH9sr7G13Q) does a great job of walking through the history and visualizations.
 
 ## The transformer components
 
@@ -301,6 +301,13 @@ So, now we just need a way to turn our 2-vector into a scalar. If you remember t
 
 (Remember that this is just our example of a transformation from a 2-dimensional layer to a 3-dimensional one. In general, to transform from an $I$-dimensional vector to an $R$-dimensional vector, you need $R$ neurons, each containing an $I$-dimensional vector.)
 
+Note that the weight vectors connect every element of the input vector to every element of the output vector. This property is called {dfn}`fully connected`, and it's a crucial part of FFNs' functionality.
+
+:::{tip} That precise terminology again
+:class: dropdown
+If we're going by precise terminology, not all FFNs are fully connected. The fully-connectedness is one of the properties that define MLPs specifically.
+:::
+
 Unfortunately, this isn't quite enough. Dot products are linear functions, which means that if we just chained each layer's transformation as we have it, each layer collapses. By way of analogy, consider a function that defines a two-layer transformation with just normal, scalar values:
 
 $$
@@ -317,7 +324,7 @@ $$
 \end{align}
 $$
 
-...and you can see how our two parameters $s$ and $t$ collapse into a single one, $k$. This isn't just a math trick, it's a real problem: as you trained the model to find $s$ and $t$, their values would be correlated, and the overall information you'd gain would be as much as if you only had one parameter, $k$.
+...and you can see how our two parameters $s$ and $t$ collapse into a single one, $k$. This isn't just a math trick: it's a real problem. If you trained the model to find $s$ and $t$, their values would be correlated, and the overall information you'd gain would be as much as if you only had one parameter, $k$.
 
 To get around this, every transformation except the last one passes the result of the dot product through an {dfn}`activation function` (that's why the neuron outputs are called activations). In principle, this can be any non-linear function. In practice, LLMs use functions that basically trim all negative values to 0 (or close to it), while keeping positive values relatively unchanged. The simplest of these is a function that literally just treats $y = x$ where $x > 0$, and $y = 0$ where $x \le 0$:
 
@@ -339,10 +346,10 @@ Okay, let's step back from the math and get back to our FFN transformation. Here
 
 Remember, all of this is just a single layer's transformation. But, since our LLM's FFN only has two layers --- one hidden, and one output --- the whole thing isn't too complicated. Let's see what the full thing looks like for a simple LLM with 2-dimensional embedding. (We'll use the GPT-2/3 implementation of the hidden layer being $4d$):
 
-TODO
-
 :::{drawio} images/no-math/ffn-final
 :::
+
+That's it! A real FFN is much larger --- the biggest of the GPT-3 variants has an embedding dimension $d$ of 12,288 --- but the principle is the same.
 
 ### Self-attention
 
