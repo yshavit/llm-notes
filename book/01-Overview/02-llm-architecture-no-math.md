@@ -374,7 +374,7 @@ Lastly, let's focus on just the shapes of the three groupings --- the input 2-di
 
 If this reminds you of [matrix multiplication](#no-math-matrix-multiplication), it's no coincidence! Dot products are at the heart of matrix multiplication, and they're organized in exactly this way.
 
-When FFNs are implemented, each layer (prior to its activation functions) just takes the input $a$-dimensional vector, treats it as a $1 \times a$ matrix, and multiplies it by an $a \times b$ matrix to produce the $1 \times b$ matrix (which it then treats as a $b$-dimensional vector).
+When FFNs are implemented, each layer (prior to its activation functions) just takes the input $a$-dimensional vector, treats it as a $1 \times a$ matrix, and multiplies it by an $a \times b$ {dfn}`weight matrix` to produce the $1 \times b$ matrix (which it then treats as a $b$-dimensional vector).
 
 :::::
 
