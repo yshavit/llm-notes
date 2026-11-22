@@ -351,6 +351,33 @@ Remember, all of this is just a single layer's transformation. But, since our LL
 
 That's it! A real FFN is much larger --- the biggest of the GPT-3 variants has an embedding dimension $d$ of 12,288 --- but the principle is the same.
 
+:::::{seealso} Epilogue
+:class: dropdown
+In terms of the conceptual data flow, everything above is correct. But in practice, FFNs aren't implemented in terms of dot products as I've shown; and in fact, they're not even really thought of in those terms, either.
+
+To see what actually happens, let's first take another look at a single layer's operations, but with just a slightly different perspective. Instead of each dot product going directly into the activation function, I'm going to show the dot products' values, and then group them as a vector:
+
+:::{drawio} images/no-math/ffn-intermediate-vector
+:::
+
+(I also removed the transformation's grouping box, just to simplify the diagram.)
+
+Next, let's change the our visual grouping of the weight vectors. We're not changing anything about the operations here, purely how we think of them. Instead of three separate vectors, we're now going to think of them as one collection of three vectors. At this point, we're not interested in the activation functions, so we'll just kinda dim them a bit.
+
+:::{drawio} images/no-math/ffn-intermediate-groupings
+:::
+
+Lastly, let's focus on just the shapes of the three groupings --- the input 2-dimensional vector, the group of three 2-dimensional vectors, and the output 3-dimensional vector --- and rearrange them a bit:
+
+:::{drawio} images/no-math/ffn-as-matrix
+:::
+
+If this reminds you of [matrix multiplication](#no-math-matrix-multiplication), it's no coincidence! Dot products are at the heart of matrix multiplication, and they're organized in exactly this way.
+
+When FFNs are implemented, each layer (prior to its activation functions) just takes the input $a$-dimensional vector, treats it as a $1 \times a$ matrix, and multiplies it by an $a \times b$ matrix to produce the $1 \times b$ matrix (which it then treats as a $b$-dimensional vector).
+
+:::::
+
 ### Self-attention
 
 :::{caution}
