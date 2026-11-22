@@ -344,6 +344,8 @@ Okay, let's step back from the math and get back to our FFN transformation. Here
 :::{drawio} images/no-math/ffn-complete-neurons
 :::
 
+Each activation function is identical, and we just apply it separately to each dot product to get the neuron's activation.
+
 Remember, all of this is just a single layer's transformation. But, since our LLM's FFN only has two layers --- one hidden, and one output --- the whole thing isn't too complicated. Let's see what the full thing looks like for a simple LLM with 2-dimensional embedding. (We'll use the GPT-2/3 implementation of the hidden layer being $4d$):
 
 :::{drawio} images/no-math/ffn-final
