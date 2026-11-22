@@ -378,6 +378,12 @@ If this reminds you of [matrix multiplication](#no-math-matrix-multiplication), 
 
 When FFNs are implemented, each layer (prior to its activation functions) just takes the input $a$-dimensional vector, treats it as a $1 \times a$ matrix, and multiplies it by an $a \times b$ {dfn}`weight matrix` to produce the $1 \times b$ matrix (which it then treats as a $b$-dimensional vector).
 
+In a real implementation, we also add a {dfn}`bias vector` to the result of this matrix multiplication.
+
+To see why, imagine fitting a function to a line. You wouldn't just want $f(x) = ax$ (where $a$ is the learned parameter you tune to fit the function). You'd want $f(x) = ax + b$, in case the line doesn't happen to go through the origin.
+
+In an FFN's layer, $ax$ is the matrix multiplication, and $b$ is the bias vector. It works just the same way.
+
 :::::
 
 ### Self-attention
